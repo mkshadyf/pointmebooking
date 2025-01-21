@@ -1,48 +1,54 @@
 /* eslint-disable react/no-unescaped-entities */
 'use client';
 
-import { useAppStore } from '@/lib/store';
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useAppStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import { useState } from 'react';
+import { Service } from '@/types';
+import { PageLoading } from '@/components/ui/Loading';
 
-export default function ServiceDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const { serviceCategories, businessCategories } = useAppStore();
+export default function ServiceDetailPage() {
+  const params = useParams();
   const { user } = useAuth();
+  const { serviceCategories, businessCategories } = useAppStore();
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [service, setService] = useState<Service | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Find the service
-  const service = serviceCategories
-    .flatMap((cat) => cat.services)
-    .find((s) => s.id === params.id);
+  useEffect(() => {
+    const fetchService = async () => {
+      try {
+        const service = serviceCategories
+          .flatMap((cat) => cat.services)
+          .find((s) => s.id === params.id);
+
+        if (!service) throw new Error('Service not found');
+
+        setService(service);
+      } catch (err) {
+        console.error('Error fetching service:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (params.id) {
+      fetchService();
+    }
+  }, [params.id, serviceCategories]);
+
+  if (loading) return <PageLoading />;
+  if (!service) return <div>Service not found</div>;
 
   // Find the business that offers this service
   const business = businessCategories
     .flatMap((cat) => cat.businesses)
-    .find((b) => b.id === service?.business_id);
+    .find((b) => b.id === service.business_id);
 
-  if (!service || !business) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-900">Service not found</h2>
-          <p className="mt-2 text-gray-600">The service you're looking for doesn't exist.</p>
-          <button
-            onClick={() => router.back()}
-            className="mt-4 text-primary hover:text-primary/90"
-          >
-            Go back
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (!business) return <div>Business not found</div>;
 
   const handleBooking = async () => {
     if (!user) {
