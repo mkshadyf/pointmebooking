@@ -1,0 +1,67 @@
+<svg width="1200" height="600" viewBox="0 0 1200 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bg-gradient" x1="0" y1="0" x2="1200" y2="600" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    
+    <!-- Animated circles gradient -->
+    <radialGradient id="circle-gradient" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="600" fill="url(#bg-gradient)"/>
+
+  <!-- Decorative elements -->
+  <circle cx="200" cy="300" r="160" fill="url(#circle-gradient)" opacity="0.1">
+    <animate attributeName="r" values="160;180;160" dur="4s" repeatCount="indefinite"/>
+  </circle>
+  
+  <circle cx="1000" cy="200" r="100" fill="url(#circle-gradient)" opacity="0.1">
+    <animate attributeName="r" values="100;120;100" dur="3s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Grid pattern -->
+  <path d="M0 50h1200 M0 150h1200 M0 250h1200 M0 350h1200 M0 450h1200 M0 550h1200" 
+        stroke="#334155" stroke-width="0.5" opacity="0.3"/>
+  <path d="M50 0v600 M150 0v600 M250 0v600 M350 0v600 M450 0v600 M550 0v600 M650 0v600 M750 0v600 M850 0v600 M950 0v600 M1050 0v600 M1150 0v600" 
+        stroke="#334155" stroke-width="0.5" opacity="0.3"/>
+
+  <!-- Main content -->
+  <g transform="translate(600, 300)" text-anchor="middle">
+    <!-- Central icon -->
+    <circle cx="0" cy="0" r="80" fill="url(#circle-gradient)" opacity="0.9">
+      <animate attributeName="r" values="80;85;80" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    
+    <!-- Calendar icon -->
+    <path d="M-30 -20 h60 v40 h-60 v-40 M-20 -30 v10 M20 -30 v10 M-30 -10 h60" 
+          stroke="#fff" stroke-width="3" fill="none"/>
+    
+    <!-- Clock hands -->
+    <g transform="rotate(-45)">
+      <line x1="0" y1="0" x2="0" y2="-20" stroke="#fff" stroke-width="3">
+        <animateTransform attributeName="transform" type="rotate" 
+                         from="0" to="360" dur="12s" repeatCount="indefinite"/>
+      </line>
+    </g>
+    <g transform="rotate(-90)">
+      <line x1="0" y1="0" x2="0" y2="-15" stroke="#fff" stroke-width="3">
+        <animateTransform attributeName="transform" type="rotate"
+                         from="0" to="360" dur="60s" repeatCount="indefinite"/>
+      </line>
+    </g>
+  </g>
+
+  <!-- Text elements -->
+  <text x="600" y="450" fill="#fff" font-family="Inter, sans-serif" font-size="48" text-anchor="middle" font-weight="bold">
+    PointMe
+  </text>
+  <text x="600" y="500" fill="#94a3b8" font-family="Inter, sans-serif" font-size="24" text-anchor="middle">
+    Smart Booking System
+  </text>
+</svg> 

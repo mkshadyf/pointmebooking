@@ -1,231 +1,262 @@
 'use client';
 
-import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { BusinessProfile } from '@/types';
+import {
+  Input,
+  TextArea,
+  Label,
+  FormGroup,
+  Button,
+} from '@/components/ui/form';
 
 export default function BusinessSettings() {
   const { profile, updateProfile } = useAuth();
   const [loading, setLoading] = useState(false);
-
-  // Cast profile to BusinessProfile since we're in the business settings
-  const businessProfile = profile as BusinessProfile | null;
-  
-  const defaultHours = {
-    start: '09:00',
-    end: '17:00',
-    is_closed: false
-  };
-
-  const [formData, setFormData] = useState<BusinessProfile>({
-    id: businessProfile?.id || '',
-    email: businessProfile?.email || '',
-    role: 'business',
-    business_name: businessProfile?.business_name || '',
-    business_category: businessProfile?.business_category || '',
-    full_name: businessProfile?.full_name || '',
-    description: businessProfile?.description || '',
-    location: businessProfile?.location || '',
-    contact_number: businessProfile?.contact_number || '',
-    working_hours: {
-      monday: businessProfile?.working_hours?.monday || { ...defaultHours },
-      tuesday: businessProfile?.working_hours?.tuesday || { ...defaultHours },
-      wednesday: businessProfile?.working_hours?.wednesday || { ...defaultHours },
-      thursday: businessProfile?.working_hours?.thursday || { ...defaultHours },
-      friday: businessProfile?.working_hours?.friday || { ...defaultHours },
-      saturday: businessProfile?.working_hours?.saturday || { ...defaultHours, is_closed: true },
-      sunday: businessProfile?.working_hours?.sunday || { ...defaultHours, is_closed: true }
-    },
-    created_at: businessProfile?.created_at || new Date().toISOString(),
-    updated_at: businessProfile?.updated_at || new Date().toISOString(),
-    services: businessProfile?.services || []
+  const [formData, setFormData] = useState({
+    business_name: profile?.business_name || '',
+    description: profile?.description || '',
+    location: profile?.location || '',
+    contact_number: profile?.contact_number || '',
+    contact_email: profile?.contact_email || '',
+    website: profile?.website || '',
+    business_type: profile?.business_type || '',
+    business_category: profile?.business_category || '',
+    address: profile?.address || '',
+    city: profile?.city || '',
+    state: profile?.state || '',
+    postal_code: profile?.postal_code || '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    try {
-      // Only send the fields that can be updated
-      const updateData: Partial<BusinessProfile> = {
-        business_name: formData.business_name,
-        business_category: formData.business_category,
-        full_name: formData.full_name,
-        description: formData.description,
-        location: formData.location,
-        contact_number: formData.contact_number,
-        working_hours: formData.working_hours
-      };
 
-      await updateProfile(updateData);
-      toast.success('Profile updated successfully');
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update profile';
-      toast.error(errorMessage);
+    try {
+      await updateProfile(formData);
+      toast.success('Settings updated successfully');
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Failed to update settings');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-semibold mb-6">Business Settings</h1>
-      
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="business_name" className="block text-sm font-medium text-gray-700">
-              Business Name
-            </label>
-            <input
+    <div className="max-w-4xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">Business Settings</h1>
+        <p className="mt-1 text-sm text-gray-600">
+          Manage your business profile and settings.
+        </p>
+      </div>
+
+      <div className="bg-white shadow-sm rounded-lg">
+        <form onSubmit={handleSubmit} className="p-6 space-y-8">
+          <FormGroup>
+            <Label htmlFor="business_name">Business Name</Label>
+            <Input
               type="text"
               id="business_name"
+              name="business_name"
+              required
+              fullWidth
               value={formData.business_name}
-              onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              onChange={(e) =>
+                setFormData({ ...formData, business_name: e.target.value })
+              }
+              placeholder="Enter your business name"
             />
-          </div>
+          </FormGroup>
 
-          <div>
-            <label htmlFor="business_category" className="block text-sm font-medium text-gray-700">
-              Business Category
-            </label>
-            <input
+          <FormGroup>
+            <Label htmlFor="business_type">Business Type</Label>
+            <Input
+              type="text"
+              id="business_type"
+              name="business_type"
+              fullWidth
+              value={formData.business_type}
+              onChange={(e) =>
+                setFormData({ ...formData, business_type: e.target.value })
+              }
+              placeholder="Enter your business type"
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label htmlFor="business_category">Business Category</Label>
+            <Input
               type="text"
               id="business_category"
+              name="business_category"
+              fullWidth
               value={formData.business_category}
-              onChange={(e) => setFormData({ ...formData, business_category: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              onChange={(e) =>
+                setFormData({ ...formData, business_category: e.target.value })
+              }
+              placeholder="Enter your business category"
             />
-          </div>
+          </FormGroup>
 
-          <div>
-            <label htmlFor="full_name" className="block text-sm font-medium text-gray-700">
-              Owner Name
-            </label>
-            <input
-              type="text"
-              id="full_name"
-              value={formData.full_name}
-              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-              Description
-            </label>
-            <textarea
+          <FormGroup>
+            <Label htmlFor="description">Description</Label>
+            <TextArea
               id="description"
+              name="description"
               rows={4}
+              fullWidth
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              placeholder="Describe your business"
             />
+          </FormGroup>
+
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <FormGroup>
+              <Label htmlFor="location">Location</Label>
+              <Input
+                type="text"
+                id="location"
+                name="location"
+                fullWidth
+                value={formData.location}
+                onChange={(e) =>
+                  setFormData({ ...formData, location: e.target.value })
+                }
+                placeholder="Enter your business location"
+              />
+            </FormGroup>
+
+            <FormGroup>
+              <Label htmlFor="contact_number">Contact Number</Label>
+              <Input
+                type="tel"
+                id="contact_number"
+                name="contact_number"
+                fullWidth
+                value={formData.contact_number}
+                onChange={(e) =>
+                  setFormData({ ...formData, contact_number: e.target.value })
+                }
+                placeholder="Enter your contact number"
+              />
+            </FormGroup>
           </div>
 
-          <div>
-            <label htmlFor="location" className="block text-sm font-medium text-gray-700">
-              Location
-            </label>
-            <input
-              type="text"
-              id="location"
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <FormGroup>
+              <Label htmlFor="contact_email">Contact Email</Label>
+              <Input
+                type="email"
+                id="contact_email"
+                name="contact_email"
+                fullWidth
+                value={formData.contact_email}
+                onChange={(e) =>
+                  setFormData({ ...formData, contact_email: e.target.value })
+                }
+                placeholder="Enter your contact email"
+              />
+            </FormGroup>
+
+            <FormGroup>
+              <Label htmlFor="website">Website</Label>
+              <Input
+                type="url"
+                id="website"
+                name="website"
+                fullWidth
+                value={formData.website}
+                onChange={(e) =>
+                  setFormData({ ...formData, website: e.target.value })
+                }
+                placeholder="Enter your website URL"
+              />
+            </FormGroup>
           </div>
 
-          <div>
-            <label htmlFor="contact_number" className="block text-sm font-medium text-gray-700">
-              Contact Number
-            </label>
-            <input
-              type="tel"
-              id="contact_number"
-              value={formData.contact_number}
-              onChange={(e) => setFormData({ ...formData, contact_number: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <FormGroup>
+              <Label htmlFor="address">Address</Label>
+              <Input
+                type="text"
+                id="address"
+                name="address"
+                fullWidth
+                value={formData.address}
+                onChange={(e) =>
+                  setFormData({ ...formData, address: e.target.value })
+                }
+                placeholder="Enter your address"
+              />
+            </FormGroup>
+
+            <FormGroup>
+              <Label htmlFor="city">City</Label>
+              <Input
+                type="text"
+                id="city"
+                name="city"
+                fullWidth
+                value={formData.city}
+                onChange={(e) =>
+                  setFormData({ ...formData, city: e.target.value })
+                }
+                placeholder="Enter your city"
+              />
+            </FormGroup>
           </div>
 
-          {/* Working Hours */}
-          <div className="col-span-6">
-            <h3 className="text-lg font-medium leading-6 text-gray-900">Working Hours</h3>
-            <p className="mt-1 text-sm text-gray-500">Set your business operating hours.</p>
-            
-            <div className="mt-6 space-y-4">
-              {Object.entries(formData.working_hours).map(([day, hours]) => (
-                <div key={day} className="flex items-center space-x-4">
-                  <div className="w-32">
-                    <label className="block text-sm font-medium text-gray-700 capitalize">
-                      {day}
-                    </label>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <label className="inline-flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={!hours.is_closed}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          working_hours: {
-                            ...formData.working_hours,
-                            [day]: { ...hours, is_closed: !e.target.checked }
-                          }
-                        })}
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">Open</span>
-                    </label>
-                    {!hours.is_closed && (
-                      <>
-                        <input
-                          type="time"
-                          value={hours.start}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            working_hours: {
-                              ...formData.working_hours,
-                              [day]: { ...hours, start: e.target.value }
-                            }
-                          })}
-                          className="block rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                        />
-                        <span className="text-gray-500">to</span>
-                        <input
-                          type="time"
-                          value={hours.end}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            working_hours: {
-                              ...formData.working_hours,
-                              [day]: { ...hours, end: e.target.value }
-                            }
-                          })}
-                          className="block rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                        />
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <FormGroup>
+              <Label htmlFor="state">State</Label>
+              <Input
+                type="text"
+                id="state"
+                name="state"
+                fullWidth
+                value={formData.state}
+                onChange={(e) =>
+                  setFormData({ ...formData, state: e.target.value })
+                }
+                placeholder="Enter your state"
+              />
+            </FormGroup>
 
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={loading}
-            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
-      </form>
+            <FormGroup>
+              <Label htmlFor="postal_code">Postal Code</Label>
+              <Input
+                type="text"
+                id="postal_code"
+                name="postal_code"
+                fullWidth
+                value={formData.postal_code}
+                onChange={(e) =>
+                  setFormData({ ...formData, postal_code: e.target.value })
+                }
+                placeholder="Enter your postal code"
+              />
+            </FormGroup>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

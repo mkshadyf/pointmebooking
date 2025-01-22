@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
-import { FiMail } from 'react-icons/fi';
+import { FiMail, FiLock } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 
 const isValidEmail = (email: string) => {
@@ -14,6 +14,7 @@ const isValidEmail = (email: string) => {
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn, signInWithGoogle } = useAuth();
 
@@ -25,10 +26,14 @@ export default function LoginPage() {
       return;
     }
 
+    if (!password) {
+      toast.error('Please enter your password');
+      return;
+    }
+
     setLoading(true);
     try {
-      await signIn(email, '');
-      toast.success('Check your email for the login link');
+      await signIn(email, password);
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);
@@ -89,6 +94,35 @@ export default function LoginPage() {
                     <p className="mt-1 text-xs text-red-500">Please enter a valid email address</p>
                   )}
                 </div>
+
+                <div className="relative">
+                  <label htmlFor="password" className="sr-only">
+                    Password
+                  </label>
+                  <FiLock className="absolute top-3 left-3 text-gray-400" />
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="appearance-none block w-full px-10 py-2 border border-gray-300 rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    placeholder="Password"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="text-sm">
+                  <Link
+                    href="/forgot-password"
+                    className="font-medium text-primary hover:text-primary/90"
+                  >
+                    Forgot your password?
+                  </Link>
+                </div>
               </div>
 
               <div>
@@ -99,10 +133,13 @@ export default function LoginPage() {
                     loading ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 >
-                  {loading ? 'Sending login link...' : 'Continue with Email'}
+                  {loading ? 'Signing in...' : 'Sign in'}
                 </button>
               </div>
+            </form>
 
+            {/* Social Login */}
+            <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-300" />
@@ -112,33 +149,25 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div>
+              <div className="mt-6">
                 <button
-                  type="button"
                   onClick={handleGoogleSignIn}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                  className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                 >
                   <FcGoogle className="h-5 w-5" />
-                  Google
+                  <span>Sign in with Google</span>
                 </button>
               </div>
-            </form>
-          </div>
-
-          <div className="px-8 py-6 bg-gray-50 border-t border-gray-100">
-            <div className="text-center text-sm">
-              <Link
-                href="/forgot-password"
-                className="font-medium text-primary hover:text-primary/90"
-              >
-                Forgot your password?
-              </Link>
             </div>
-            <div className="mt-4 text-center text-sm">
-              <span className="text-gray-600">Don&apos;t have an account?</span>{' '}
-              <Link href="/register" className="font-medium text-primary hover:text-primary/90">
-                Sign up
-              </Link>
+
+            {/* Sign Up Link */}
+            <div className="mt-6 mb-8 text-center">
+              <p className="text-sm text-gray-600">
+                Don&apos;t have an account?{' '}
+                <Link href="/register" className="font-medium text-primary hover:text-primary/90">
+                  Sign up
+                </Link>
+              </p>
             </div>
           </div>
         </div>

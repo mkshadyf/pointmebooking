@@ -1,20 +1,33 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useAppStore } from '@/lib/store';
-import { useParams, useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
+import {
+  Input,
+  TextArea,
+  Label,
+  FormGroup,
+  Button,
+} from '@/components/ui/form';
+import * as serviceApi from '@/lib/api/services';
 import { Service } from '@/types';
 
-export default function ManageService() {
-  const { user } = useAuth();
-  const { serviceCategories, addService, updateService } = useAppStore();
+export default function ManageService({
+  params,
+}: {
+  params: { action: string };
+}) {
   const router = useRouter();
-  const params = useParams();
-  const isEditing = params.action !== 'new';
+  const searchParams = useSearchParams();
+  const { profile } = useAuth();
+  const { addService, updateService, serviceCategories } = useAppStore();
   const [loading, setLoading] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+
+  const isEdit = params.action === 'edit';
+  const serviceId = searchParams.get('id');
 
   const [formData, setFormData] = useState<Partial<Service>>({
     name: '',
@@ -23,24 +36,25 @@ export default function ManageService() {
     duration: 30,
     category_id: '',
     is_available: true,
-    business_id: user?.id,
+    business_id: profile?.id || '',
   });
 
   useEffect(() => {
-    if (isEditing) {
-      const service = serviceCategories
-        .flatMap((cat) => cat.services)
-        .find((s) => s.id === params.action);
-
-      if (service) {
-        setFormData({
-          ...service,
-          price: service.price,
-          duration: service.duration,
-        });
+    async function loadService() {
+      if (isEdit && serviceId) {
+        try {
+          const service = await serviceApi.getServiceById(serviceId);
+          setFormData(service);
+        } catch (error) {
+          const err = error as Error;
+          toast.error('Failed to load service: ' + err.message);
+          router.push('/dashboard/business/services');
+        }
       }
     }
-  }, [isEditing, params.action, serviceCategories]);
+
+    loadService();
+  }, [isEdit, serviceId, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,235 +62,172 @@ export default function ManageService() {
 
     try {
       const serviceData: Service = {
-        id: isEditing ? (params.action as string) : `service_${Date.now()}`,
-        ...formData as Omit<Service, 'id'>,
-        created_at: isEditing ? formData.created_at! : new Date().toISOString(),
+        id: isEdit ? serviceId! : `service_${Date.now()}`,
+        business_id: profile?.id || '',
+        name: formData.name || '',
+        description: formData.description || '',
+        price: Number(formData.price) || 0,
+        duration: Number(formData.duration) || 30,
+        category_id: formData.category_id || '',
+        is_available: formData.is_available ?? true,
+        created_at: isEdit ? (formData.created_at || new Date().toISOString()) : new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
 
-      if (imageFile) {
-        // In a real app, upload image to storage and get URL
-        // serviceData.image_url = await uploadImage(imageFile);
-      }
-
-      if (isEditing) {
-        updateService(serviceData.id, serviceData);
+      if (isEdit && serviceId) {
+        await updateService(serviceId, serviceData);
+        toast.success('Service updated successfully');
       } else {
-        addService(serviceData);
+        await addService(serviceData);
+        toast.success('Service added successfully');
       }
-
-      toast.success(
-        `Service ${isEditing ? 'updated' : 'created'} successfully`
-      );
       router.push('/dashboard/business/services');
-    } catch (err) {
-      const error = err as Error;
-      toast.error(
-        `Failed to ${isEditing ? 'update' : 'create'} service: ${error.message}`
-      );
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Failed to save service');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-    }
-  };
+  if (!profile) {
+    return null;
+  }
 
   return (
-    <div>
+    <div className="max-w-4xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">
-          {isEditing ? 'Edit Service' : 'Add New Service'}
+          {isEdit ? 'Edit Service' : 'Add New Service'}
         </h1>
         <p className="mt-1 text-sm text-gray-600">
-          {isEditing
-            ? 'Update your service details.'
-            : 'Create a new service for your business.'}
+          {isEdit
+            ? 'Update your service details'
+            : 'Add a new service to your business'}
         </p>
       </div>
 
-      <div className="bg-white shadow rounded-lg">
-        <form onSubmit={handleSubmit} className="space-y-6 p-6">
-          <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-            <div className="sm:col-span-4">
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Service Name
-              </label>
-              <div className="mt-1">
-                <input
-                  type="text"
-                  name="name"
-                  id="name"
-                  required
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                />
-              </div>
-            </div>
+      <div className="bg-white shadow-sm rounded-lg">
+        <form onSubmit={handleSubmit} className="p-6 space-y-8">
+          <FormGroup>
+            <Label htmlFor="name">Service Name</Label>
+            <Input
+              type="text"
+              id="name"
+              name="name"
+              required
+              fullWidth
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              placeholder="Enter service name"
+            />
+          </FormGroup>
 
-            <div className="sm:col-span-6">
-              <label
-                htmlFor="description"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Description
-              </label>
-              <div className="mt-1">
-                <textarea
-                  id="description"
-                  name="description"
-                  rows={3}
-                  required
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                />
-              </div>
-            </div>
+          <FormGroup>
+            <Label htmlFor="description">Description</Label>
+            <TextArea
+              id="description"
+              name="description"
+              rows={4}
+              fullWidth
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              placeholder="Describe your service"
+            />
+          </FormGroup>
 
-            <div className="sm:col-span-2">
-              <label
-                htmlFor="price"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Price ($)
-              </label>
-              <div className="mt-1">
-                <input
-                  type="number"
-                  name="price"
-                  id="price"
-                  required
-                  min="0"
-                  step="0.01"
-                  value={formData.price}
-                  onChange={(e) =>
-                    setFormData({ ...formData, price: parseFloat(e.target.value) })
-                  }
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                />
-              </div>
-            </div>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <FormGroup>
+              <Label htmlFor="price">Price</Label>
+              <Input
+                type="number"
+                id="price"
+                name="price"
+                required
+                fullWidth
+                min="0"
+                step="0.01"
+                value={formData.price}
+                onChange={(e) =>
+                  setFormData({ ...formData, price: Number(e.target.value) })
+                }
+                placeholder="Enter price"
+              />
+            </FormGroup>
 
-            <div className="sm:col-span-2">
-              <label
-                htmlFor="duration"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Duration (minutes)
-              </label>
-              <div className="mt-1">
-                <input
-                  type="number"
-                  name="duration"
-                  id="duration"
-                  required
-                  min="1"
-                  value={formData.duration}
-                  onChange={(e) =>
-                    setFormData({ ...formData, duration: parseInt(e.target.value) })
-                  }
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="sm:col-span-2">
-              <label
-                htmlFor="category"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Category
-              </label>
-              <div className="mt-1">
-                <select
-                  id="category"
-                  name="category"
-                  required
-                  value={formData.category_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category_id: e.target.value })
-                  }
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                >
-                  <option value="">Select a category</option>
-                  {serviceCategories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="sm:col-span-6">
-              <label
-                htmlFor="image"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Service Image
-              </label>
-              <div className="mt-1">
-                <input
-                  type="file"
-                  id="image"
-                  name="image"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90"
-                />
-              </div>
-            </div>
-
-            <div className="sm:col-span-6">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="is_available"
-                  name="is_available"
-                  checked={formData.is_available}
-                  onChange={(e) =>
-                    setFormData({ ...formData, is_available: e.target.checked })
-                  }
-                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                />
-                <label
-                  htmlFor="is_available"
-                  className="ml-2 block text-sm text-gray-700"
-                >
-                  Service is currently available
-                </label>
-              </div>
-            </div>
+            <FormGroup>
+              <Label htmlFor="duration">Duration (minutes)</Label>
+              <Input
+                type="number"
+                id="duration"
+                name="duration"
+                required
+                fullWidth
+                min="0"
+                value={formData.duration}
+                onChange={(e) =>
+                  setFormData({ ...formData, duration: Number(e.target.value) })
+                }
+                placeholder="Enter duration in minutes"
+              />
+            </FormGroup>
           </div>
 
-          <div className="flex justify-end space-x-3">
-            <button
+          <FormGroup>
+            <Label htmlFor="category">Category</Label>
+            <select
+              id="category"
+              name="category"
+              required
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+              value={formData.category_id}
+              onChange={(e) =>
+                setFormData({ ...formData, category_id: e.target.value })
+              }
+            >
+              <option value="">Select a category</option>
+              {serviceCategories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </FormGroup>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="is_available"
+              name="is_available"
+              checked={formData.is_available}
+              onChange={(e) =>
+                setFormData({ ...formData, is_available: e.target.checked })
+              }
+              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+            />
+            <Label htmlFor="is_available" className="ml-2">
+              Service is available for booking
+            </Label>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button
               type="button"
-              onClick={() => router.back()}
-              className="inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              variant="secondary"
+              onClick={() => router.push('/dashboard/business/services')}
             >
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Saving...' : isEditing ? 'Update Service' : 'Create Service'}
-            </button>
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Saving...' : isEdit ? 'Update Service' : 'Add Service'}
+            </Button>
           </div>
         </form>
       </div>

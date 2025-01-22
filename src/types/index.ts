@@ -7,6 +7,8 @@ export interface UserProfile {
   full_name: string;
   email: string;
   role: UserRole;
+  email_verified: boolean;
+  verification_code?: string;
   business_name?: string;
   business_type?: string;
   business_category?: string;

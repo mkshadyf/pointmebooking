@@ -3,10 +3,14 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import { corsHeaders } from '../_shared/cors.ts'
 import { EmailTemplate } from '../_shared/email-template.ts'
 
+interface TemplateData {
+  [key: string]: string | number | boolean;
+}
+
 interface EmailPayload {
   to: string
   templateName: string
-  data: Record<string, any>
+  data: TemplateData
 }
 
 serve(async (req) => {

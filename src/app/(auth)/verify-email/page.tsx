@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'react-hot-toast';
 import { FiMail } from 'react-icons/fi';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 
 export default function VerifyEmailPage() {
   const [code, setCode] = useState('');

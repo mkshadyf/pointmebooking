@@ -1,9 +1,13 @@
 import { readFile } from 'https://deno.land/std@0.168.0/fs/mod.ts'
 import { join } from 'https://deno.land/std@0.168.0/path/mod.ts'
 
+interface TemplateData {
+  [key: string]: string | number | boolean;
+}
+
 export class EmailTemplate {
   private templateName: string
-  private data: Record<string, any>
+  private data: TemplateData
   private template: string = ''
   private subjects: Record<string, string> = {
     'verification': 'Verify your email - PointMe!',
@@ -13,7 +17,7 @@ export class EmailTemplate {
     'password-reset': 'Reset Your Password - PointMe!',
   }
 
-  constructor(templateName: string, data: Record<string, any>) {
+  constructor(templateName: string, data: TemplateData) {
     this.templateName = templateName
     this.data = data
   }
@@ -28,23 +32,17 @@ export class EmailTemplate {
       let renderedTemplate = this.template
       for (const [key, value] of Object.entries(this.data)) {
         const regex = new RegExp(`{{${key}}}`, 'g')
-        renderedTemplate = renderedTemplate.replace(regex, value)
+        renderedTemplate = renderedTemplate.replace(regex, String(value))
       }
-
-      // Add default values
-      renderedTemplate = renderedTemplate.replace(
-        '{{currentYear}}',
-        new Date().getFullYear().toString()
-      )
 
       return renderedTemplate
     } catch (error) {
       console.error('Error rendering template:', error)
-      throw new Error('Failed to render email template')
+      throw error
     }
   }
 
   getSubject(): string {
-    return this.subjects[this.templateName] || 'PointMe! Notification'
+    return this.subjects[this.templateName] || 'PointMe Notification'
   }
 }

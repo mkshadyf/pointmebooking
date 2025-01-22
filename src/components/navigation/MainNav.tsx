@@ -21,14 +21,14 @@ export default function MainNav() {
     { name: 'Home', href: '/' },
     { name: 'Services', href: '/services' },
     { name: 'Businesses', href: '/businesses' },
-    ...(user?.role === 'business'
+    ...(profile?.role === 'business'
       ? [{ name: 'Dashboard', href: '/dashboard/business' }]
       : []),
   ];
 
   const userNavigation = [
-    { name: 'Your Profile', href: `/dashboard/${user?.role}` },
-    { name: 'Settings', href: `/dashboard/${user?.role}/settings` },
+    { name: 'Your Profile', href: `/dashboard/${profile?.role}` },
+    { name: 'Settings', href: `/dashboard/${profile?.role}/settings` },
   ];
 
   return (
@@ -41,11 +41,12 @@ export default function MainNav() {
                 <div className="flex flex-shrink-0 items-center">
                   <Link href="/">
                     <Image
-                      src="/logo.png"
+                      src="/logo.svg"
                       alt="PointMe!"
                       width={32}
                       height={32}
                       className="h-8 w-auto"
+                      priority
                     />
                   </Link>
                 </div>

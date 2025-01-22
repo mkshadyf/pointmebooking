@@ -25,6 +25,7 @@ export default function BusinessOnboarding({ onComplete }: BusinessOnboardingPro
       full_name: userProfile.full_name,
       email: userProfile.email,
       role: userProfile.role,
+      email_verified: userProfile.email_verified,
       // BusinessProfile specific fields
       business_name: userProfile.business_name || '',
       business_category: userProfile.business_category || '',

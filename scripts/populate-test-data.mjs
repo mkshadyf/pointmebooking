@@ -357,36 +357,36 @@ async function createServices(businessId, services) {
 }
 
 // Delete existing test users
-async function deleteTestUsers() {
-  try {
-    console.log('Deleting existing test users...');
-    const allTestEmails = [...testUsers.businesses, ...testUsers.customers].map(user => user.email);
+// async function  deleteTestUsers() {
+//   try {
+//     console.log('Deleting existing test users...');
+//     const allTestEmails = [...testUsers.businesses, ...testUsers.customers].map(user => user.email);
     
-    // First get all users
-    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+//     // First get all users
+//     const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
     
-    if (listError) {
-      console.error('Error listing users:', listError);
-      throw listError;
-    }
+//     if (listError) {
+//       console.error('Error listing users:', listError);
+//       throw listError;
+//     }
 
-    // Delete each test user
-    for (const email of allTestEmails) {
-      const user = users.find(u => u.email === email);
-      if (user) {
-        console.log(`Deleting user: ${email}`);
-        // First delete their profile and services
-        await supabase.from('services').delete().eq('business_id', user.id);
-        await supabase.from('profiles').delete().eq('id', user.id);
-        // Then delete the auth user
-        await supabase.auth.admin.deleteUser(user.id);
-      }
-    }
-  } catch (error) {
-    console.error('Error deleting test users:', error);
-    throw error;
-  }
-}
+//     // Delete each test user
+//     for (const email of allTestEmails) {
+//       const user = users.find(u => u.email === email);
+//       if (user) {
+//         console.log(`Deleting user: ${email}`);
+//         // First delete their profile and services
+//         await supabase.from('services').delete().eq('business_id', user.id);
+//         await supabase.from('profiles').delete().eq('id', user.id);
+//         // Then delete the auth user
+//         await supabase.auth.admin.deleteUser(user.id);
+//       }
+//     }
+//   } catch (error) {
+//     console.error('Error deleting test users:', error);
+//     throw error;
+//   }
+// }
 
 // Main function to populate test data
 async function populateTestData() {

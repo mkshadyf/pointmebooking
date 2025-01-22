@@ -1,0 +1,38 @@
+<svg width="200" height="50" viewBox="0 0 200 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Location Pin with Subtle Pulse Animation -->
+  <g transform="translate(25, 25)">
+    <!-- Subtle Pulse circle -->
+    <circle cx="0" cy="0" r="20" fill="#7c3aed" opacity="0.08">
+      <animate attributeName="r" values="15;17;15" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    
+    <!-- Location Pin -->
+    <path d="M0,-15 
+             C7,-15 12,-10 12,-3
+             C12,4 0,15 0,15
+             C0,15 -12,4 -12,-3
+             C-12,-10 -7,-15 0,-15"
+          fill="#7c3aed">
+    </path>
+    
+    <!-- Center Dot -->
+    <circle cx="0" cy="-3" r="2.5" fill="white"/>
+  </g>
+
+  <!-- PointMe Text (without exclamation mark for more professional look) -->
+  <g transform="translate(60, 32)">
+    <!-- Point -->
+    <text font-family="Inter, sans-serif" font-size="24" font-weight="600" fill="#1e293b">
+      Point
+    </text>
+    <!-- Me -->
+    <text x="65" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#7c3aed">
+      Me
+    </text>
+  </g>
+
+  <!-- Optional: Tagline -->
+  <text x="60" y="45" font-family="Inter, sans-serif" font-size="10" fill="#6b7280" letter-spacing="0.05em">
+    BOOKING SYSTEM
+  </text>
+</svg> 

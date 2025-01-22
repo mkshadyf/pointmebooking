@@ -23,24 +23,20 @@ export default function AuthLayout({
   if (loading) return <PageLoading />;
 
   return (
-    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-gray-50">
+    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-50 to-indigo-50">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center">
           <Image
-            src="/logo.png"
+            src="/logo.svg"
             alt="PointMe!"
-            width={48}
-            height={48}
-            className="mx-auto"
+            width={180}
+            height={60}
+            className="mb-8"
+            priority
           />
-        </div>
-        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
-          Welcome to PointMe!
-        </h2>
-      </div>
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {children}
+          <div className="w-full bg-white shadow-xl rounded-2xl px-6 py-8">
+            {children}
+          </div>
         </div>
       </div>
     </div>
