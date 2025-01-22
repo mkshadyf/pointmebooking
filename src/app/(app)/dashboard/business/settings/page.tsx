@@ -12,6 +12,12 @@ export default function BusinessSettings() {
   // Cast profile to BusinessProfile since we're in the business settings
   const businessProfile = profile as BusinessProfile | null;
   
+  const defaultHours = {
+    start: '09:00',
+    end: '17:00',
+    is_closed: false
+  };
+
   const [formData, setFormData] = useState<BusinessProfile>({
     id: businessProfile?.id || '',
     email: businessProfile?.email || '',
@@ -23,8 +29,13 @@ export default function BusinessSettings() {
     location: businessProfile?.location || '',
     contact_number: businessProfile?.contact_number || '',
     working_hours: {
-      start: businessProfile?.working_hours?.start || '09:00',
-      end: businessProfile?.working_hours?.end || '17:00'
+      monday: businessProfile?.working_hours?.monday || { ...defaultHours },
+      tuesday: businessProfile?.working_hours?.tuesday || { ...defaultHours },
+      wednesday: businessProfile?.working_hours?.wednesday || { ...defaultHours },
+      thursday: businessProfile?.working_hours?.thursday || { ...defaultHours },
+      friday: businessProfile?.working_hours?.friday || { ...defaultHours },
+      saturday: businessProfile?.working_hours?.saturday || { ...defaultHours, is_closed: true },
+      sunday: businessProfile?.working_hours?.sunday || { ...defaultHours, is_closed: true }
     },
     created_at: businessProfile?.created_at || new Date().toISOString(),
     updated_at: businessProfile?.updated_at || new Date().toISOString(),
@@ -140,36 +151,67 @@ export default function BusinessSettings() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="working_hours_start" className="block text-sm font-medium text-gray-700">
-                Opening Time
-              </label>
-              <input
-                type="time"
-                id="working_hours_start"
-                value={formData.working_hours.start}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  working_hours: { ...formData.working_hours, start: e.target.value }
-                })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              />
-            </div>
-            <div>
-              <label htmlFor="working_hours_end" className="block text-sm font-medium text-gray-700">
-                Closing Time
-              </label>
-              <input
-                type="time"
-                id="working_hours_end"
-                value={formData.working_hours.end}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  working_hours: { ...formData.working_hours, end: e.target.value }
-                })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              />
+          {/* Working Hours */}
+          <div className="col-span-6">
+            <h3 className="text-lg font-medium leading-6 text-gray-900">Working Hours</h3>
+            <p className="mt-1 text-sm text-gray-500">Set your business operating hours.</p>
+            
+            <div className="mt-6 space-y-4">
+              {Object.entries(formData.working_hours).map(([day, hours]) => (
+                <div key={day} className="flex items-center space-x-4">
+                  <div className="w-32">
+                    <label className="block text-sm font-medium text-gray-700 capitalize">
+                      {day}
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <label className="inline-flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={!hours.is_closed}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          working_hours: {
+                            ...formData.working_hours,
+                            [day]: { ...hours, is_closed: !e.target.checked }
+                          }
+                        })}
+                        className="rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Open</span>
+                    </label>
+                    {!hours.is_closed && (
+                      <>
+                        <input
+                          type="time"
+                          value={hours.start}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            working_hours: {
+                              ...formData.working_hours,
+                              [day]: { ...hours, start: e.target.value }
+                            }
+                          })}
+                          className="block rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                        />
+                        <span className="text-gray-500">to</span>
+                        <input
+                          type="time"
+                          value={hours.end}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            working_hours: {
+                              ...formData.working_hours,
+                              [day]: { ...hours, end: e.target.value }
+                            }
+                          })}
+                          className="block rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

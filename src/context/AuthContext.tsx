@@ -1,19 +1,10 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { createClientComponentClient, User } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-
-interface UserProfile {
-  id: string;
-  role: 'business' | 'customer';
-  email_verified: boolean;
-  full_name?: string;
-  business_name?: string;
-  phone?: string;
-  address?: string;
-}
+import { UserProfile } from '@/types';
 
 interface AuthContextType {
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
@@ -41,20 +32,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const supabase = createClientComponentClient();
 
-  useEffect(() => {
-    const loadUserProfile = async (userId: string) => {
-      const { data: profile } = await supabase
+  const loadUserProfile = useCallback(async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
-      
+
+      if (error) {
+        throw error;
+      }
+
       if (profile) {
-        setProfile(profile);
+        // Ensure all required fields from UserProfile type are present
+        const userProfile: UserProfile = {
+          id: profile.id,
+          full_name: profile.full_name || '',
+          email: profile.email || user?.email || '',
+          role: profile.role || 'customer',
+          business_name: profile.business_name,
+          business_type: profile.business_type,
+          business_category: profile.business_category,
+          description: profile.description,
+          location: profile.location,
+          contact_number: profile.contact_number,
+          phone: profile.phone,
+          address: profile.address,
+          city: profile.city,
+          state: profile.state,
+          postal_code: profile.postal_code,
+          contact_email: profile.contact_email,
+          website: profile.website,
+          working_hours: profile.working_hours,
+          services: profile.services,
+          onboarding_completed: profile.onboarding_completed,
+          created_at: profile.created_at,
+          updated_at: profile.updated_at,
+        };
+        setProfile(userProfile);
         setIsEmailVerified(profile.email_verified);
       }
-    };
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      toast.error('Failed to load user profile');
+    }
+  }, [supabase, user?.email]);
 
+  useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
@@ -72,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase, router]);
+  }, [supabase, loadUserProfile]);
 
   const signIn = async (email: string, password: string, ) => {
     try {
@@ -109,7 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, role: 'business' | 'customer') => {
     try {
-      const { error, data } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -120,18 +145,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       });
 
-      if (error) throw error;
-      if (!data.user) throw new Error('No user returned from sign up');
+      if (error) {
+        throw error;
+      }
 
-      // Create profile
-      await supabase.from('profiles').insert({
-        id: data.user.id,
-        role,
-        email_verified: false,
-      });
+      if (data?.user) {
+        // Create profile
+        await supabase.from('profiles').insert({
+          id: data.user.id,
+          role,
+          email_verified: false,
+        });
 
-      toast.success('Verification email sent. Please check your inbox.');
-      router.push('/verify-email');
+        toast.success('Verification email sent. Please check your inbox.');
+        router.push('/verify-email');
+      }
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);

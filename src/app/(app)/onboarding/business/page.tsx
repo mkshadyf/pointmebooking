@@ -27,10 +27,7 @@ export default function BusinessOnboarding() {
     description: '',
     location: '',
     contact_number: '',
-    working_hours: {
-      start: '09:00',
-      end: '17:00'
-    }
+    
   });
 
   const handleSubmit = async (e: React.FormEvent) => {

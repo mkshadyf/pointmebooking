@@ -5,8 +5,9 @@ import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiUser } from 'react-icons/fi';
+import { useRouter } from 'next/router';
 
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+//const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function RegisterPage() {
@@ -17,6 +18,7 @@ export default function RegisterPage() {
   const [role, setRole] = useState<'business' | 'customer'>('customer');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const { signUp, signInWithGoogle } = useAuth();
+  const router = useRouter();
 
   const getPasswordStrength = (password: string) => {
     let strength = 0;
@@ -28,39 +30,51 @@ export default function RegisterPage() {
     return strength;
   };
 
-  const validatePassword = (password: string) => {
-    if (!PASSWORD_REGEX.test(password)) {
-      return false;
-    }
-    return true;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    if (!EMAIL_REGEX.test(email)) {
-      toast.error('Please enter a valid email address');
-      return;
-    }
-
-    if (!validatePassword(password)) {
-      toast.error('Password must be at least 8 characters long and contain uppercase, lowercase, number and special character');
-      return;
-    }
-
-    if (!acceptedTerms) {
-      toast.error('Please accept the terms and conditions');
-      return;
-    }
-
     setLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const role = formData.get('role') as 'business' | 'customer';
 
     try {
       await signUp(email, password, role);
-      toast.success('Registration successful! Please check your email for verification.');
-    } catch (error: Error | unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to register';
-      toast.error(errorMessage);
+      toast.success('Account created successfully!');
+      if (role === 'business') {
+        router.push('/onboarding/business');
+      } else {
+        router.push('/dashboard/customer');
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Failed to create account');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async (role: 'business' | 'customer') => {
+    setLoading(true);
+    try {
+      await signInWithGoogle();
+      toast.success('Signed in with Google successfully!');
+      if (role === 'business') {
+        router.push('/onboarding/business');
+      } else {
+        router.push('/dashboard/customer');
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Failed to sign in with Google');
+      }
     } finally {
       setLoading(false);
     }
@@ -238,7 +252,7 @@ export default function RegisterPage() {
             <div>
               <button
                 type="button"
-                onClick={() => signInWithGoogle()}
+                onClick={() => handleGoogleSignIn(role)}
                 className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150"
               >
                 <svg className="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24">

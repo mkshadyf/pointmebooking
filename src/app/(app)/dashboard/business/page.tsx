@@ -1,44 +1,103 @@
 'use client';
 
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useAppStore } from '@/lib/store';
 import Link from 'next/link';
 import {
   CalendarIcon,
   ClockIcon,
   CurrencyDollarIcon,
   UserGroupIcon,
+  ChartBarIcon,
+  ArrowTrendingUpIcon,
 } from '@heroicons/react/24/outline';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { Booking, PopularService } from '@/types/booking';
+import toast from 'react-hot-toast';
 
-const stats = [
-  { name: 'Total Bookings', stat: '12', icon: CalendarIcon },
-  { name: 'Active Services', stat: '4', icon: ClockIcon },
-  { name: 'Total Revenue', stat: '$1,200', icon: CurrencyDollarIcon },
-  { name: 'Total Customers', stat: '8', icon: UserGroupIcon },
-];
+interface DashboardStats {
+  totalBookings: number;
+  activeServices: number;
+  totalRevenue: number;
+  totalCustomers: number;
+  recentBookings: Booking[];
+  upcomingBookings: Booking[];
+  popularServices: PopularService[];
+}
 
-export default function BusinessDashboard() {
-  const { user } = useAuth();
-  const { serviceCategories } = useAppStore();
+export default function BusinessDashboardPage() {
+  const { profile } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [popularServices, setPopularServices] = useState<PopularService[]>([]);
+  const supabase = createClientComponentClient();
 
-  // Get services for this business
-  const businessServices = serviceCategories
-    .flatMap((cat) => cat.services)
-    .filter((service) => service.business_id === user?.id);
+  const fetchDashboardData = useCallback(async () => {
+    if (!profile?.id) return;
+
+    try {
+      // Fetch dashboard stats
+      const { data: statsData, error: statsError } = await supabase
+        .from('dashboard_stats')
+        .select('*')
+        .eq('business_id', profile.id)
+        .single();
+
+      if (statsError) throw statsError;
+      setStats(statsData);
+
+      // Fetch popular services
+      const { data: servicesData, error: servicesError } = await supabase
+        .from('popular_services')
+        .select('*, service:services(*)')
+        .eq('business_id', profile.id)
+        .limit(5);
+
+      if (servicesError) throw servicesError;
+      setPopularServices(servicesData || []);
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  }, [profile?.id, supabase]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  const statCards = [
+    { name: 'Total Bookings', stat: stats?.totalBookings || 0, icon: CalendarIcon },
+    { name: 'Active Services', stat: stats?.activeServices || 0, icon: ClockIcon },
+    { name: 'Total Revenue', stat: `$${(stats?.totalRevenue || 0).toFixed(2)}`, icon: CurrencyDollarIcon },
+    { name: 'Total Customers', stat: stats?.totalCustomers || 0, icon: UserGroupIcon },
+  ];
 
   return (
-    <div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Welcome back!</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Welcome back, {profile?.business_name}!
+        </h1>
         <p className="mt-1 text-sm text-gray-600">
           Here&apos;s what&apos;s happening with your business today.
         </p>
       </div>
 
-      {/* Stats */}
+      {/* Stats Grid */}
       <div className="mt-8">
         <dl className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((item) => {
+          {statCards.map((item) => {
             const Icon = item.icon;
             return (
               <div
@@ -62,99 +121,94 @@ export default function BusinessDashboard() {
         </dl>
       </div>
 
-      {/* Recent Services */}
+      {/* Upcoming Bookings */}
       <div className="mt-8">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium text-gray-900">Your Services</h2>
+          <h2 className="text-lg font-medium text-gray-900">Upcoming Bookings</h2>
           <Link
-            href="/dashboard/business/services"
+            href="/dashboard/business/bookings"
             className="text-sm font-medium text-primary hover:text-primary/90"
           >
             View all
           </Link>
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {businessServices.map((service) => (
-            <div
-              key={service.id}
-              className="bg-white overflow-hidden shadow rounded-lg"
-            >
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900">
-                  {service.name}
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">{service.description}</p>
-                <div className="mt-4">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    ${service.price}
-                  </span>
-                  <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {service.duration} min
-                  </span>
+        <div className="mt-4 bg-white shadow rounded-lg">
+          <ul role="list" className="divide-y divide-gray-200">
+            {stats?.upcomingBookings.map((booking) => (
+              <li key={booking.id} className="px-4 py-4 sm:px-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <CalendarIcon className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-900">
+                        {booking.service!.name}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {booking.customer!.full_name}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="ml-4">
+                    <div className="text-sm text-gray-900">
+                      {new Date(booking.scheduled_at).toLocaleDateString()}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {new Date(booking.scheduled_at).toLocaleTimeString()}
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="bg-gray-50 px-4 py-4 sm:px-6">
-                <div className="text-sm">
-                  <Link
-                    href={`/services/${service.id}`}
-                    className="font-medium text-primary hover:text-primary/90"
-                  >
-                    View details
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {businessServices.length === 0 && (
-            <div className="col-span-full">
-              <div className="text-center py-12 bg-white rounded-lg shadow">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No services yet
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Start by adding services to your business profile.
-                </p>
-                <Link
-                  href="/dashboard/business/services/new"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90"
-                >
-                  Add Service
-                </Link>
-              </div>
-            </div>
-          )}
+              </li>
+            ))}
+            {stats?.upcomingBookings.length === 0 && (
+              <li className="px-4 py-4 sm:px-6 text-center text-gray-500">
+                No upcoming bookings
+              </li>
+            )}
+          </ul>
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Popular Services */}
       <div className="mt-8">
-        <h2 className="text-lg font-medium text-gray-900">Quick Actions</h2>
-        <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium text-gray-900">Popular Services</h2>
           <Link
-            href="/dashboard/business/services/new"
-            className="relative block w-full rounded-lg border-2 border-dashed border-gray-300 p-12 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+            href="/dashboard/business/services"
+            className="text-sm font-medium text-primary hover:text-primary/90"
           >
-            <span className="mt-2 block text-sm font-medium text-gray-900">
-              Add a new service
-            </span>
+            Manage services
           </Link>
-          <Link
-            href="/dashboard/business/settings"
-            className="relative block w-full rounded-lg border-2 border-dashed border-gray-300 p-12 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-          >
-            <span className="mt-2 block text-sm font-medium text-gray-900">
-              Update business profile
-            </span>
-          </Link>
-          <Link
-            href="/dashboard/business/bookings"
-            className="relative block w-full rounded-lg border-2 border-dashed border-gray-300 p-12 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-          >
-            <span className="mt-2 block text-sm font-medium text-gray-900">
-              View all bookings
-            </span>
-          </Link>
+        </div>
+        <div className="mt-4 bg-white shadow rounded-lg">
+          <ul role="list" className="divide-y divide-gray-200">
+            {popularServices.map((service) => (
+              <li key={service.service_id} className="px-4 py-4 sm:px-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <ChartBarIcon className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-900">
+                        {service.service.name}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {service.count} bookings
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowTrendingUpIcon className="h-5 w-5 text-green-500" />
+                </div>
+              </li>
+            ))}
+            {popularServices.length === 0 && (
+              <li className="px-4 py-4 sm:px-6 text-center text-gray-500">
+                No service statistics available
+              </li>
+            )}
+          </ul>
         </div>
       </div>
     </div>

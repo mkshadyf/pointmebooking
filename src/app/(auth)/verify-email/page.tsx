@@ -1,35 +1,49 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'react-hot-toast';
 import { FiMail } from 'react-icons/fi';
+import { useRouter } from 'next/router';
 
 export default function VerifyEmailPage() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const { verifyEmail, resendVerificationEmail, user } = useAuth();
+  const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleVerifyEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    if (!code) {
+      toast.error('Please enter the verification code');
+      return;
+    }
 
+    setLoading(true);
     try {
       await verifyEmail(code);
-    } catch (error: Error | unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to verify email';
-      toast.error(errorMessage);
+      toast.success('Email verified successfully!');
+      router.push('/login');
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResend = async () => {
+  const handleResendEmail = async () => {
     try {
+      setLoading(true);
       await resendVerificationEmail();
-    } catch (error: Error | unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to resend verification email';
-      toast.error(errorMessage);
+      toast.success('Verification email sent!');
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -49,7 +63,7 @@ export default function VerifyEmailPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          <form onSubmit={handleVerifyEmail} className="mt-8 space-y-6">
             <div>
               <label htmlFor="code" className="sr-only">
                 Verification Code
@@ -59,32 +73,34 @@ export default function VerifyEmailPage() {
                 name="code"
                 type="text"
                 required
+                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Enter verification code"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="Enter verification code"
+                maxLength={6}
+                pattern="[0-9]*"
               />
             </div>
 
-            <div>
+            <div className="flex flex-col space-y-4">
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-150"
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Verifying...' : 'Verify Email'}
               </button>
+              
+              <button
+                type="button"
+                onClick={handleResendEmail}
+                disabled={loading}
+                className="text-sm text-indigo-600 hover:text-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Resend verification code
+              </button>
             </div>
           </form>
-
-          <div className="mt-6 text-center">
-            <button
-              onClick={handleResend}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
-            >
-              Didn&apos;t receive the code? Resend
-            </button>
-          </div>
         </div>
       </div>
     </div>

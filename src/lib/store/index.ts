@@ -40,7 +40,15 @@ export const useAppStore = create<AppState>((set) => ({
           description: 'Luxury spa treatments and wellness services',
           location: '123 Relaxation Ave',
           contact_number: '+1234567890',
-          working_hours: { start: '09:00', end: '18:00' },
+          working_hours: {
+            monday: { start: '09:00', end: '18:00' },
+            tuesday: {  start: '09:00', end: '18:00' },
+            wednesday: {  start: '09:00', end: '18:00' },
+            thursday: { start: '09:00', end: '18:00' },
+            friday: { start: '09:00', end: '18:00' },
+            saturday: { start: '09:00', end: '18:00' },
+            sunday: { start: '09:00', end: '18:00' }
+          },
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           services: [],
@@ -55,7 +63,15 @@ export const useAppStore = create<AppState>((set) => ({
           description: 'Premium beauty treatments and styling',
           location: '456 Beauty Blvd',
           contact_number: '+1234567891',
-          working_hours: { start: '10:00', end: '19:00' },
+          working_hours: {
+            monday: { start: '10:00', end: '19:00' },
+            tuesday: { start: '10:00', end: '19:00' },
+            wednesday: { start: '10:00', end: '19:00' },
+            thursday: { start: '10:00', end: '19:00' },
+            friday: { start: '10:00', end: '19:00' },
+            saturday: { start: '10:00', end: '19:00' },
+            sunday: { start: '10:00', end: '19:00' }
+          },
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           services: [],
