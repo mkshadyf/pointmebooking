@@ -8,8 +8,23 @@ import { BeforeInstallPromptEvent } from '@/types/pwa';
 export function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
 
   useEffect(() => {
+    // Check if user is on Android
+    const checkPlatform = () => {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      const isAndroidDevice = /android/.test(userAgent);
+      setIsAndroid(isAndroidDevice);
+      
+      // Show prompt immediately for Android users
+      if (isAndroidDevice) {
+        setShowPrompt(true);
+      }
+    };
+
+    checkPlatform();
+
     const handler = (e: Event) => {
       if (!(e instanceof Event)) return;
       
@@ -21,14 +36,47 @@ export function InstallPrompt() {
       setShowPrompt(true);
     };
 
-    window.addEventListener('beforeinstallprompt', handler);
+    // Only add beforeinstallprompt listener for non-Android devices
+    if (!isAndroid) {
+      window.addEventListener('beforeinstallprompt', handler);
+    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
     };
-  }, []);
+  }, [isAndroid]);
 
   const handleInstallClick = async () => {
+    if (isAndroid) {
+      // Redirect to APK download or Play Store
+      const apkUrl = '/android/app/build/outputs/apk/release/app-release.apk';
+      const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.pointme.app';
+      
+      try {
+        // Try to download APK first
+        const response = await fetch(apkUrl);
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'pointme.apk';
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } else {
+          // If APK not available, redirect to Play Store
+          window.location.href = playStoreUrl;
+        }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (error) {
+        // If any error occurs, redirect to Play Store
+        window.location.href = playStoreUrl;
+      }
+      return;
+    }
+
     if (!deferredPrompt) return;
 
     try {
@@ -71,8 +119,14 @@ export function InstallPrompt() {
                 </svg>
               </span>
               <p className="ml-3 font-medium text-white truncate">
-                <span className="md:hidden">Install PointMe app!</span>
-                <span className="hidden md:inline">Add PointMe to your home screen for the best experience!</span>
+                <span className="md:hidden">
+                  {isAndroid ? 'Download PointMe Android app!' : 'Install PointMe app!'}
+                </span>
+                <span className="hidden md:inline">
+                  {isAndroid 
+                    ? 'Get the full Android app experience by downloading our APK!'
+                    : 'Add PointMe to your home screen for the best experience!'}
+                </span>
               </p>
             </div>
             <div className="order-3 mt-2 flex-shrink-0 w-full sm:order-2 sm:mt-0 sm:w-auto">
@@ -80,7 +134,7 @@ export function InstallPrompt() {
                 onClick={handleInstallClick}
                 className="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-primary bg-white hover:bg-gray-50"
               >
-                Install
+                {isAndroid ? 'Download APK' : 'Install'}
               </button>
             </div>
             <div className="order-2 flex-shrink-0 sm:order-3 sm:ml-2">
