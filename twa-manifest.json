@@ -1,0 +1,75 @@
+{
+  "packageId": "com.pointme.app",
+  "host": "pointme.app",
+  "name": "PointMe - Book Local Services",
+  "launcherName": "PointMe",
+  "display": "standalone",
+  "themeColor": "#0f172a",
+  "navigationColor": "#000000",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#000000",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#ffffff",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://pointme.app/icons/icon-512x512.png",
+  "maskableIconUrl": "https://pointme.app/icons/icon-512x512.png",
+  "monochromeIconUrl": "https://pointme.app/icons/icon-monochrome.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "pointme"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Book Service",
+      "shortName": "Book",
+      "url": "/services",
+      "icons": [
+        {
+          "src": "https://pointme.app/icons/book-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "My Bookings",
+      "shortName": "Bookings",
+      "url": "/dashboard/customer",
+      "icons": [
+        {
+          "src": "https://pointme.app/icons/bookings-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://pointme.app/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": true
+    },
+    "playBilling": {
+      "enabled": false
+    }
+  },
+  "alphaDependencies": {
+    "enabled": true
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://pointme.app",
+  "minSdkVersion": 19,
+  "orientation": "portrait",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "appsFlyerId": null
+}
