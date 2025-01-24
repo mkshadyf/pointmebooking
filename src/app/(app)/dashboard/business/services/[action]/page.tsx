@@ -61,7 +61,7 @@ export default function ManageService({ params }: ManageServiceProps) {
 
     try {
       if (isEdit && serviceId) {
-        await updateService(serviceId, { ...formData } as Service);
+        await updateService(serviceId, formData);
         toast.success('Service updated successfully!');
       } else {
         await addService(formData as Service);
