@@ -12,22 +12,26 @@ This guide explains how to build the PointMe app as a native Android APK using T
 ## Setup
 
 1. First, ensure you have all dependencies installed:
+
 ```bash
 npm install
-```
+``
 
 2. Make sure your environment variables are set:
+
 - `JAVA_HOME` pointing to your JDK installation
 - `ANDROID_HOME` pointing to your Android SDK installation
 
 ## Building the APK
 
 1. Run the build command:
+
 ```bash
 npm run build:apk
 ```
 
 This will:
+
 - Build the Next.js application
 - Initialize the TWA project
 - Generate a keystore for signing the APK

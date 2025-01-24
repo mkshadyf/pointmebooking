@@ -14,7 +14,8 @@ export function Header() {
     <header className="bg-white shadow">
       <div className="flex justify-between items-center px-6 py-4">
         <h1 className="text-2xl font-semibold text-gray-900">
-         </h1>
+          Dashboard
+        </h1>
 
         <div className="flex items-center space-x-4">
           {/* Notifications */}
