@@ -15,11 +15,11 @@ import {
 import * as serviceApi from '@/lib/api/services';
 import { Service } from '@/types';
 
-interface ManageServiceProps {
+interface PageProps {
   params: { action: string };
 }
 
-export default function ManageService({ params }: ManageServiceProps) {
+export default function ManageService({ params }: PageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { profile } = useAuth();
@@ -75,10 +75,6 @@ export default function ManageService({ params }: ManageServiceProps) {
       setLoading(false);
     }
   };
-
-  if (!profile) {
-    return null;
-  }
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">

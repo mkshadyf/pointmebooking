@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Inter } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/context/AuthContext";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import "./globals.css";
 
-const geist = Geist({
+const inter = Inter({
   subsets: ["latin"],
 });
 
@@ -48,7 +48,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#0f172a" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       </head>
-      <body className={`${geist.className} h-full antialiased`}>
+      <body className={`${inter.className} h-full antialiased`}>
         <AuthProvider>
           <Toaster position="top-center" />
           <InstallPrompt />
