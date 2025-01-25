@@ -6,7 +6,7 @@ if (!RESEND_API_KEY) {
   console.warn('RESEND_API_KEY is not set. Email verification will not work.');
 }
 
-const resend = new Resend(RESEND_API_KEY);
+const resend = new Resend("re_e8bbGCzn_5L33w5Em6J6w1jpXSv2MGVQE");
 
 export async function POST(request: Request) {
   if (!RESEND_API_KEY) {
