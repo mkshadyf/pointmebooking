@@ -3,7 +3,7 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 
 export async function GET() {
-  try {
+  try { 
     const apkPath = path.join(process.cwd(), 'android/app/build/outputs/apk/release/app-release.apk');
     const apkBuffer = await readFile(apkPath);
 
