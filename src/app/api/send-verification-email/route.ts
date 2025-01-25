@@ -1,9 +1,21 @@
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+if (!RESEND_API_KEY) {
+  console.warn('RESEND_API_KEY is not set. Email verification will not work.');
+}
+
+const resend = new Resend(RESEND_API_KEY);
 
 export async function POST(request: Request) {
+  if (!RESEND_API_KEY) {
+    return NextResponse.json(
+      { error: 'Email service is not configured' },
+      { status: 503 }
+    );
+  }
+
   try {
     const { email, code } = await request.json();
 
@@ -25,7 +37,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('Failed to send verification email:', error);
     return NextResponse.json(
       { error: 'Failed to send verification email' },
       { status: 500 }
