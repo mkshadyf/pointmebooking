@@ -4,7 +4,7 @@
   "buildCommand": "npm run build",
   "framework": "nextjs",
   "build": {
-    "command": "npm run build",
+   
     "output": ".next"
   }
 }
