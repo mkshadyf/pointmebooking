@@ -1,31 +1,47 @@
 import { NextResponse } from 'next/server';
-import { readFile } from 'fs/promises';
+import { promises as fs } from 'fs';
 import path from 'path';
 
 export async function GET() {
   try {
-    const apkPath = path.join(process.cwd(), 'android/app/build/outputs/apk/release/app-release.apk');
+    // Check if we're in production (Vercel)
+    if (process.env.VERCEL) {
+      return new NextResponse('APK not available in production environment', {
+        status: 404,
+        headers: {
+          'Content-Type': 'text/plain',
+        },
+      });
+    }
+
+    const apkPath = path.join(process.cwd(), 'android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk');
     
     try {
-      const apkBuffer = await readFile(apkPath);
-      return new NextResponse(apkBuffer, {
-        headers: {
-          'Content-Type': 'application/vnd.android.package-archive',
-          'Content-Disposition': 'attachment; filename="app-release.apk"'
-        }
-      });
+      await fs.access(apkPath);
     } catch (error) {
-      console.log('APK file not found:', error);
-      return NextResponse.json(
-        { error: 'APK file not available' },
-        { status: 404 }
-      );
+      return new NextResponse('APK file not found', {
+        status: 404,
+        headers: {
+          'Content-Type': 'text/plain',
+        },
+      });
     }
+
+    const apkFile = await fs.readFile(apkPath);
+    
+    return new NextResponse(apkFile, {
+      headers: {
+        'Content-Type': 'application/vnd.android.package-archive',
+        'Content-Disposition': 'attachment; filename="app-release.apk"',
+      },
+    });
   } catch (error) {
     console.error('Error serving APK:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return new NextResponse('Error serving APK file', {
+      status: 500,
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+    });
   }
 }
