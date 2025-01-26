@@ -5,6 +5,7 @@ import { createClientComponentClient, User } from '@supabase/auth-helpers-nextjs
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { UserProfile } from '@/types';
+import { getSession, refreshSession } from '@/lib/auth/session';
 
 interface AuthContextType {
   user: User | null;
@@ -51,61 +52,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase]);
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.id);
-      
-      if (session?.user) {
-        setUser(session.user);
-        try {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
+    const initSession = async () => {
+      try {
+        const { user, profile } = await getSession();
+        setUser(user);
+        setProfile(profile);
+        setIsEmailVerified(profile?.email_verified || false);
+      } catch (error) {
+        console.error('Error initializing session:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-          if (error) {
-            console.error('Error loading profile:', error);
-            return;
-          }
+    initSession();
 
-          if (profile) {
-            console.log('Profile loaded:', profile);
-            setProfile(profile);
-            setIsEmailVerified(profile.email_verified);
-
-            // Only redirect if we're not already on these pages
-            const currentPath = window.location.pathname;
-            const authPages = ['/verify-email', '/login', '/register'];
-            
-            if (profile.role === 'business') {
-              if (!profile.onboarding_completed && !currentPath.includes('/onboarding')) {
-                router.push('/onboarding/business');
-              } else if (profile.onboarding_completed && !currentPath.startsWith('/dashboard')) {
-                router.push('/dashboard/business');
-              }
-            } else if (profile.role === 'customer') {
-              if (!authPages.includes(currentPath) && !currentPath.startsWith('/dashboard')) {
-                router.push('/dashboard/customer');
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Error in auth state change:', error);
-        }
-      } else {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        const { user, profile } = await refreshSession();
+        setUser(user);
+        setProfile(profile);
+        setIsEmailVerified(profile?.email_verified || false);
+      } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setProfile(null);
         setIsEmailVerified(false);
       }
-      setLoading(false);
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase, router]);
+  }, [supabase.auth]);
 
   const signIn = async (email: string, password: string) => {
     try {
