@@ -15,8 +15,13 @@ interface CalendarProps {
   onBookingSelect: (booking: Booking) => void;
 }
 
+interface CustomerProfile {
+  id: string;
+  full_name: string;
+}
+
 export function Calendar({ selectedDate, onDateSelect, onBookingSelect }: CalendarProps) {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<(Booking & { customer?: CustomerProfile })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
@@ -39,13 +44,30 @@ export function Calendar({ selectedDate, onDateSelect, onBookingSelect }: Calend
 
         const serviceIds = services.map(service => service.id);
 
-        const { data: bookings, error } = await supabase
+        const { data: bookingsData, error: bookingsError } = await supabase
           .from('bookings')
           .select('*')
           .in('service_id', serviceIds);
 
-        if (error) throw error;
-        setBookings(bookings || []);
+        if (bookingsError) throw bookingsError;
+
+        // Fetch customer profiles for each booking
+        const bookingsWithCustomers = await Promise.all(
+          (bookingsData || []).map(async (booking) => {
+            const { data: customerData } = await supabase
+              .from('profiles')
+              .select('id, full_name')
+              .eq('id', booking.customer_id)
+              .single();
+
+            return {
+              ...booking,
+              customer: customerData
+            };
+          })
+        );
+
+        setBookings(bookingsWithCustomers);
       } catch (error) {
         console.error('Error fetching bookings:', error);
       } finally {
@@ -58,7 +80,7 @@ export function Calendar({ selectedDate, onDateSelect, onBookingSelect }: Calend
 
   const events = bookings.map(booking => ({
     id: booking.id,
-    title: `Booking: ${booking.customer_id}`,
+    title: `Booking: ${booking.customer?.full_name || 'Unknown Customer'}`,
     start: booking.start_time,
     end: booking.end_time,
     backgroundColor: getStatusColor(booking.status),
