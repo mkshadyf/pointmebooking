@@ -1,10 +1,13 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
 import { User } from '@supabase/supabase-js';
 import { UserProfile } from '@/types';
 
-const supabase = createClientComponentClient();
-
 export async function getSession(): Promise<{ user: User | null; profile: UserProfile | null }> {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   try {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError) throw sessionError;
@@ -32,6 +35,11 @@ export async function getSession(): Promise<{ user: User | null; profile: UserPr
 }
 
 export async function refreshSession(): Promise<{ user: User | null; profile: UserProfile | null }> {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   try {
     const { data: { user }, error: refreshError } = await supabase.auth.refreshSession();
     if (refreshError) throw refreshError;

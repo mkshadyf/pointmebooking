@@ -130,45 +130,59 @@ export const useAppStore = create<AppState>()(
       },
 
       addService: async (service) => {
-        const newService = await serviceApi.createService(service);
-        if (!newService) throw new Error('Failed to create service');
-        set((state) => ({
-          serviceCategories: state.serviceCategories.map((cat) =>
-            cat.id === service.category_id
-              ? { ...cat, services: [...cat.services, newService] }
-              : cat
-          ),
-        }));
-        return newService;
+        try {
+          const newService = await serviceApi.createService(service);
+          if (newService) {
+            set((state) => ({ services: [...state.services, newService] }));
+            return newService;
+          }
+          throw new Error('Failed to add service');
+        } catch (error) {
+          console.error('Error adding service:', error);
+          throw error;
+        }
       },
-
       updateService: async (id, updatedService) => {
-        const updated = await serviceApi.updateService(id, updatedService);
-        if (!updated) throw new Error('Failed to update service');
-        set((state) => ({
-          serviceCategories: state.serviceCategories.map((cat) => ({
-            ...cat,
-            services: cat.services.map((service) =>
-              service.id === id ? { ...service, ...updated } : service
-            ),
-          })),
-        }));
-        return updated;
+        try {
+          const updated = await serviceApi.updateService(id, updatedService);
+          if (updated) {
+            set((state) => ({
+              services: state.services.map((service) =>
+                service.id === id ? updated : service
+              ),
+            }));
+            return updated;
+          }
+          throw new Error('Failed to update service');
+        } catch (error) {
+          console.error('Error updating service:', error);
+          throw error;
+        }
       },
-
       deleteService: async (id) => {
-        await serviceApi.deleteService(id);
-        set((state) => ({
-          serviceCategories: state.serviceCategories.map((cat) => ({
-            ...cat,
-            services: cat.services.filter((service) => service.id !== id),
-          })),
-        }));
+        try {
+          const success = await serviceApi.deleteService(id);
+          if (success) {
+            set((state) => ({
+              services: state.services.filter((service) => service.id !== id),
+            }));
+          } else {
+            throw new Error('Failed to delete service');
+          }
+        } catch (error) {
+          console.error('Error deleting service:', error);
+          throw error;
+        }
       },
-
       loadServices: async (businessId) => {
-        const services = await serviceApi.getServicesByBusiness(businessId);
-        return services;
+        try {
+          const services = await serviceApi.getServicesByBusiness(businessId);
+          set({ services });
+          return services;
+        } catch (error) {
+          console.error('Error loading services:', error);
+          throw error;
+        }
       },
     }),
     {

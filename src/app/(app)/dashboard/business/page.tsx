@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/context/AuthContext';
+import { withAuth } from '@/lib/auth/withAuth';
 import { Card } from '@/components/ui/Card';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
@@ -17,7 +18,7 @@ const stats = [
   { name: 'Services', value: '0', icon: ChartBarIcon },
 ];
 
-export default function BusinessDashboardPage() {
+function BusinessDashboardPage() {
   const { profile, loading } = useAuth();
 
   if (loading) {
@@ -85,3 +86,5 @@ export default function BusinessDashboardPage() {
     </div>
   );
 }
+
+export default withAuth(BusinessDashboardPage, 'business');

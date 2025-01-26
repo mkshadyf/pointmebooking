@@ -91,7 +91,9 @@ export interface Booking {
   business_id: string;
   date: string;
   start_time: string;
+  end_time: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  notes?: string;
   created_at: string;
 }
 

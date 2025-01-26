@@ -1,7 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { createClientComponentClient, User } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
+import { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { UserProfile } from '@/types';
@@ -31,7 +32,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   const loadUserProfile = useCallback(async (userId: string) => {
     try {
@@ -52,12 +57,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase]);
 
   useEffect(() => {
-    const initSession = async () => {
+    const initializeAuth = async () => {
       try {
-        const { user, profile } = await getSession();
-        setUser(user);
-        setProfile(profile);
-        setIsEmailVerified(profile?.email_verified || false);
+        const session = await getSession();
+        if (session) {
+          setUser(session.user);
+          await loadUserProfile(session.user!.id);
+        }
       } catch (error) {
         console.error('Error initializing session:', error);
       } finally {
@@ -65,64 +71,98 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    initSession();
+    initializeAuth();
+  }, [loadUserProfile]);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        const { user, profile } = await refreshSession();
-        setUser(user);
-        setProfile(profile);
-        setIsEmailVerified(profile?.email_verified || false);
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setProfile(null);
-        setIsEmailVerified(false);
+  const persistSession = (session: any) => {
+    if (session) {
+      localStorage.setItem('auth_session', JSON.stringify(session));
+    } else {
+      localStorage.removeItem('auth_session');
+    }
+  };
+
+  const refreshUserSession = useCallback(async () => {
+    try {
+      const newSession = await refreshSession();
+      if (newSession) {
+        setUser(newSession.user);
+        await loadUserProfile(newSession.user!.id);
+        persistSession(newSession);
       }
-    });
+    } catch (error) {
+      console.error('Error refreshing session:', error);
+    }
+  }, [loadUserProfile]);
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase.auth]);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshUserSession();
+    }, 15 * 60 * 1000); // Refresh every 15 minutes
+
+    return () => clearInterval(interval);
+  }, [refreshUserSession]);
+
+  useEffect(() => {
+    const storedSession = localStorage.getItem('auth_session');
+    if (storedSession) {
+      const session = JSON.parse(storedSession);
+      setUser(session.user);
+      loadUserProfile(session.user.id);
+    }
+  }, [loadUserProfile]);
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
 
-      // Load user profile after sign in
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (user) {
-        await loadUserProfile(user.id);
-
-        // Check if email is verified
-        if (!isEmailVerified) {
-          router.push('/verify-email');
-          return;
-        }
-
-        // Redirect based on role
-        if (profile?.role === 'business') {
-          if (profile.onboarding_completed) {
-            router.push('/dashboard/business');
-          } else {
-            router.push('/onboarding/business');
-          }
-        } else {
-          router.push('/dashboard/customer');
-        }
+      if (data.user) {
+        setUser(data.user);
+        await loadUserProfile(data.user.id);
+        persistSession(data.session);
+        router.push('/dashboard');
       }
-    } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
+    } catch (error: any) {
+      toast.error(error.message);
+      throw error;
+    }
+  };
+
+  const signUp = async (email: string, password: string, role: 'business' | 'customer') => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { role },
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        toast.success('Please check your email to verify your account');
       }
+    } catch (error: any) {
+      toast.error(error.message);
+      throw error;
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setProfile(null);
+      persistSession(null);
+      router.push('/');
+    } catch (error: any) {
+      toast.error(error.message);
       throw error;
     }
   };
@@ -149,103 +189,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, role: 'business' | 'customer') => {
+  const resetPassword = async (email: string) => {
     try {
-      // Generate a verification code
-      const verificationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-      // First create the user
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/v1/callback`,
-          data: {
-            role,
-            verification_code: verificationCode,
-          },
-        },
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
       });
 
       if (error) throw error;
-      if (!data?.user) throw new Error('No user returned from sign up');
-
-      // Create profile
-      const newProfile: UserProfile = {
-        id: data.user.id,
-        email: email,
-        role,
-        full_name: '',
-        email_verified: false,
-        verification_code: verificationCode,
-        business_name: role === 'business' ? `${email.split('@')[0]}'s Business` : undefined,
-        business_type: role === 'business' ? 'Service Provider' : undefined,
-        business_category: role === 'business' ? 'Other' : undefined,
-        description: role === 'business' ? 'Business description' : undefined,
-        location: '',
-        contact_number: '',
-        phone: '',
-        address: '',
-        city: '',
-        state: '',
-        postal_code: '',
-        contact_email: email,
-        website: '',
-        working_hours: role === 'business' ? {
-          monday: { start: '09:00', end: '17:00' },
-          tuesday: { start: '09:00', end: '17:00' },
-          wednesday: { start: '09:00', end: '17:00' },
-          thursday: { start: '09:00', end: '17:00' },
-          friday: { start: '09:00', end: '17:00' },
-          saturday: { start: '00:00', end: '00:00' },
-          sunday: { start: '09:00', end: '17:00' }
-        } : undefined,
-        services: [],
-        onboarding_completed: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      // Insert the profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([newProfile])
-        .select()
-        .single();
-
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
-        throw profileError;
-      }
-
-      // Send verification email
-      try {
-        const response = await fetch('/api/send-verification-email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email,
-            code: verificationCode,
-          }),
-        });
-
-        if (!response.ok) {
-          console.error('Failed to send verification email');
-        }
-      } catch (emailError) {
-        console.error('Error sending verification email:', emailError);
-      }
-
-      // Set local state
-      setProfile(newProfile);
-      setIsEmailVerified(false);
-
-      // Redirect to verification page
-      router.push('/verify-email');
+      toast.success('Password reset instructions sent to your email');
     } catch (error) {
-      console.error('Signup error:', error);
       if (error instanceof Error) {
         toast.error(error.message);
       }
@@ -253,10 +205,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signOut = async () => {
+  const verifyResetCode = async (code: string, newPassword: string) => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) throw updateError;
+      toast.success('Password reset successfully!');
       router.push('/login');
     } catch (error) {
       if (error instanceof Error) {
@@ -339,39 +295,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       toast.success('Verification email sent. Please check your inbox.');
-    } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      }
-      throw error;
-    }
-  };
-
-  const resetPassword = async (email: string) => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) throw error;
-      toast.success('Password reset instructions sent to your email');
-    } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      }
-      throw error;
-    }
-  };
-
-  const verifyResetCode = async (code: string, newPassword: string) => {
-    try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (updateError) throw updateError;
-      toast.success('Password reset successfully!');
-      router.push('/login');
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { SearchFilter } from '@/components/ui/SearchFilter';
 
 export default function ServicesPage() {
   const searchParams = useSearchParams();
@@ -59,15 +60,14 @@ export default function ServicesPage() {
           </p>
         </div>
 
+        <SearchFilter
+          onSearch={setSearchQuery}
+          categories={categories.map(category => category.name)}
+          onCategorySelect={(category) => setSelectedCategory(category || null)}
+        />
+
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-1 items-center gap-2">
-            <Input
-              type="search"
-              placeholder="Search services..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-md"
-            />
             <Button
               variant="outline"
               onClick={() => setShowFilters(!showFilters)}
@@ -80,19 +80,6 @@ export default function ServicesPage() {
           <div className={`space-y-4 md:flex md:items-center md:gap-4 md:space-y-0 ${
             showFilters ? 'block' : 'hidden md:flex'
           }`}>
-            <Select
-              value={selectedCategory || ''}
-              onChange={(e) => setSelectedCategory(e.target.value || null)}
-              className="w-full md:w-48"
-            >
-              <option value="">All Categories</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </Select>
-
             <Select
               value={duration?.toString() || ''}
               onChange={(e) => setDuration(e.target.value ? Number(e.target.value) : undefined)}

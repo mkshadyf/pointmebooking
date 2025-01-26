@@ -1,4 +1,4 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr';
 
 interface EmailTemplateData {
   [key: string]: string | number | boolean | null | undefined;
@@ -12,7 +12,7 @@ interface SendEmailParams {
 
 export class EmailService {
   private static instance: EmailService
-  private supabase = createClientComponentClient()
+  private supabase: any
 
   private constructor() {}
 
@@ -24,11 +24,16 @@ export class EmailService {
   }
 
   async sendEmail({ to, templateName, data }: SendEmailParams): Promise<{ success: boolean; error?: string }> {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
     try {
       const {
         data: { session },
         error: sessionError,
-      } = await this.supabase.auth.getSession()
+      } = await supabase.auth.getSession()
 
       if (sessionError || !session) {
         throw new Error('No active session')

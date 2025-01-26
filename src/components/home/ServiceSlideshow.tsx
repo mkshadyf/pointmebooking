@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ServiceCard } from '@/components/core/services/ServiceCard';
+import { SearchFilter } from '@/components/ui/SearchFilter';
 import { Service } from '@/types';
 import { useAppStore } from '@/lib/store';
 
@@ -54,8 +55,13 @@ const dummyServices: Service[] = [
 export function ServiceSlideshow() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const { services, fetchFeaturedServices } = useAppStore();
   const displayServices = services.length > 0 ? services : dummyServices;
+
+  const filteredServices = displayServices.filter(service =>
+    service.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   useEffect(() => {
     fetchFeaturedServices();
@@ -65,11 +71,11 @@ export function ServiceSlideshow() {
     if (isHovered) return;
 
     const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % displayServices.length);
+      setCurrentIndex((prev) => (prev + 1) % filteredServices.length);
     }, 5000);
 
     return () => clearInterval(timer);
-  }, [isHovered, displayServices.length]);
+  }, [isHovered, filteredServices.length]);
 
   return (
     <div className="w-full px-4 py-8 md:py-12">
@@ -77,7 +83,9 @@ export function ServiceSlideshow() {
         <h2 className="mb-8 text-center text-2xl font-bold text-gray-900 md:text-3xl">
           Featured Services
         </h2>
-        
+
+        <SearchFilter onSearch={setSearchQuery} />
+
         <div 
           className="relative mx-auto max-w-md overflow-hidden md:max-w-2xl lg:max-w-4xl"
           onMouseEnter={() => setIsHovered(true)}
@@ -92,12 +100,12 @@ export function ServiceSlideshow() {
               transition={{ duration: 0.3 }}
               className="w-full"
             >
-              <ServiceCard service={displayServices[currentIndex]} />
+              <ServiceCard service={filteredServices[currentIndex]} />
             </motion.div>
           </AnimatePresence>
 
           <div className="mt-4 flex justify-center gap-2">
-            {displayServices.map((_: Service, index: number) => (
+            {filteredServices.map((_: Service, index: number) => (
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index)}

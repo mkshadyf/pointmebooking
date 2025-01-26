@@ -1,11 +1,14 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
 
 export async function uploadImage(
   file: File,
   bucket: string,
   path: string
 ): Promise<string | null> {
-  const supabase = createClientComponentClient();
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
   
   try {
     const fileExt = file.name.split('.').pop();
@@ -35,7 +38,10 @@ export async function deleteImage(
   bucket: string,
   path: string
 ): Promise<boolean> {
-  const supabase = createClientComponentClient();
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
   
   try {
     const { error } = await supabase.storage

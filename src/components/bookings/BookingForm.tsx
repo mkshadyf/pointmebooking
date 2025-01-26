@@ -1,177 +1,135 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { format, addMinutes } from 'date-fns';
-import { Service } from '@/types';
-import { Booking } from '@/types/booking';
-import { useAuth } from '@/context/AuthContext';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { Input } from '@/components/ui/Input';
+import { useState } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
+import { useForm } from 'react-hook-form';
+import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { useAuth } from '@/context/AuthContext';
+import { useAppStore } from '@/lib/store';
+import { Booking } from '@/types';
 
 interface BookingFormProps {
   selectedDate?: Date;
-  selectedService?: Service;
   booking?: Booking;
-  onSubmitAction: (booking: Partial<Booking>) => Promise<void>;
+  onSubmitAction: (bookingData: Partial<Booking>) => Promise<void>;
   onCancelAction: () => void;
 }
 
-export function BookingForm({
-  selectedDate,
-  selectedService,
-  booking,
-  onSubmitAction,
-  onCancelAction
-}: BookingFormProps) {
+export function BookingForm({ selectedDate, booking, onSubmitAction, onCancelAction }: BookingFormProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
-  const supabase = createClientComponentClient();
-  const [services, setServices] = useState<Service[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    service_id: selectedService?.id || booking?.service_id || '',
-    customer_name: booking?.customer_name || '',
-    customer_email: '',
-    customer_phone: '',
-    start_time: selectedDate 
-      ? format(selectedDate, "yyyy-MM-dd'T'HH:mm")
-      : booking?.start_time || '',
-    notes: booking?.notes || ''
+  const { services } = useAppStore();
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<Partial<Booking>>({
+    defaultValues: booking || {
+      start_time: selectedDate?.toISOString(),
+    },
   });
 
-  useEffect(() => {
-    const fetchServices = async () => {
-      if (!user?.id) return;
+  const onSubmit = async (data: Partial<Booking>) => {
+    if (!user) {
+      toast.error('Please sign in to book a service');
+      return;
+    }
 
-      try {
-        const { data: services } = await supabase
-          .from('services')
-          .select('*')
-          .eq('business_id', user.id)
-          .eq('status', 'active')
-          .eq('is_available', true);
-
-        setServices(services || []);
-      } catch (error) {
-        console.error('Error fetching services:', error);
-      }
-    };
-
-    fetchServices();
-  }, [user?.id, supabase]);
-
-  const handleSubmitAction = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.service_id || !formData.start_time) return;
-
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
-      const service = services.find(s => s.id === formData.service_id);
-      if (!service) throw new Error('Service not found');
-
-      const startTime = new Date(formData.start_time);
-      const endTime = addMinutes(startTime, service.duration);
-
-      const bookingData: Partial<Booking> = {
-        service_id: formData.service_id,
-        customer_name: formData.customer_name,
-        start_time: startTime.toISOString(),
-        end_time: endTime.toISOString(),
-        notes: formData.notes,
-        status: booking ? booking.status : 'pending'
-      };
-
-      await onSubmitAction(bookingData);
+      await onSubmitAction(data);
+      toast.success(booking ? 'Booking updated successfully!' : 'Booking created successfully!');
+      reset();
+      onCancelAction();
     } catch (error) {
-      console.error('Error submitting booking:', error);
+      console.error('Error handling booking:', error);
+      toast.error(booking ? 'Failed to update booking' : 'Failed to create booking');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <Card>
-      <form onSubmit={handleSubmitAction} className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Service
-          </label>
-          <select
-            value={formData.service_id}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, service_id: e.target.value }))
-            }
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-            required
-          >
-            <option value="">Select a service</option>
-            {services.map((service) => (
-              <option key={service.id} value={service.id}>
-                {service.name} - {service.duration}min - R{service.price}
-              </option>
-            ))}
-          </select>
-        </div>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 rounded-lg bg-white p-6 shadow-md">
+      <div>
+        <label htmlFor="service_id" className="block text-sm font-medium text-gray-700">
+          Service
+        </label>
+        <Select
+          id="service_id"
+          {...register('service_id', { required: 'Please select a service' })}
+          className="mt-1"
+        >
+          <option value="">Select a service</option>
+          {services.map((service) => (
+            <option key={service.id} value={service.id}>
+              {service.name}
+            </option>
+          ))}
+        </Select>
+        {errors.service_id && (
+          <p className="mt-1 text-sm text-red-600">{errors.service_id.message}</p>
+        )}
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Customer Name
-          </label>
-          <Input
-            type="text"
-            value={formData.customer_name}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, customer_name: e.target.value }))
-            }
-            required
-          />
-        </div>
+      <div>
+        <label htmlFor="start_time" className="block text-sm font-medium text-gray-700">
+          Start Time
+        </label>
+        <Input
+          type="datetime-local"
+          id="start_time"
+          {...register('start_time', { required: 'Please select a start time' })}
+          className="mt-1"
+        />
+        {errors.start_time && (
+          <p className="mt-1 text-sm text-red-600">{errors.start_time.message}</p>
+        )}
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Start Time
-          </label>
-          <Input
-            type="datetime-local"
-            value={formData.start_time}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, start_time: e.target.value }))
-            }
-            required
-          />
-        </div>
+      <div>
+        <label htmlFor="end_time" className="block text-sm font-medium text-gray-700">
+          End Time
+        </label>
+        <Input
+          type="datetime-local"
+          id="end_time"
+          {...register('end_time', { required: 'Please select an end time' })}
+          className="mt-1"
+        />
+        {errors.end_time && (
+          <p className="mt-1 text-sm text-red-600">{errors.end_time.message}</p>
+        )}
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Notes
-          </label>
-          <textarea
-            value={formData.notes}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, notes: e.target.value }))
-            }
-            rows={3}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-          />
-        </div>
+      <div>
+        <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+          Notes
+        </label>
+        <textarea
+          id="notes"
+          {...register('notes')}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+          rows={3}
+        />
+      </div>
 
-        <div className="flex justify-end space-x-4">
-          <Button type="button" variant="outline" onClick={onCancelAction}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? (
-              <LoadingSpinner className="h-4 w-4" />
-            ) : booking ? (
-              'Update Booking'
-            ) : (
-              'Create Booking'
-            )}
-          </Button>
-        </div>
-      </form>
-    </Card>
+      <div className="flex justify-end space-x-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancelAction}
+          disabled={isSubmitting}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="bg-primary text-white hover:bg-primary/90"
+        >
+          {isSubmitting ? 'Saving...' : booking ? 'Update Booking' : 'Create Booking'}
+        </Button>
+      </div>
+    </form>
   );
 }

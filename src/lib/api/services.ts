@@ -1,9 +1,11 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
 import { Service } from '@/types';
 
-const supabase = createClientComponentClient();
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export async function getService(id: string): Promise<Service | null> {
+  const supabase = createBrowserClient(supabaseUrl!, supabaseAnonKey!);
   try {
     const { data, error } = await supabase
       .from('services')
@@ -20,6 +22,7 @@ export async function getService(id: string): Promise<Service | null> {
 }
 
 export async function createService(service: Omit<Service, 'id' | 'created_at' | 'updated_at'>): Promise<Service | null> {
+  const supabase = createBrowserClient(supabaseUrl!, supabaseAnonKey!);
   try {
     const { data, error } = await supabase
       .from('services')
@@ -36,6 +39,7 @@ export async function createService(service: Omit<Service, 'id' | 'created_at' |
 }
 
 export async function updateService(id: string, service: Partial<Service>): Promise<Service | null> {
+  const supabase = createBrowserClient(supabaseUrl!, supabaseAnonKey!);
   try {
     const { data, error } = await supabase
       .from('services')
@@ -53,6 +57,7 @@ export async function updateService(id: string, service: Partial<Service>): Prom
 }
 
 export async function deleteService(id: string): Promise<boolean> {
+  const supabase = createBrowserClient(supabaseUrl!, supabaseAnonKey!);
   try {
     const { error } = await supabase
       .from('services')
@@ -78,6 +83,7 @@ export const getServicesByBusiness = async (businessId: string): Promise<Service
 };
 
 export async function getFeaturedServices(): Promise<Service[]> {
+  const supabase = createBrowserClient(supabaseUrl!, supabaseAnonKey!);
   try {
     const { data, error } = await supabase
       .from('services')

@@ -16,6 +16,7 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline';
 import { classNames } from '@/lib/utils';
+import { withAuth } from '@/lib/auth/withAuth';
 
 const mockBookings = [
   {
@@ -47,7 +48,7 @@ const stats = [
   { name: 'Favorite Places', value: '5', icon: StarIcon },
 ];
 
-export default function CustomerDashboard() {
+export default withAuth(function CustomerDashboard() {
   const { user, profile } = useAuth();
   const { serviceCategories, businessCategories } = useAppStore();
 
@@ -232,4 +233,4 @@ export default function CustomerDashboard() {
       </div>
     </div>
   );
-}
+}, 'customer');

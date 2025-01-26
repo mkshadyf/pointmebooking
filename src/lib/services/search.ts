@@ -1,4 +1,4 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
 import { Service } from '@/types';
 
 interface SearchFilters {
@@ -11,7 +11,10 @@ interface SearchFilters {
 }
 
 export async function searchServices(filters: SearchFilters = {}): Promise<Service[]> {
-  const supabase = createClientComponentClient();
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
   let query = supabase
     .from('services')
     .select(`

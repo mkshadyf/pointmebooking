@@ -1,32 +1,37 @@
- 
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+ import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          cookieStore.set({ name, value, ...options });
+        },
+        remove(name: string, options: any) {
+          cookieStore.delete({ name, ...options });
+        },
+      },
+    }
+  );
+
   try {
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => Promise.resolve(cookieStore) });
-
-    // Get all businesses with their services
     const { data: businesses, error } = await supabase
       .from('businesses')
-      .select('*, services(*)');
+      .select('*')
+      .eq('status', 'active');
 
-    if (error) {
-      console.error('Error fetching businesses:', error);
-      return NextResponse.json(
-        { error: 'Error fetching businesses' },
-        { status: 500 }
-      );
-    }
+    if (error) throw error;
 
     return NextResponse.json(businesses);
   } catch (error) {
-    console.error('Error fetching businesses:', error);
-    return NextResponse.json(
-      { error: 'Error fetching businesses' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Error fetching businesses' }, { status: 500 });
   }
 }
