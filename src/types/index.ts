@@ -21,6 +21,8 @@ export interface UserProfile {
   state?: string;
   postal_code?: string;
   contact_email?: string;
+  logo_url?: string;
+  cover_image_url?: string;
   website?: string;
   working_hours?: {
     monday: { start: string; end: string };
@@ -76,6 +78,7 @@ export interface Service {
   duration: number;
   category_id: string;
   image_url?: string;
+  status: 'active' | 'inactive' | 'deleted';
   is_available: boolean;
   created_at: string;
   updated_at: string;
@@ -95,8 +98,10 @@ export interface Booking {
 export interface Category {
   id: string;
   name: string;
-  description: string;
-  icon: string;
+  description?: string;
+  icon?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface BusinessCategory {
@@ -111,6 +116,46 @@ export interface ServiceCategory {
   description: string;
   icon: string;
   services: Service[];
+}
+
+export interface Business {
+  id: string;
+  user_id: string;
+  name: string;
+  description?: string;
+  logo_url?: string;
+  cover_image_url?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  operating_hours?: {
+    [key: string]: {
+      open: string;
+      close: string;
+      is_closed: boolean;
+    };
+  };
+  status: 'active' | 'inactive' | 'pending' | 'suspended';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Profile {
+  id: string;
+  user_id: string;
+  email: string;
+  full_name: string;
+  avatar_url?: string;
+  phone?: string;
+  role: 'customer' | 'business' | 'admin';
+  status: 'active' | 'inactive' | 'suspended';
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AuthContextType {

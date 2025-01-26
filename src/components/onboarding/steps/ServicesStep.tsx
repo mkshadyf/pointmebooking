@@ -20,6 +20,7 @@ const defaultService: Service = {
   business_id: '',
   created_at: '',
   updated_at: '',
+  status: 'active',
 };
 
 export function ServicesStep({ initialData, onNextAction, onBackAction }: StepProps) {

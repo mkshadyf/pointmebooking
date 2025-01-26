@@ -17,6 +17,7 @@ const dummyServices: Service[] = [
     image_url: '/images/services/haircut.jpg',
     category_id: '1',
     status: 'active',
+    is_available: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   },
@@ -30,6 +31,7 @@ const dummyServices: Service[] = [
     image_url: '/images/services/massage.jpg',
     category_id: '2',
     status: 'active',
+    is_available: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   },
@@ -43,6 +45,7 @@ const dummyServices: Service[] = [
     image_url: '/images/services/facial.jpg',
     category_id: '3',
     status: 'active',
+    is_available: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   }
@@ -94,7 +97,7 @@ export function ServiceSlideshow() {
           </AnimatePresence>
 
           <div className="mt-4 flex justify-center gap-2">
-            {displayServices.map((_, index) => (
+            {displayServices.map((_: Service, index: number) => (
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index)}

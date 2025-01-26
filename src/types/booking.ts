@@ -1,9 +1,13 @@
- 
+ export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
+
 export interface Booking {
   id: string;
   business_id: string;
   customer_id: string;
   service_id: string;
+  customer_name: string;
+  start_time: string;
+  end_time: string;
   scheduled_at: string;
   status: BookingStatus;
   total_amount: number;
@@ -21,13 +25,11 @@ export interface Booking {
   };
   customer?: {
     id: string;
-    full_name: string;
     email: string;
+    full_name: string;
     phone?: string;
   };
 }
-
-export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
 
 export interface PopularService {
   service_id: string;
@@ -35,6 +37,8 @@ export interface PopularService {
     id: string;
     name: string;
   };
+  id: string;
+  name: string;
   count: number;
   total_bookings: number;
 }

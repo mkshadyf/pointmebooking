@@ -114,7 +114,7 @@ export default function ServicesPage() {
                 max={1000}
                 step={10}
                 value={priceRange}
-                onChange={(value) => setPriceRange(value as [number, number])}
+                onValueChange={(value: number[]) => setPriceRange([value[0], value[1]])}
               />
             </div>
           </div>

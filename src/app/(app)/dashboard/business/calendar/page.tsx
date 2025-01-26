@@ -4,190 +4,203 @@ import { useAuth } from '@/context/AuthContext';
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Booking } from '@/types/booking';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isSameMonth, isEqual, parseISO, getDay } from 'date-fns';
-import clsx from 'clsx';
-import Link from 'next/link';
+import { toast } from 'react-hot-toast';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { Modal } from '@/components/ui/Modal';
+import { BookingForm } from '@/components/bookings/BookingForm';
 
 export default function BusinessCalendar() {
   const { user } = useAuth();
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const supabase = createClientComponentClient();
 
   useEffect(() => {
     const fetchBookings = async () => {
       if (!user?.id) return;
 
-      const start = startOfMonth(currentDate);
-      const end = endOfMonth(currentDate);
-
       try {
-        const { data, error } = await supabase
+        const { data: services } = await supabase
+          .from('services')
+          .select('id')
+          .eq('business_id', user.id);
+
+        if (!services) return;
+
+        const serviceIds = services.map(service => service.id);
+
+        const { data: bookings, error } = await supabase
           .from('bookings')
-          .select(`
-            *,
-            service:services(*),
-            customer:profiles(*)
-          `)
-          .eq('business_id', user.id)
-          .gte('scheduled_at', start.toISOString())
-          .lte('scheduled_at', end.toISOString());
+          .select('*')
+          .in('service_id', serviceIds);
 
         if (error) throw error;
-        setBookings(data || []);
+        setBookings(bookings || []);
       } catch (error) {
         console.error('Error fetching bookings:', error);
+        toast.error('Failed to load bookings');
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchBookings();
-  }, [user?.id, currentDate, supabase]);
+  }, [user?.id, supabase]);
 
-  const days = eachDayOfInterval({
-    start: startOfMonth(currentDate),
-    end: endOfMonth(currentDate),
-  });
-
-  const getBookingsForDay = (date: Date) => {
-    return bookings.filter((booking) =>
-      isEqual(parseISO(booking.scheduled_at).setHours(0, 0, 0, 0), date.setHours(0, 0, 0, 0))
-    );
+  const handleEventClick = (info: any) => {
+    const booking = info.event.extendedProps.booking;
+    setSelectedBooking(booking);
+    setShowModal(true);
   };
+
+  const handleDateSelect = (selectInfo: any) => {
+    setSelectedDate(selectInfo.start);
+    setSelectedBooking(null);
+    setShowModal(true);
+  };
+
+  const handleBookingSubmit = async (bookingData: Partial<Booking>) => {
+    if (!user?.id) return;
+
+    try {
+      if (selectedBooking) {
+        // Update existing booking
+        const { error } = await supabase
+          .from('bookings')
+          .update(bookingData)
+          .eq('id', selectedBooking.id);
+
+        if (error) throw error;
+        toast.success('Booking updated successfully');
+
+        setBookings(prevBookings =>
+          prevBookings.map(booking =>
+            booking.id === selectedBooking.id
+              ? { ...booking, ...bookingData }
+              : booking
+          )
+        );
+      } else {
+        // Create new booking
+        const { data: newBooking, error } = await supabase
+          .from('bookings')
+          .insert([{ ...bookingData, business_id: user.id }])
+          .select()
+          .single();
+
+        if (error) throw error;
+        toast.success('Booking created successfully');
+
+        if (newBooking) {
+          setBookings(prev => [...prev, newBooking]);
+        }
+      }
+
+      setShowModal(false);
+      setSelectedBooking(null);
+      setSelectedDate(null);
+    } catch (error) {
+      console.error('Error saving booking:', error);
+      toast.error('Failed to save booking');
+    }
+  };
+
+  const events = bookings.map(booking => ({
+    id: booking.id,
+    title: `Booking: ${booking.customer_name}`,
+    start: booking.start_time,
+    end: booking.end_time,
+    backgroundColor: getStatusColor(booking.status),
+    borderColor: getStatusColor(booking.status),
+    extendedProps: {
+      booking
+    }
+  }));
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary"></div>
+      <div className="flex h-full items-center justify-center">
+        <LoadingSpinner />
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="md:flex md:items-center md:justify-between">
-        <div className="flex-1 min-w-0">
-          <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-            Calendar
-          </h2>
+    <div className="container mx-auto p-4">
+      <Card className="overflow-hidden rounded-lg shadow">
+        <div className="p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-gray-900">Business Calendar</h1>
+            <Button onClick={() => setShowModal(true)}>
+              Add Booking
+            </Button>
+          </div>
+          
+          <div className="min-h-[600px]">
+            <FullCalendar
+              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+              initialView="timeGridWeek"
+              headerToolbar={{
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+              }}
+              editable={true}
+              selectable={true}
+              selectMirror={true}
+              dayMaxEvents={true}
+              weekends={true}
+              events={events}
+              eventClick={handleEventClick}
+              select={handleDateSelect}
+              height="auto"
+            />
+          </div>
         </div>
-        <div className="mt-4 flex md:mt-0 md:ml-4">
-          <button
-            onClick={() => setCurrentDate(new Date())}
-            className="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-          >
-            Today
-          </button>
-        </div>
-      </div>
+      </Card>
 
-      <div className="mt-4">
-        <div className="flex items-center text-gray-900">
-          <button
-            onClick={() =>
-              setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))
-            }
-            type="button"
-            className="-m-1.5 flex flex-none items-center justify-center p-1.5 text-gray-400 hover:text-gray-500"
-          >
-            <span className="sr-only">Previous month</span>
-            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-            </svg>
-          </button>
-          <h2 className="flex-auto text-sm font-semibold text-center">
-            {format(currentDate, 'MMMM yyyy')}
-          </h2>
-          <button
-            onClick={() =>
-              setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))
-            }
-            type="button"
-            className="-m-1.5 flex flex-none items-center justify-center p-1.5 text-gray-400 hover:text-gray-500"
-          >
-            <span className="sr-only">Next month</span>
-            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="mt-6 grid grid-cols-7 text-xs leading-6 text-gray-500">
-          <div className="text-center">S</div>
-          <div className="text-center">M</div>
-          <div className="text-center">T</div>
-          <div className="text-center">W</div>
-          <div className="text-center">T</div>
-          <div className="text-center">F</div>
-          <div className="text-center">S</div>
-        </div>
-
-        <div className="mt-2 grid grid-cols-7 text-sm">
-          {days.map((day, dayIdx) => {
-            const dayBookings = getBookingsForDay(day);
-            return (
-              <div
-                key={day.toString()}
-                className={clsx(
-                  dayIdx === 0 && colStartClasses[getDay(day)],
-                  'py-2'
-                )}
-              >
-                <button
-                  type="button"
-                  className={clsx(
-                    'mx-auto flex h-8 w-8 items-center justify-center rounded-full',
-                    isToday(day) && 'text-white',
-                    !isToday(day) && isSameMonth(day, currentDate) && 'text-gray-900',
-                    !isToday(day) && !isSameMonth(day, currentDate) && 'text-gray-400',
-                    isToday(day) && 'bg-primary',
-                    'hover:bg-gray-200'
-                  )}
-                >
-                  <time dateTime={format(day, 'yyyy-MM-dd')}>
-                    {format(day, 'd')}
-                  </time>
-                </button>
-
-                {dayBookings.length > 0 && (
-                  <div className="w-full px-2">
-                    {dayBookings.map((booking) => (
-                      <Link
-                        key={booking.id}
-                        href={`/dashboard/business/bookings#${booking.id}`}
-                        className={clsx(
-                          'block w-full text-xs leading-5 p-1 rounded-sm mt-1 truncate',
-                          {
-                            'bg-green-100 text-green-800': booking.status === 'confirmed',
-                            'bg-yellow-100 text-yellow-800': booking.status === 'pending',
-                            'bg-blue-100 text-blue-800': booking.status === 'completed',
-                            'bg-red-100 text-red-800': booking.status === 'cancelled',
-                          }
-                        )}
-                      >
-                        {format(parseISO(booking.scheduled_at), 'HH:mm')} -{' '}
-                        {booking.service?.name}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <Modal
+        isOpen={showModal}
+        onClose={() => {
+          setShowModal(false);
+          setSelectedBooking(null);
+          setSelectedDate(null);
+        }}
+        title={selectedBooking ? 'Edit Booking' : 'New Booking'}
+      >
+        <BookingForm
+          selectedDate={selectedDate || undefined}
+          booking={selectedBooking || undefined}
+          onSubmitAction={handleBookingSubmit}
+          onCancelAction={() => {
+            setShowModal(false);
+            setSelectedBooking(null);
+            setSelectedDate(null);
+          }}
+        />
+      </Modal>
     </div>
   );
 }
 
-const colStartClasses = [
-  '',
-  'col-start-2',
-  'col-start-3',
-  'col-start-4',
-  'col-start-5',
-  'col-start-6',
-  'col-start-7',
-];
+function getStatusColor(status: string): string {
+  switch (status) {
+    case 'confirmed':
+      return '#10B981'; // green
+    case 'pending':
+      return '#F59E0B'; // yellow
+    case 'cancelled':
+      return '#EF4444'; // red
+    default:
+      return '#6B7280'; // gray
+  }
+}

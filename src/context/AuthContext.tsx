@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (user) {
         await loadUserProfile(user.id);
-        
+
         // Check if email is verified
         if (!isEmailVerified) {
           router.push('/verify-email');

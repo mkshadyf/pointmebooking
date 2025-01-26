@@ -7,18 +7,21 @@ interface AppState {
   categories: Category[];
   businessCategories: BusinessCategory[];
   serviceCategories: ServiceCategory[];
+  services: Service[];
   selectedBusiness: BusinessProfile | null;
   selectedService: Service | null;
   selectedCategory: string | null;
   setSelectedBusiness: (business: BusinessProfile | null) => void;
   setSelectedService: (service: Service | null) => void;
   setSelectedCategory: (id: string | null) => void;
+  setServices: (services: Service[]) => void;
   addService: (service: Service) => Promise<Service>;
   updateService: (id: string, service: Partial<Service>) => Promise<Service>;
   deleteService: (id: string) => Promise<void>;
   loadServices: (businessId: string) => Promise<Service[]>;
   fetchAllServices: () => Promise<void>;
   fetchAllBusinesses: () => Promise<void>;
+  fetchFeaturedServices: () => Promise<void>;
   isLoading: boolean;
   error: string | null;
 }
@@ -27,13 +30,14 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       categories: [
-        { id: '1', name: 'Beauty & Wellness', description: 'Beauty and wellness services', icon: '💆‍♀️' },
-        { id: '2', name: 'Health & Fitness', description: 'Health and fitness services', icon: '💪' },
-        { id: '3', name: 'Home Services', description: 'Home maintenance and repair', icon: '🏠' },
-        { id: '4', name: 'Professional Services', description: 'Professional and business services', icon: '💼' },
+        { id: '1', name: 'Beauty & Wellness', description: 'Beauty and wellness services', icon: '💆‍♀️', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: '2', name: 'Health & Fitness', description: 'Health and fitness services', icon: '💪', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: '3', name: 'Home Services', description: 'Home maintenance and repair', icon: '🏠', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: '4', name: 'Professional Services', description: 'Professional and business services', icon: '💼', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
       ],
       businessCategories: [],
       serviceCategories: [],
+      services: [],
       selectedBusiness: null,
       selectedService: null,
       selectedCategory: null,
@@ -43,6 +47,7 @@ export const useAppStore = create<AppState>()(
       setSelectedBusiness: (business) => set({ selectedBusiness: business }),
       setSelectedService: (service) => set({ selectedService: service }),
       setSelectedCategory: (id) => set({ selectedCategory: id }),
+      setServices: (services) => set({ services }),
       
       fetchAllServices: async () => {
         set({ isLoading: true, error: null });
@@ -64,8 +69,8 @@ export const useAppStore = create<AppState>()(
               acc.push({
                 id: category.id,
                 name: category.name,
-                description: category.description,
-                icon: category.icon,
+                description: category.description ?? 'No description available',
+                icon: category.icon ?? '📋',
                 services: [service],
               });
             }
@@ -115,8 +120,18 @@ export const useAppStore = create<AppState>()(
         }
       },
 
+      fetchFeaturedServices: async () => {
+        try {
+          const services = await serviceApi.getFeaturedServices();
+          set({ services });
+        } catch (error) {
+          console.error('Error fetching featured services:', error);
+        }
+      },
+
       addService: async (service) => {
         const newService = await serviceApi.createService(service);
+        if (!newService) throw new Error('Failed to create service');
         set((state) => ({
           serviceCategories: state.serviceCategories.map((cat) =>
             cat.id === service.category_id
@@ -129,6 +144,7 @@ export const useAppStore = create<AppState>()(
 
       updateService: async (id, updatedService) => {
         const updated = await serviceApi.updateService(id, updatedService);
+        if (!updated) throw new Error('Failed to update service');
         set((state) => ({
           serviceCategories: state.serviceCategories.map((cat) => ({
             ...cat,

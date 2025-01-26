@@ -3,6 +3,8 @@
 import { useAuth } from '@/context/AuthContext';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import {
   Input,
   TextArea,
@@ -14,6 +16,7 @@ import {
 export default function BusinessSettings() {
   const { profile, updateProfile } = useAuth();
   const [loading, setLoading] = useState(false);
+  const supabase = createClientComponentClient();
   const [formData, setFormData] = useState({
     business_name: profile?.business_name || '',
     description: profile?.description || '',
@@ -25,9 +28,39 @@ export default function BusinessSettings() {
     business_category: profile?.business_category || '',
     address: profile?.address || '',
     city: profile?.city || '',
-    state: profile?.state || '',
+    state: profile?.state || '', 
     postal_code: profile?.postal_code || '',
+    logo_url: profile?.logo_url || '',
+    cover_image_url: profile?.cover_image_url || ''
   });
+
+  const handleImageUpload = async (file: File, type: 'logo' | 'cover') => {
+    try {
+      if (!profile?.id) return;
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${type}-${profile.id}-${Date.now()}.${fileExt}`;
+      const filePath = `business/${profile.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('business-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('business-images')
+        .getPublicUrl(filePath);
+
+      const imageField = type === 'logo' ? 'logo_url' : 'cover_image_url';
+      setFormData(prev => ({ ...prev, [imageField]: publicUrl }));
+
+      toast.success(`${type === 'logo' ? 'Logo' : 'Cover image'} uploaded successfully`);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error(`Failed to upload ${type === 'logo' ? 'logo' : 'cover image'}`);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +91,38 @@ export default function BusinessSettings() {
 
       <div className="bg-white shadow-sm rounded-lg">
         <form onSubmit={handleSubmit} className="p-6 space-y-8">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+            <div>
+              <Label>Business Logo</Label>
+              <div className="mt-2">
+                <ImageUpload
+                  initialUrl={formData.logo_url}
+                  onChange={(file) => handleImageUpload(file, 'logo')}
+                  maxSize={5}
+                  aspectRatio={1}
+                />
+              </div>
+              <p className="mt-2 text-sm text-gray-500">
+                Recommended: Square image, at least 200x200px
+              </p>
+            </div>
+
+            <div>
+              <Label>Cover Image</Label>
+              <div className="mt-2">
+                <ImageUpload
+                  initialUrl={formData.cover_image_url}
+                  onChange={(file) => handleImageUpload(file, 'cover')}
+                  maxSize={10}
+                  aspectRatio={16/9}
+                />
+              </div>
+              <p className="mt-2 text-sm text-gray-500">
+                Recommended: 16:9 ratio, at least 1200x675px
+              </p>
+            </div>
+          </div>
+
           <FormGroup>
             <Label htmlFor="business_name">Business Name</Label>
             <Input
@@ -217,7 +282,7 @@ export default function BusinessSettings() {
 
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <FormGroup>
-              <Label htmlFor="state">State</Label>
+              <Label htmlFor="state">State/Province</Label>
               <Input
                 type="text"
                 id="state"
@@ -227,7 +292,7 @@ export default function BusinessSettings() {
                 onChange={(e) =>
                   setFormData({ ...formData, state: e.target.value })
                 }
-                placeholder="Enter your state"
+                placeholder="Enter your state/province"
               />
             </FormGroup>
 
@@ -247,10 +312,11 @@ export default function BusinessSettings() {
             </FormGroup>
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className="pt-6">
             <Button
               type="submit"
               disabled={loading}
+              className="w-full sm:w-auto"
             >
               {loading ? 'Saving...' : 'Save Changes'}
             </Button>
