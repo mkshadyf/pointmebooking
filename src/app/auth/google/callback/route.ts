@@ -8,40 +8,12 @@ export async function GET(request: Request) {
 
   if (code) {
     const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    
-    try {
-      // Exchange the code for a session
-      const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(code);
-      
-      if (error) throw error;
+    const supabase = createRouteHandlerClient({ cookies: () => Promise.resolve(cookieStore) });
 
-      // Get user profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session?.user.id)
-        .single();
-
-      // Determine redirect URL based on profile
-      let redirectUrl = '/dashboard/business';
-      
-      if (profile) {
-        if (profile.role === 'business') {
-          redirectUrl = profile.onboarding_completed 
-            ? '/dashboard/business'
-            : '/onboarding/business';
-        } else {
-          redirectUrl = '/dashboard/customer';
-        }
-      }
-
-      return NextResponse.redirect(new URL(redirectUrl, requestUrl.origin));
-    } catch (error) {
-      console.error('Auth callback error:', error);
-      return NextResponse.redirect(new URL('/login?error=auth_callback_failed', requestUrl.origin));
-    }
+    // Exchange the code for a session
+    await supabase.auth.exchangeCodeForSession(code);
   }
 
-  return NextResponse.redirect(new URL('/login?error=no_code', requestUrl.origin));
+  // URL to redirect to after sign in process completes
+  return NextResponse.redirect(requestUrl.origin);
 }

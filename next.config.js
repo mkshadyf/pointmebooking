@@ -7,18 +7,19 @@ const withPWA = require('next-pwa')({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: true,
   images: {
     domains: ['images.unsplash.com', 'unsplash.com'],
+    unoptimized: process.env.NODE_ENV === 'development',
   },
   experimental: {
-    serverComponentsExternalPackages: ['@supabase/auth-helpers-nextjs'],
+    optimizeCss: true,
+    serverComponentsExternalPackages: ['@supabase/ssr'],
   },
-  typescript: {
-    ignoreBuildErrors: false,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  poweredByHeader: false,
 };
 
 module.exports = withPWA(nextConfig);

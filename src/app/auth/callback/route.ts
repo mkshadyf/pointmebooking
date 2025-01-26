@@ -8,12 +8,12 @@ export async function GET(request: Request) {
 
   if (code) {
     const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    
+    const supabase = createRouteHandlerClient({ cookies: () => Promise.resolve(cookieStore) });
+
     // Exchange the code for a session
     await supabase.auth.exchangeCodeForSession(code);
   }
 
   // URL to redirect to after sign in process completes
-  return NextResponse.redirect(new URL('/dashboard/business', requestUrl.origin));
+  return NextResponse.redirect(requestUrl.origin);
 }
