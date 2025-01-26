@@ -61,7 +61,7 @@ export async function deleteService(id: string): Promise<boolean> {
   try {
     const { error } = await supabase
       .from('services')
-      .update({ status: 'deleted' })
+      .update({ is_available: false })
       .eq('id', id);
 
     if (error) throw error;
@@ -88,7 +88,6 @@ export async function getFeaturedServices(): Promise<Service[]> {
     const { data, error } = await supabase
       .from('services')
       .select('*')
-      .eq('status', 'active')
       .eq('is_available', true)
       .order('created_at', { ascending: false })
       .limit(5);

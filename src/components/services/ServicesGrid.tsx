@@ -10,6 +10,13 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { formatCurrency }  from '@/lib/utils';
 
+const defaultImages = {
+  massage: '/images/placeholder/massage.jpg',
+  facial: '/images/placeholder/facial.jpg',
+  haircut: '/images/placeholder/haircut.jpg',
+  default: '/images/placeholder/service.jpg',
+};
+
 interface ServicesGridProps {
   services: Service[];
   categories: Category[];
@@ -54,6 +61,17 @@ export function ServicesGrid({ services, categories, showFilters = true }: Servi
   useEffect(() => {
     setPriceRange([0, maxPrice]);
   }, [maxPrice]);
+
+  const getServiceImage = (service: Service) => {
+    if (service.image_url) return service.image_url;
+    
+    const name = service.name.toLowerCase();
+    if (name.includes('massage')) return defaultImages.massage;
+    if (name.includes('facial')) return defaultImages.facial;
+    if (name.includes('haircut')) return defaultImages.haircut;
+    
+    return defaultImages.default;
+  };
 
   return (
     <div className="space-y-6">
@@ -147,10 +165,10 @@ export function ServicesGrid({ services, categories, showFilters = true }: Servi
             onClick={() => router.push(`/services/${service.id}`)}
           >
             <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-            {service.image_url && (
+            {getServiceImage(service) && (
               <div className="relative h-48 w-full">
                 <Image
-                  src={service.image_url}
+                  src={getServiceImage(service)}
                   alt={service.name}
                   fill
                   className="object-cover"

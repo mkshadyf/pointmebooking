@@ -47,153 +47,99 @@ const features = [
   },
 ];
 
-const popularCategories = [
-  { name: 'Beauty & Spa', image: '/categories/beauty.jpg', href: '/services/beauty' },
-  { name: 'Health & Fitness', image: '/categories/fitness.jpg', href: '/services/fitness' },
-  { name: 'Home Services', image: '/categories/home.jpg', href: '/services/home' },
-  { name: 'Professional Services', image: '/categories/professional.jpg', href: '/services/professional' },
-];
-
 export default function Home() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
 
   return (
-    <div className="min-h-screen">
-      {/* Hero Section with Conditional Rendering */}
-      <div className="relative">
-        <ServiceSlideshow />
-        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6">
-              {user ? `Welcome Back, ${profile?.full_name}!` : 'Book Local Services with Ease'}
+    <div className="bg-white">
+      {/* Hero section */}
+      <div className="relative isolate overflow-hidden">
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-primary-dark/30" />
+          <Image
+            src="/images/hero-bg.jpg"
+            alt="Background"
+            fill
+            className="h-full w-full object-cover"
+            priority
+          />
+        </div>
+
+        <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
+          <div className="mx-auto max-w-2xl lg:mx-0">
+            <h1 className="text-4xl font-bold tracking-tight text-white sm:text-6xl">
+              Book Local Services with Ease
             </h1>
-            <p className="text-xl text-white mb-8 max-w-3xl mx-auto">
-              {user 
-                ? 'Continue exploring amazing services in your area'
-                : "Discover and book the best local services. From beauty to home maintenance, we've got you covered."}
+            <p className="mt-6 text-lg leading-8 text-gray-100">
+              Find and book trusted local service providers. From beauty treatments to professional services,
+              we've got you covered.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              {user ? (
-                <>
-                  <Link
-                    href="/dashboard/customer"
-                    className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90"
-                  >
-                    Go to Dashboard
-                    <ArrowRightIcon className="ml-2 -mr-1 h-5 w-5" />
-                  </Link>
-                  <Link
-                    href="/services"
-                    className="inline-flex items-center px-8 py-3 border border-white text-base font-medium rounded-md text-white hover:bg-white hover:text-primary transition-colors"
-                  >
-                    Browse Services
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link
-                    href="/services"
-                    className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90"
-                  >
-                    Browse Services
-                    <ArrowRightIcon className="ml-2 -mr-1 h-5 w-5" />
-                  </Link>
-                  <Link
-                    href="/register"
-                    className="inline-flex items-center px-8 py-3 border border-white text-base font-medium rounded-md text-white hover:bg-white hover:text-primary transition-colors"
-                  >
-                    List Your Business
-                  </Link>
-                </>
-              )}
+            <div className="mt-10 flex items-center gap-x-6">
+              <Link
+                href={user ? "/services" : "/register"}
+                className="rounded-md bg-primary px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                Get Started
+                <ArrowRightIcon className="ml-2 -mr-1 h-5 w-5 inline-block" aria-hidden="true" />
+              </Link>
+              <Link
+                href="/services"
+                className="text-sm font-semibold leading-6 text-white"
+              >
+                Browse Services <span aria-hidden="true">→</span>
+              </Link>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Popular Categories */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">Popular Categories</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {popularCategories.map((category) => (
-              <Link
-                key={category.name}
-                href={category.href}
-                className="group relative rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow"
-              >
-                <div className="relative h-64 w-full">
-                  <Image
-                    src={category.image}
-                    alt={category.name}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-200"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 p-4">
-                  <h3 className="text-xl font-semibold text-white">{category.name}</h3>
-                </div>
-              </Link>
-            ))}
+      {/* Featured Services */}
+      <section className="py-16 bg-gray-50">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Featured Services
+            </h2>
+            <p className="mt-2 text-lg leading-8 text-gray-600">
+              Discover our most popular services and book your next appointment.
+            </p>
           </div>
+          <ServiceSlideshow />
         </div>
       </section>
 
-      {/* Features Grid */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">Why Choose PointMe?</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature) => (
-              <div key={feature.name} className="relative bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                <div>
-                  <span className="absolute h-12 w-12 rounded-md bg-primary/10 flex items-center justify-center">
-                    <feature.icon className="h-6 w-6 text-primary" aria-hidden="true" />
-                  </span>
-                  <h3 className="ml-16 text-xl font-semibold mb-4">{feature.name}</h3>
-                </div>
-                <p className="mt-2 text-gray-600">{feature.description}</p>
-              </div>
-            ))}
+      {/* Features */}
+      <section className="py-24 sm:py-32">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl lg:text-center">
+            <h2 className="text-base font-semibold leading-7 text-primary">
+              Why Choose PointMe
+            </h2>
+            <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Everything you need to manage your bookings
+            </p>
+            <p className="mt-6 text-lg leading-8 text-gray-600">
+              We make it easy for you to find, book, and manage your service appointments.
+              Our platform is designed with both customers and businesses in mind.
+            </p>
           </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="relative bg-primary py-16 px-4 sm:px-6 lg:px-8">
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-primary mix-blend-multiply" />
-        </div>
-        <div className="relative max-w-7xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-white mb-8">
-            {user ? 'Ready to Book Your Next Service?' : 'Ready to Get Started?'}
-          </h2>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {user ? (
-              <Link
-                href="/services"
-                className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-primary bg-white hover:bg-gray-50"
-              >
-                Browse Services
-                <ArrowRightIcon className="ml-2 -mr-1 h-5 w-5" />
-              </Link>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-primary bg-white hover:bg-gray-50"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/register"
-                  className="inline-flex items-center px-8 py-3 border border-white text-base font-medium rounded-md text-white hover:bg-white hover:text-primary transition-colors"
-                >
-                  Create Account
-                </Link>
-              </>
-            )}
+          <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
+            <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
+              {features.map((feature) => (
+                <div key={feature.name} className="flex flex-col">
+                  <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
+                    <feature.icon
+                      className="h-5 w-5 flex-none text-primary"
+                      aria-hidden="true"
+                    />
+                    {feature.name}
+                  </dt>
+                  <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-gray-600">
+                    <p className="flex-auto">{feature.description}</p>
+                  </dd>
+                </div>
+              ))}
+            </dl>
           </div>
         </div>
       </section>

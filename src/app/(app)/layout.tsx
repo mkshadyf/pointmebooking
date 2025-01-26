@@ -54,11 +54,7 @@ export default function AppLayout({
   }, [loading, user, profile, isEmailVerified, pathname, router]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   // Don't show MainNav in business dashboard
@@ -67,7 +63,9 @@ export default function AppLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       {showMainNav && <MainNav />}
-      <main>{children}</main>
+      <main className="pt-16">
+        {children}
+      </main>
     </div>
   );
 }

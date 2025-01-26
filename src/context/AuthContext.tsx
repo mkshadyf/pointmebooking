@@ -59,10 +59,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const session = await getSession();
-        if (session) {
-          setUser(session.user);
-          await loadUserProfile(session.user!.id);
+        const { user, profile } = await getSession();
+        setUser(user);
+        if (user && profile) {
+          setProfile(profile);
+          setIsEmailVerified(profile.email_verified || false);
         }
       } catch (error) {
         console.error('Error initializing session:', error);
