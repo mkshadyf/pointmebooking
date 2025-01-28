@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
 import { User } from '@supabase/supabase-js';
 import { UserProfile } from '@/types';
 import type { AuthError } from '@supabase/supabase-js';
@@ -67,7 +67,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const router = useRouter();
-  const supabase = createClientComponentClient<Database>();
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
