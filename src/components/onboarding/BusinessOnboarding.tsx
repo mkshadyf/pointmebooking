@@ -20,6 +20,8 @@ export default function BusinessOnboarding({ onComplete }: BusinessOnboardingPro
   const convertToBusinessProfile = (userProfile: UserProfile | null): BusinessProfile | null => {
     if (!userProfile) return null;
     return {
+      user_id: userProfile.id,
+      status: 'active',
       // UserProfile fields
       id: userProfile.id,
       full_name: userProfile.full_name,

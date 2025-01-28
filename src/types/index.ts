@@ -1,9 +1,10 @@
 import { Provider } from "@supabase/supabase-js";
 
-export type UserRole = 'business' | 'customer';
+export type UserRole = 'business' | 'customer' | 'admin';
 
 export interface UserProfile {
   id: string;
+  user_id: string;
   full_name: string;
   email: string;
   role: UserRole;
@@ -21,22 +22,14 @@ export interface UserProfile {
   state?: string;
   postal_code?: string;
   contact_email?: string;
+  website?: string;
+  avatar_url?: string;
   logo_url?: string;
   cover_image_url?: string;
-  website?: string;
-  working_hours?: {
-    monday: { start: string; end: string };
-    tuesday: { start: string; end: string };
-    wednesday: { start: string; end: string };
-    thursday: { start: string; end: string };
-    friday: { start: string; end: string };
-    saturday: { start: string; end: string };
-    sunday: { start: string; end: string };
-  };
-  services?: Service[];
-  onboarding_completed?: boolean;
-  created_at?: string;
-  updated_at?: string;
+  status: 'active' | 'inactive' | 'suspended';
+  onboarding_completed: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface DayHours {
@@ -64,9 +57,22 @@ export interface BusinessProfile extends UserProfile {
   description: string;
   location: string;
   contact_number: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  contact_email?: string;
+  website?: string;
+  avatar_url?: string;
+  logo_url?: string;
+  cover_image_url?: string;
   working_hours: WorkingHours;
   services: Service[];
-  onboarding_completed?: boolean;
+  onboarding_completed: boolean;
+  status: 'active' | 'inactive' | 'suspended';
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Service {
@@ -177,3 +183,5 @@ export interface AuthContextType {
   resendVerificationEmail: () => Promise<{ success: boolean; error?: string }>;
   verificationAttempts: number;
 }
+
+export type { Database } from './database.types';

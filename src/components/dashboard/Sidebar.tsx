@@ -13,7 +13,7 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-export function Sidebar({ isOpen, onClose }: SidebarProps) {
+export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const { profile } = useAuth();
   const pathname = usePathname();
 
