@@ -80,7 +80,7 @@ export default function ServicesPage() {
           <div className={`space-y-4 md:flex md:items-center md:gap-4 md:space-y-0 ${
             showFilters ? 'block' : 'hidden md:flex'
           }`}>
-            <Select
+            <Select 
               value={duration?.toString() || ''}
               onChange={(e) => setDuration(e.target.value ? Number(e.target.value) : undefined)}
               className="w-full md:w-48"
@@ -94,7 +94,7 @@ export default function ServicesPage() {
 
             <div className="w-full md:w-64">
               <label className="mb-2 block text-sm font-medium text-gray-700">
-                Price Range: ${priceRange[0]} - ${priceRange[1]}
+                Price Range: R{priceRange[0]} - R{priceRange[1]}
               </label>
               <Slider
                 min={0}

@@ -2,6 +2,16 @@ import { createBrowserClient } from '@supabase/ssr';
 import { User } from '@supabase/supabase-js';
 import { UserProfile } from '@/types';
 
+// Cache TTL in milliseconds (5 minutes)
+const CACHE_TTL = 5 * 60 * 1000;
+
+interface CachedProfile {
+  profile: UserProfile;
+  timestamp: number;
+}
+
+const profileCache = new Map<string, CachedProfile>();
+
 export async function getSession(): Promise<{ user: User | null; profile: UserProfile | null }> {
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,6 +26,18 @@ export async function getSession(): Promise<{ user: User | null; profile: UserPr
       return { user: null, profile: null };
     }
 
+    // Check cache first
+    const cachedData = profileCache.get(session.user.id);
+    const now = Date.now();
+    
+    if (cachedData && (now - cachedData.timestamp) < CACHE_TTL) {
+      return {
+        user: session.user,
+        profile: cachedData.profile,
+      };
+    }
+
+    // If not in cache or expired, fetch from database
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
@@ -23,6 +45,14 @@ export async function getSession(): Promise<{ user: User | null; profile: UserPr
       .single();
 
     if (profileError) throw profileError;
+
+    // Update cache
+    if (profile) {
+      profileCache.set(session.user.id, {
+        profile,
+        timestamp: now,
+      });
+    }
 
     return {
       user: session.user,
@@ -48,6 +78,9 @@ export async function refreshSession(): Promise<{ user: User | null; profile: Us
       return { user: null, profile: null };
     }
 
+    // Clear cache when refreshing session
+    profileCache.delete(user.id);
+
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
@@ -56,9 +89,21 @@ export async function refreshSession(): Promise<{ user: User | null; profile: Us
 
     if (profileError) throw profileError;
 
+    // Update cache with fresh data
+    if (profile) {
+      profileCache.set(user.id, {
+        profile,
+        timestamp: Date.now(),
+      });
+    }
+
     return { user, profile };
   } catch (error) {
     console.error('Error refreshing session:', error);
     return { user: null, profile: null };
   }
+}
+
+export function clearSessionCache(userId: string) {
+  profileCache.delete(userId);
 }

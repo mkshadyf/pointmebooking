@@ -1,28 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter, usePathname } from 'next/navigation';
-import {Sidebar} from '@/components/dashboard/Sidebar';
 import Header from '@/components/dashboard/Header';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import {Sidebar} from '@/components/dashboard/Sidebar';
 
-export default function BusinessDashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, profile, loading } = useAuth();
-  const router = useRouter();
   const pathname = usePathname();
+  const router = useRouter();
 
+  // Protect dashboard routes
   useEffect(() => {
-    // Redirect if not authenticated or not a business user
-    if (!loading && (!user || profile?.role !== 'business')) {
+    if (!loading && !user) {
       router.push('/login');
     }
-  }, [user, profile, loading, router]);
+  }, [user, loading, router]);
 
   // Get the page title from the current path
   const getTitle = () => {
@@ -30,8 +29,8 @@ export default function BusinessDashboardLayout({
     const lastSegment = segments[segments.length - 1];
     
     // Handle special cases
-    if (lastSegment === 'business') {
-      return 'Business Dashboard';
+    if (lastSegment === 'business' || lastSegment === 'customer') {
+      return 'Dashboard';
     }
     
     // Capitalize and format the title
@@ -41,26 +40,23 @@ export default function BusinessDashboardLayout({
       .join(' ');
   };
 
-  // Show loading state
+  // Handle loading state
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner />
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  // Don't render anything if not authenticated or not a business user
-  if (!user || profile?.role !== 'business') {
+  // Handle unauthorized access
+  if (!user || !profile) {
     return null;
   }
 
   return (
     <div className="min-h-screen">
-      <Sidebar 
-        isOpen={sidebarOpen} 
-        onClose={() => setSidebarOpen(false)} 
-      />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="lg:pl-72">
         <Header

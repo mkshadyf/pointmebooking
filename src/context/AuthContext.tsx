@@ -1,12 +1,12 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { User } from '@supabase/supabase-js';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { UserProfile } from '@/types';
-import { getSession, refreshSession } from '@/lib/auth/session';
+import { getSession, refreshSession, clearSessionCache } from '@/lib/auth/session';
 
 interface AuthContextType {
   user: User | null;
@@ -31,7 +31,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout>();
   const router = useRouter();
+  const pathname = usePathname();
   
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -53,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Error loading user profile:', error);
+      toast.error('Failed to load user profile');
     }
   }, [supabase]);
 
@@ -67,69 +70,102 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('Error initializing session:', error);
+        toast.error('Failed to initialize session');
       } finally {
         setLoading(false);
       }
     };
 
     initializeAuth();
-  }, [loadUserProfile]);
 
-  const persistSession = (session: any) => {
-    if (session) {
-      localStorage.setItem('auth_session', JSON.stringify(session));
-    } else {
-      localStorage.removeItem('auth_session');
-    }
-  };
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          setUser(session.user);
+          await loadUserProfile(session.user.id);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setProfile(null);
+          setIsEmailVerified(false);
+          if (!pathname.startsWith('/auth')) {
+            router.push('/login');
+          }
+        } else if (event === 'USER_UPDATED') {
+          setUser(session?.user || null);
+          if (session?.user) {
+            await loadUserProfile(session.user.id);
+          }
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, [loadUserProfile, supabase, router, pathname]);
 
   const refreshUserSession = useCallback(async () => {
     try {
       const newSession = await refreshSession();
-      if (newSession) {
+      if (newSession.user) {
         setUser(newSession.user);
-        await loadUserProfile(newSession.user!.id);
-        persistSession(newSession);
+        setProfile(newSession.profile);
+        // Schedule next refresh for 5 minutes before token expiry
+        const session = await supabase.auth.getSession();
+        const expiresAt = session.data.session?.expires_at || 0;
+        const expiresIn = expiresAt * 1000 - Date.now() - 5 * 60 * 1000;
+        if (expiresIn > 0) {
+          refreshTimeoutRef.current = setTimeout(refreshUserSession, expiresIn);
+        }
+      } else {
+        // Handle session expiry
+        await signOut();
       }
     } catch (error) {
       console.error('Error refreshing session:', error);
+      toast.error('Session refresh failed');
     }
-  }, [loadUserProfile]);
+  }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      refreshUserSession();
-    }, 15 * 60 * 1000); // Refresh every 15 minutes
+    // Initial refresh schedule
+    const scheduleRefresh = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.expires_at) {
+        const expiresIn = session.expires_at * 1000 - Date.now() - 5 * 60 * 1000;
+        if (expiresIn > 0) {
+          refreshTimeoutRef.current = setTimeout(refreshUserSession, expiresIn);
+        }
+      }
+    };
 
-    return () => clearInterval(interval);
-  }, [refreshUserSession]);
-
-  useEffect(() => {
-    const storedSession = localStorage.getItem('auth_session');
-    if (storedSession) {
-      const session = JSON.parse(storedSession);
-      setUser(session.user);
-      loadUserProfile(session.user.id);
+    if (user) {
+      scheduleRefresh();
     }
-  }, [loadUserProfile]);
+
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, [user, refreshUserSession]);
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-
       if (error) throw error;
-
-      if (data.user) {
-        setUser(data.user);
-        await loadUserProfile(data.user.id);
-        persistSession(data.session);
-        router.push('/dashboard');
-      }
+      router.push('/dashboard');
+      toast.success('Welcome back!');
     } catch (error: any) {
-      toast.error(error.message);
+      console.error('Sign in error:', error);
+      toast.error(error.message || 'Failed to sign in');
       throw error;
     }
   };
@@ -143,28 +179,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: { role },
         },
       });
-
       if (error) throw error;
-
       if (data.user) {
         toast.success('Please check your email to verify your account');
+        router.push('/verify-email');
       }
     } catch (error: any) {
-      toast.error(error.message);
+      console.error('Sign up error:', error);
+      toast.error(error.message || 'Failed to sign up');
       throw error;
     }
   };
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      clearSessionCache(user?.id || '');
       setUser(null);
       setProfile(null);
-      persistSession(null);
-      router.push('/');
+      setIsEmailVerified(false);
+      router.push('/login');
+      toast.success('Signed out successfully');
     } catch (error: any) {
-      toast.error(error.message);
-      throw error;
+      console.error('Sign out error:', error);
+      toast.error(error.message || 'Failed to sign out');
     }
   };
 

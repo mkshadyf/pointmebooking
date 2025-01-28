@@ -50,19 +50,30 @@ export default function AppLayout({
         router.push('/dashboard/business');
         return;
       }
+
+      // Handle plain /dashboard route
+      if (pathname === '/dashboard') {
+        if (profile?.role === 'business') {
+          router.push('/dashboard/business');
+        } else if (profile?.role === 'customer') {
+          router.push('/dashboard/customer');
+        }
+        return;
+      }
     }
   }, [loading, user, profile, isEmailVerified, pathname, router]);
 
   if (loading) {
-    return <LoadingSpinner />;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
   }
-
-  // Don't show MainNav in business dashboard
-  const showMainNav = !pathname.startsWith('/dashboard/business');
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {showMainNav && <MainNav />}
+      <MainNav />
       <main className="pt-16">
         {children}
       </main>

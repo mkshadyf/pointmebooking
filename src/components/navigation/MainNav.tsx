@@ -23,8 +23,10 @@ export default function MainNav() {
     { name: 'Businesses', href: '/businesses' },
     ...(profile?.role === 'business'
       ? [{ name: 'Dashboard', href: '/dashboard/business' }]
+      : profile?.role === 'customer'
+      ? [{ name: 'Dashboard', href: '/dashboard/customer' }]
       : []),
-  ];
+  ]; 
 
   const userNavigation = [
     { name: 'Your Profile', href: `/dashboard/${profile?.role}` },

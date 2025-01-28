@@ -1,9 +1,15 @@
 'use client';
 
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ServiceSlideshow } from '@/components/home/ServiceSlideshow';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { useAppStore } from '@/lib/store';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Category } from '@/types';
+import MainNav from '@/components/navigation/MainNav';
 import { 
   CalendarIcon, 
   ClockIcon, 
@@ -11,8 +17,31 @@ import {
   UserGroupIcon,
   ChartBarIcon,
   ShieldCheckIcon,
-  ArrowRightIcon
+  ArrowRightIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
+
+// Define the interface for static categories
+interface StaticCategory {
+  name: string;
+  image: string;
+  href: string;
+}
+
+// Type guard to check if a category is a StaticCategory
+function isStaticCategory(category: Category | StaticCategory): category is StaticCategory {
+  return 'href' in category && 'image' in category;
+}
+
+// Helper function to get category image
+function getCategoryImage(category: Category | StaticCategory): string {
+  if (isStaticCategory(category)) {
+    return category.image;
+  }
+  // For dynamic categories, use icon or fallback
+  return `/images/categories/${category.icon || 'default'}.jpg`;
+}
 
 const features = [
   {
@@ -47,102 +76,322 @@ const features = [
   },
 ];
 
+const popularCategories: StaticCategory[] = [
+  { name: 'Beauty & Spa', image: '/categories/beauty.jpg', href: '/services/beauty' },
+  { name: 'Health & Fitness', image: '/categories/fitness.jpg', href: '/services/fitness' },
+  { name: 'Home Services', image: '/categories/home.jpg', href: '/services/home' },
+  { name: 'Professional Services', image: '/categories/professional.jpg', href: '/services/professional' },
+];
+
 export default function Home() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, profile } = useAuth();
+  const { categories } = useAppStore();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+
+  // Handle search submission
+  const handleSearch = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/services?search=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  }, [searchQuery, router]);
+
+  // Memoize conditional content
+  const heroContent = useMemo(() => user ? {
+    title: `Welcome Back, ${profile?.full_name}!`,
+    description: 'Continue exploring amazing services in your area',
+    buttons: (
+      <>
+        <Link
+          href="/dashboard/customer"
+          className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition duration-150"
+          aria-label="Go to your dashboard"
+        >
+          Go to Dashboard
+          <ArrowRightIcon className="ml-2 -mr-1 h-5 w-5" aria-hidden="true" />
+        </Link>
+        <Link
+          href="/services"
+          className="inline-flex items-center px-8 py-3 border border-white text-base font-medium rounded-md text-white hover:bg-white hover:text-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-all duration-150"
+          aria-label="Browse available services"
+        >
+          Browse Services
+        </Link>
+      </>
+    )
+  } : {
+    title: 'Book Local Services with Ease',
+    description: "Discover and book the best local services. From beauty to home maintenance, we've got you covered.",
+    buttons: (
+      <>
+        <Link
+          href="/services"
+          className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition duration-150"
+          aria-label="Browse our services"
+        >
+          Browse Services
+          <ArrowRightIcon className="ml-2 -mr-1 h-5 w-5" aria-hidden="true" />
+        </Link>
+        <Link
+          href="/register"
+          className="inline-flex items-center px-8 py-3 border border-white text-base font-medium rounded-md text-white hover:bg-white hover:text-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-all duration-150"
+          aria-label="Register your business"
+        >
+          List Your Business
+        </Link>
+      </>
+    )
+  }, [user, profile?.full_name]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setShowInstallPrompt(true);
+    }, 30000);
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   return (
-    <div className="bg-white">
-      {/* Hero section */}
-      <div className="relative isolate overflow-hidden">
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-primary-dark/30" />
-          <Image
-            src="/images/hero-bg.jpg"
-            alt="Background"
-            fill
-            className="h-full w-full object-cover"
-            priority
-          />
-        </div>
+    <>
+      <MainNav />
+      <main className="min-h-screen flex flex-col" role="main">
+        {/* Hero Section */}
+        <header className="relative min-h-[600px] mt-16 bg-gradient-to-br from-primary to-primary-dark" role="banner">
+          <div className="absolute inset-0">
+            <Image
+              src="/images/hero-pattern.png"
+              alt=""
+              fill
+              className="opacity-10 object-cover"
+              priority
+              sizes="100vw"
+              aria-hidden="true"
+            />
+          </div>
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+            <div className="text-center">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6 animate-fade-in">
+                {heroContent.title}
+              </h1>
+              <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto animate-fade-in-delay">
+                {heroContent.description}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-delay-2">
+                {heroContent.buttons}
+              </div>
+            </div>
 
-        <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
-          <div className="mx-auto max-w-2xl lg:mx-0">
-            <h1 className="text-4xl font-bold tracking-tight text-white sm:text-6xl">
-              Book Local Services with Ease
-            </h1>
-            <p className="mt-6 text-lg leading-8 text-gray-100">
-              Find and book trusted local service providers. From beauty treatments to professional services,
-              we've got you covered.
-            </p>
-            <div className="mt-10 flex items-center gap-x-6">
-              <Link
-                href={user ? "/services" : "/register"}
-                className="rounded-md bg-primary px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            {/* Search Bar */}
+            <form 
+              onSubmit={handleSearch} 
+              className="max-w-2xl mx-auto mt-12"
+              role="search"
+              aria-label="Search services"
+            >
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search for services..."
+                  className="w-full px-6 py-4 text-lg rounded-full shadow-lg border-2 border-white/20 bg-white/10 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50"
+                  aria-label="Search services"
+                />
+                <button 
+                  type="submit"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white text-primary hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-colors"
+                  aria-label="Submit search"
+                >
+                  <MagnifyingGlassIcon className="w-6 h-6" aria-hidden="true" />
+                  <span className="sr-only">Search</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </header>
+
+        {/* Featured Services */}
+        <section 
+          className="py-20 bg-gray-50" 
+          aria-labelledby="featured-services-heading"
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 
+                id="featured-services-heading" 
+                className="text-3xl font-bold text-gray-900"
               >
-                Get Started
-                <ArrowRightIcon className="ml-2 -mr-1 h-5 w-5 inline-block" aria-hidden="true" />
-              </Link>
-              <Link
-                href="/services"
-                className="text-sm font-semibold leading-6 text-white"
-              >
-                Browse Services <span aria-hidden="true">→</span>
-              </Link>
+                Featured Services
+              </h2>
+              <p className="mt-4 text-lg text-gray-600">
+                Discover our most popular and highly-rated services
+              </p>
+            </div>
+            <ErrorBoundary>
+              <div aria-live="polite" aria-atomic="true">
+                <ServiceSlideshow />
+              </div>
+            </ErrorBoundary>
+          </div>
+        </section>
+
+        {/* Popular Categories */}
+        <section 
+          className="py-20 px-4 sm:px-6 lg:px-8 bg-white"
+          aria-labelledby="categories-heading"
+        >
+          <div className="max-w-7xl mx-auto">
+            <h2 
+              id="categories-heading"
+              className="text-3xl font-bold text-center mb-12"
+            >
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80">
+                Popular Categories
+              </span>
+            </h2>
+            <div 
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
+              role="list"
+            >
+              {(categories.length > 0 ? categories : popularCategories).map((category) => {
+                const categoryLink = isStaticCategory(category) 
+                  ? category.href 
+                  : `/services?category=${category.id}`;
+                
+                const categoryImage = getCategoryImage(category);
+
+                return (
+                  <Link
+                    key={category.name}
+                    href={categoryLink}
+                    className="group relative rounded-xl overflow-hidden shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-300"
+                    role="listitem"
+                  >
+                    <div className="relative h-64 w-full">
+                      <Image
+                        src={categoryImage}
+                        alt={`${category.name} category`}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 p-4">
+                      <h3 className="text-xl font-semibold text-white group-hover:translate-x-2 transition-transform duration-300">
+                        {category.name}
+                      </h3>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </div>
-        </div>
-      </div>
+        </section>
 
-      {/* Featured Services */}
-      <section className="py-16 bg-gray-50">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Featured Services
+        {/* Features Grid */}
+        <section 
+          className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50"
+          aria-labelledby="features-heading"
+        >
+          <div className="max-w-7xl mx-auto">
+            <h2 
+              id="features-heading"
+              className="text-3xl font-bold text-center mb-12"
+            >
+              Why Choose PointMe?
             </h2>
-            <p className="mt-2 text-lg leading-8 text-gray-600">
-              Discover our most popular services and book your next appointment.
-            </p>
-          </div>
-          <ServiceSlideshow />
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="py-24 sm:py-32">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl lg:text-center">
-            <h2 className="text-base font-semibold leading-7 text-primary">
-              Why Choose PointMe
-            </h2>
-            <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Everything you need to manage your bookings
-            </p>
-            <p className="mt-6 text-lg leading-8 text-gray-600">
-              We make it easy for you to find, book, and manage your service appointments.
-              Our platform is designed with both customers and businesses in mind.
-            </p>
-          </div>
-          <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
-            <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
+            <div 
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+              role="list"
+            >
               {features.map((feature) => (
-                <div key={feature.name} className="flex flex-col">
-                  <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
-                    <feature.icon
-                      className="h-5 w-5 flex-none text-primary"
-                      aria-hidden="true"
-                    />
-                    {feature.name}
-                  </dt>
-                  <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-gray-600">
-                    <p className="flex-auto">{feature.description}</p>
-                  </dd>
+                <div 
+                  key={feature.name} 
+                  className="relative bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border border-gray-100"
+                  role="listitem"
+                >
+                  <div>
+                    <span className="absolute h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <feature.icon className="h-6 w-6 text-primary" aria-hidden="true" />
+                    </span>
+                    <h3 className="ml-16 text-xl font-semibold mb-4">{feature.name}</h3>
+                  </div>
+                  <p className="mt-2 text-gray-600 leading-relaxed">{feature.description}</p>
                 </div>
               ))}
-            </dl>
+            </div>
           </div>
-        </div>
-      </section>
-    </div>
+        </section>
+
+        {/* CTA Section */}
+        <section 
+          className="relative bg-gradient-to-r from-primary to-primary/90 py-20 px-4 sm:px-6 lg:px-8"
+          aria-label="Call to action"
+        >
+          <div className="max-w-7xl mx-auto text-center">
+            <h2 className="text-3xl font-bold text-white mb-8">
+              {user ? 'Ready to Book Your Next Service?' : 'Ready to Get Started?'}
+            </h2>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              {user ? (
+                <Link
+                  href="/services"
+                  className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-primary bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition duration-150"
+                  aria-label="Browse available services"
+                >
+                  Browse Services
+                  <ArrowRightIcon className="ml-2 -mr-1 h-5 w-5" aria-hidden="true" />
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-primary bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition duration-150"
+                    aria-label="Sign in to your account"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="inline-flex items-center px-8 py-3 border border-white text-base font-medium rounded-md text-white hover:bg-white hover:text-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-all duration-150"
+                    aria-label="Create a new account"
+                  >
+                    Create Account
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Install Prompt - Only show once per session and after 30 seconds */}
+        {user && showInstallPrompt && (
+          <div
+            className="fixed bottom-4 right-4 p-4 bg-white rounded-lg shadow-lg max-w-sm transform transition-transform duration-300 ease-in-out"
+            style={{ transform: 'translateY(0)' }}
+            id="install-prompt"
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-gray-900">
+                Get the PointMe app
+              </p>
+              <button
+                onClick={() => {
+                  const prompt = document.getElementById('install-prompt');
+                  if (prompt) prompt.style.transform = 'translateY(120%)';
+                }}
+                className="ml-4 text-gray-400 hover:text-gray-500"
+              >
+                <span className="sr-only">Close</span>
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
+    </>
   );
 }

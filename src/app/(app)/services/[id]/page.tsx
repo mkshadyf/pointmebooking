@@ -220,7 +220,7 @@ export default function ServiceDetailPage() {
                     <div className="text-sm text-gray-600">
                       <p>Date: {format(selectedDate, 'MMMM d, yyyy')}</p>
                       <p>Time: {selectedTime}</p>
-                      <p className="mt-2 font-medium text-primary">Total: ${service.price}</p>
+                      <p className="mt-2 font-medium text-primary">Total: R{service.price}</p>
                     </div>
                   </div>
                 )}
