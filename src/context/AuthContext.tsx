@@ -1,12 +1,14 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { User } from '@supabase/supabase-js';
 import { UserProfile } from '@/types';
 import type { AuthError } from '@supabase/supabase-js';
 import type { Database } from '@/types';
+
+const TIMEOUT_DURATION = 10000; // 10 seconds timeout
 
 interface AuthContextType {
   user: User | null;
@@ -40,6 +42,25 @@ const AuthContext = createContext<AuthContextType>({
   updateProfile: async () => {},
 });
 
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  let timeoutId: NodeJS.Timeout | undefined;
+  
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error('Request timed out'));
+    }, timeoutMs);
+  });
+
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    if (timeoutId) clearTimeout(timeoutId);
+    return result;
+  } catch (error) {
+    if (timeoutId) clearTimeout(timeoutId);
+    throw error;
+  }
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -48,39 +69,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const supabase = createClientComponentClient<Database>();
 
+  const fetchProfile = useCallback(async (userId: string) => {
+    try {
+      const promise = Promise.resolve(
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single()
+      ).then(({ data, error }) => {
+        if (error) throw error;
+        return { data, error };
+      });
+
+      const { data: profile, error } = await withTimeout(promise, TIMEOUT_DURATION);
+
+      if (error) throw error;
+      if (profile) {
+        setProfile(profile as UserProfile);
+        setIsEmailVerified(profile.email_verified);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      setProfile(null);
+      setIsEmailVerified(false);
+    }
+  }, [supabase]);
+
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Get authenticated user using getUser()
-        const { data: { user: authenticatedUser }, error: userError } = await supabase.auth.getUser();
-        
-        if (userError) {
-          throw userError;
-        }
+        const promise = Promise.resolve(
+          supabase.auth.getUser()
+        ).then(({ data, error }) => {
+          if (error) throw error;
+          return { data, error };
+        });
+
+        const { data: { user: authenticatedUser }, error: userError } = await withTimeout(promise, TIMEOUT_DURATION);
+
+        if (userError) throw userError;
 
         setUser(authenticatedUser);
-
         if (authenticatedUser) {
-          // Fetch user profile
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', authenticatedUser.id)
-            .single();
-
-          if (profileError) {
-            throw profileError;
-          }
-
-          if (profile) {
-            setProfile(profile as UserProfile);
-            setIsEmailVerified(profile.email_verified);
-          }
+          await fetchProfile(authenticatedUser.id);
         }
       } catch (error) {
         console.error('Error loading auth:', error);
         setUser(null);
         setProfile(null);
+        setIsEmailVerified(false);
       } finally {
         setLoading(false);
       }
@@ -88,24 +126,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initAuth();
 
-    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        // Verify user with getUser()
-        const { data: { user: verifiedUser } } = await supabase.auth.getUser();
-        setUser(verifiedUser);
+        try {
+          const promise = Promise.resolve(
+            supabase.auth.getUser()
+          ).then(({ data, error }) => {
+            if (error) throw error;
+            return { data, error };
+          });
 
-        if (verifiedUser) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', verifiedUser.id)
-            .single();
-          
-          if (profile) {
-            setProfile(profile as UserProfile);
-            setIsEmailVerified(profile.email_verified);
+          const { data: { user: verifiedUser } } = await withTimeout(promise, TIMEOUT_DURATION);
+
+          setUser(verifiedUser);
+          if (verifiedUser) {
+            await fetchProfile(verifiedUser.id);
           }
+        } catch (error) {
+          console.error('Error during auth state change:', error);
+          setUser(null);
+          setProfile(null);
+          setIsEmailVerified(false);
         }
       }
 
@@ -120,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase, router]);
+  }, [supabase, router, fetchProfile]);
 
   const signOut = async () => {
     try {
@@ -132,28 +173,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
+    setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const promise = Promise.resolve(
+        supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+      ).then(({ data, error }) => {
+        if (error) throw error;
+        return { data, error };
       });
+
+      const { data, error } = await withTimeout(promise, TIMEOUT_DURATION);
+
       if (error) throw error;
-      router.push('/dashboard');
+      if (data.user) {
+        await fetchProfile(data.user.id);
+        router.push('/dashboard');
+      }
     } catch (error: any) {
       console.error('Sign in error:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string, role: 'business' | 'customer') => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { role },
-        },
+      const promise = Promise.resolve(
+        supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { role },
+          },
+        })
+      ).then(({ data, error }) => {
+        if (error) throw error;
+        return { data, error };
       });
+
+      const { data, error } = await withTimeout(promise, TIMEOUT_DURATION);
+
       if (error) throw error;
       if (data.user) {
         router.push('/verify-email');
@@ -161,49 +225,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error('Sign up error:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const signInWithGoogle = async () => {
+    setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/v1/callback`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
+      const promise = Promise.resolve(
+        supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/auth/v1/callback`,
+            queryParams: {
+              access_type: 'offline',
+              prompt: 'consent',
+            },
           },
-        },
+        })
+      ).then(({ error }) => {
+        if (error) throw error;
+        return { error };
       });
+
+      const { error } = await withTimeout(promise, TIMEOUT_DURATION);
 
       if (error) throw error;
     } catch (error) {
       if (error instanceof Error) {
         throw error;
       }
+    } finally {
+      setLoading(false);
     }
   };
 
   const resetPassword = async (email: string) => {
+    setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const promise = Promise.resolve(
+        supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        })
+      ).then(({ error }) => {
+        if (error) throw error;
+        return { error };
       });
+
+      const { error } = await withTimeout(promise, TIMEOUT_DURATION);
 
       if (error) throw error;
     } catch (error) {
       if (error instanceof Error) {
         throw error;
       }
+    } finally {
+      setLoading(false);
     }
   };
 
   const verifyResetCode = async (code: string, newPassword: string) => {
+    setLoading(true);
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword,
+      const promise = Promise.resolve(
+        supabase.auth.updateUser({
+          password: newPassword,
+        })
+      ).then(({ error }) => {
+        if (error) throw error;
+        return { error };
       });
+
+      const { error: updateError } = await withTimeout(promise, TIMEOUT_DURATION);
 
       if (updateError) throw updateError;
       router.push('/login');
@@ -211,119 +305,156 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error instanceof Error) {
         throw error;
       }
+    } finally {
+      setLoading(false);
     }
   };
 
   const verifyEmail = async (code: string) => {
+    setLoading(true);
     try {
       if (!user) throw new Error('No user found');
 
-      // First verify the code
-      const { data: profiles, error: verifyError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .eq('verification_code', code)
-        .single();
+      const verifyPromise = Promise.resolve(
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .eq('verification_code', code)
+          .single()
+      ).then(({ data, error }) => {
+        if (error) throw error;
+        return { data, error };
+      });
+
+      const { data: profiles, error: verifyError } = await withTimeout(verifyPromise, TIMEOUT_DURATION);
 
       if (verifyError || !profiles) {
         throw new Error('Invalid verification code');
       }
 
-      // Update profile to mark email as verified
-      const { data: profile, error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          email_verified: true,
-          verification_code: undefined
-        })
-        .eq('id', user.id)
-        .select('*')
-        .single();
+      const updatePromise = Promise.resolve(
+        supabase
+          .from('profiles')
+          .update({
+            email_verified: true,
+            verification_code: undefined
+          })
+          .eq('id', user.id)
+          .select('*')
+          .single()
+      ).then(({ data, error }) => {
+        if (error) throw error;
+        return { data, error };
+      });
+
+      const { data: profile, error: updateError } = await withTimeout(updatePromise, TIMEOUT_DURATION);
 
       if (updateError) throw updateError;
 
-      setIsEmailVerified(true);
       setProfile(profile as UserProfile);
+      setIsEmailVerified(true);
+      router.push('/dashboard');
 
-      // Redirect based on role and onboarding status
-      if (profile?.role === 'business') {
-        if (profile.onboarding_completed) {
-          router.push('/dashboard/business');
-        } else {
-          router.push('/onboarding/business');
-        }
-      } else {
-        router.push('/dashboard/customer');
-      }
     } catch (error) {
+      console.error('Error verifying email:', error);
       if (error instanceof Error) {
         throw error;
       }
+    } finally {
+      setLoading(false);
     }
   };
 
   const resendVerificationEmail = async () => {
+    setLoading(true);
     try {
       if (!user) throw new Error('No user found');
 
-      // Generate new verification code
       const verificationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-      // Update profile with new verification code
-      const { data: profile, error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          verification_code: verificationCode,
-          email_verified: false
-        } as Database['public']['Tables']['profiles']['Update'])
-        .eq('id', user.id)
-        .select('*')
-        .single();
+      const promise = Promise.resolve(
+        supabase
+          .from('profiles')
+          .update({
+            verification_code: verificationCode,
+            email_verified: false
+          } as Database['public']['Tables']['profiles']['Update'])
+          .eq('id', user.id)
+          .select('*')
+          .single()
+      ).then(({ data, error }) => {
+        if (error) throw error;
+        return { data, error };
+      });
+
+      const { data: profile, error: updateError } = await withTimeout(promise, TIMEOUT_DURATION);
 
       if (updateError) throw updateError;
 
       setProfile(profile as UserProfile);
       setIsEmailVerified(false);
 
-      // Here you would normally send the email with the verification code
       console.log('New verification code:', verificationCode);
 
     } catch (error) {
+      console.error('Error resending verification:', error);
       if (error instanceof Error) {
         throw error;
       }
+    } finally {
+      setLoading(false);
     }
   };
 
   const updateProfile = async (data: Partial<UserProfile>) => {
+    setLoading(true);
     try {
       if (!user) throw new Error('No user found');
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({ ...data, updated_at: new Date().toISOString() })
-        .eq('id', user.id);
+      const promise = Promise.resolve(
+        supabase
+          .from('profiles')
+          .update({ ...data, updated_at: new Date().toISOString() })
+          .eq('id', user.id)
+      ).then(({ error }) => {
+        if (error) throw error;
+        return { error };
+      });
+
+      const { error } = await withTimeout(promise, TIMEOUT_DURATION);
 
       if (error) throw error;
 
-      // Reload profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      setProfile(profile as UserProfile);
+      await fetchProfile(user.id);
     } catch (error) {
+      console.error('Error updating profile:', error);
       if (error instanceof Error) {
         throw error;
       }
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, isEmailVerified, signOut, signIn, signUp, signInWithGoogle, resetPassword, verifyResetCode, verifyEmail, resendVerificationEmail, updateProfile }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        profile,
+        loading,
+        isEmailVerified,
+        signOut,
+        signIn,
+        signUp,
+        signInWithGoogle,
+        resetPassword,
+        verifyResetCode,
+        verifyEmail,
+        resendVerificationEmail,
+        updateProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

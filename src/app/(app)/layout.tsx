@@ -27,43 +27,35 @@ export default function AppLayout({
         return;
       }
 
-      if (!isEmailVerified) {
+      // Handle email verification
+      if (!isEmailVerified && !pathname.startsWith('/verify-email')) {
         router.push('/verify-email');
         return;
       }
 
-      // Handle business routes
-      if (pathname.startsWith('/dashboard/business')) {
-        if (profile?.role !== 'business') {
-          router.push('/dashboard/customer');
-          return;
-        }
-
-        if (!profile.onboarding_completed && pathname !== '/onboarding/business') {
-          router.push('/onboarding/business');
-          return;
-        }
-      }
-
-      // Handle customer routes
-      if (pathname.startsWith('/dashboard/customer') && profile?.role !== 'customer') {
-        router.push('/dashboard/business');
-        return;
-      }
-
-      // Handle plain /dashboard route
-      if (pathname === '/dashboard') {
-        if (profile?.role === 'business') {
-          router.push('/dashboard/business');
-        } else if (profile?.role === 'customer') {
-          router.push('/dashboard/customer');
-        }
+      // Handle onboarding
+      if (profile?.role === 'business' && !profile.onboarding_completed && !pathname.startsWith('/onboarding')) {
+        router.push('/onboarding/business');
         return;
       }
     }
   }, [loading, user, profile, isEmailVerified, pathname, router]);
 
   if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  // Don't show loading for public routes
+  if (pathname.startsWith('/auth') || pathname === '/' || pathname === '/services' || pathname === '/businesses') {
+    return children;
+  }
+
+  // Show loading for protected routes until we have user data
+  if (!user || (profile?.role === 'business' && !profile.onboarding_completed)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner />
