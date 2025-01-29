@@ -5,7 +5,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/calendar/Calendar';
 import { BookingForm } from '@/components/bookings/BookingForm';
-import { withAuth } from '@/components/auth/withAuth';
+import { withAuth } from '@/lib/auth/withAuth';
 import { Booking, Service } from '@/types';
 import { useAppStore } from '@/lib/store';
 

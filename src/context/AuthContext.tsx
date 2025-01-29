@@ -10,7 +10,7 @@ import type { Database } from '@/types';
 
 const TIMEOUT_DURATION = 10000; // 10 seconds timeout
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
@@ -26,7 +26,7 @@ interface AuthContextType {
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({
+const defaultContext: AuthContextType = {
   user: null,
   profile: null,
   loading: true,
@@ -40,7 +40,9 @@ const AuthContext = createContext<AuthContextType>({
   verifyEmail: async () => {},
   resendVerificationEmail: async () => {},
   updateProfile: async () => {},
-});
+};
+
+export const AuthContext = createContext<AuthContextType>(defaultContext);
 
 const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
   let timeoutId: NodeJS.Timeout | undefined;
@@ -66,7 +68,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [initialized, setInitialized] = useState(false);
   const router = useRouter();
+  
   const supabase = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -74,83 +78,87 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-      const promise = Promise.resolve(
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single()
-      ).then(({ data, error }) => {
-        if (error) throw error;
-        return { data, error };
-      });
-
-      const { data: profile, error } = await withTimeout(promise, TIMEOUT_DURATION);
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
       if (error) throw error;
+      
       if (profile) {
         setProfile(profile as UserProfile);
         setIsEmailVerified(profile.email_verified);
+        return profile as UserProfile;
       }
+      return null;
     } catch (error) {
       console.error('Error fetching profile:', error);
       setProfile(null);
       setIsEmailVerified(false);
+      return null;
     }
   }, [supabase]);
 
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        const promise = Promise.resolve(
-          supabase.auth.getUser()
-        ).then(({ data, error }) => {
-          if (error) throw error;
-          return { data, error };
-        });
+  const handleAuthStateChange = useCallback(async () => {
+    try {
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) throw userError;
 
-        const { data: { user: authenticatedUser }, error: userError } = await withTimeout(promise, TIMEOUT_DURATION);
+      setUser(currentUser);
 
-        if (userError) throw userError;
+      if (currentUser) {
+        const userProfile = await fetchProfile(currentUser.id);
+        
+        if (!userProfile) {
+          // If no profile exists, create one
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert([
+              {
+                id: currentUser.id,
+                user_id: currentUser.id,
+                email: currentUser.email,
+                full_name: currentUser.user_metadata.full_name || '',
+                role: 'customer',
+                email_verified: false,
+                status: 'active',
+                onboarding_completed: false,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+            ])
+            .select('*')
+            .single();
 
-        setUser(authenticatedUser);
-        if (authenticatedUser) {
-          await fetchProfile(authenticatedUser.id);
+          if (createError) throw createError;
+          if (newProfile) {
+            setProfile(newProfile as UserProfile);
+            setIsEmailVerified(false);
+          }
         }
-      } catch (error) {
-        console.error('Error loading auth:', error);
-        setUser(null);
+      } else {
         setProfile(null);
         setIsEmailVerified(false);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error('Error in auth state change:', error);
+      setUser(null);
+      setProfile(null);
+      setIsEmailVerified(false);
+    } finally {
+      setLoading(false);
+      setInitialized(true);
+    }
+  }, [supabase, fetchProfile]);
 
-    initAuth();
+  useEffect(() => {
+    handleAuthStateChange();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        try {
-          const promise = Promise.resolve(
-            supabase.auth.getUser()
-          ).then(({ data, error }) => {
-            if (error) throw error;
-            return { data, error };
-          });
-
-          const { data: { user: verifiedUser } } = await withTimeout(promise, TIMEOUT_DURATION);
-
-          setUser(verifiedUser);
-          if (verifiedUser) {
-            await fetchProfile(verifiedUser.id);
-          }
-        } catch (error) {
-          console.error('Error during auth state change:', error);
-          setUser(null);
-          setProfile(null);
-          setIsEmailVerified(false);
-        }
+        await handleAuthStateChange();
       }
 
       if (event === 'SIGNED_OUT') {
@@ -164,7 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase, router, fetchProfile]);
+  }, [supabase, router, handleAuthStateChange]);
 
   const signOut = async () => {
     try {
@@ -439,6 +447,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     }
   };
+
+  if (!initialized) {
+    return null;
+  }
 
   return (
     <AuthContext.Provider

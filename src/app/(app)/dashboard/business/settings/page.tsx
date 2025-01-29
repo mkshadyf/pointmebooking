@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
-import { withAuth } from '@/components/auth/withAuth';
+
 import { useAuth } from '@/context/AuthContext';
 import { BusinessProfile } from '@/types';
 import { toast } from 'react-hot-toast';
@@ -14,6 +14,7 @@ import {
   FormGroup,
   Button,
 } from '@/components/ui/form';
+import { withAuth } from '@/lib/auth/withAuth';
 
 function BusinessSettingsPage() {
   const { user } = useAuth();
