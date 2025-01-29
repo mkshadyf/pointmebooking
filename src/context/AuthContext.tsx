@@ -200,8 +200,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error;
       if (data.user) {
-        await fetchProfile(data.user.id);
-        router.push('/dashboard');
+        const userProfile = await fetchProfile(data.user.id);
+        const dashboardPath = userProfile?.role === 'business' 
+                            ? '/dashboard/business' 
+                            : '/dashboard/customer';
+        router.replace(dashboardPath);
       }
     } catch (error: any) {
       console.error('Sign in error:', error);

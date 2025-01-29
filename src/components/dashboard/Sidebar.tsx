@@ -3,18 +3,19 @@
 import { Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 
+type UserRole = 'business' | 'customer';
+
 interface SidebarProps {
   isOpen: boolean;
-  onClose: () => void;
+  setIsOpen: (isOpen: boolean) => void;
+  userRole: UserRole;
 }
 
-export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
-  const { profile } = useAuth();
+export const Sidebar = ({ isOpen, setIsOpen, userRole }: SidebarProps) => {
   const pathname = usePathname();
 
   const businessNavigation = [
@@ -32,13 +33,13 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     { name: 'Settings', href: '/dashboard/customer/settings' },
   ];
 
-  const navigation = profile?.role === 'business' ? businessNavigation : customerNavigation;
+  const navigation = userRole === 'business' ? businessNavigation : customerNavigation;
 
   return (
     <>
       {/* Mobile Sidebar */}
       <Transition.Root show={isOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-50 lg:hidden" onClose={onClose}>
+        <Dialog as="div" className="relative z-50 lg:hidden" onClose={() => setIsOpen(false)}>
           <Transition.Child
             as={Fragment}
             enter="transition-opacity ease-linear duration-300"
@@ -75,33 +76,25 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                     <button
                       type="button"
                       className="-m-2.5 p-2.5"
-                      onClick={onClose}
+                      onClick={() => setIsOpen(false)}
                     >
                       <span className="sr-only">Close sidebar</span>
-                      <XMarkIcon
-                        className="h-6 w-6 text-white"
-                        aria-hidden="true"
-                      />
+                      <XMarkIcon className="h-6 w-6 text-white" aria-hidden="true" />
                     </button>
                   </div>
                 </Transition.Child>
 
-                {/* Sidebar content */}
+                {/* Sidebar component for mobile */}
                 <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4">
                   <div className="flex h-16 shrink-0 items-center">
-                    <Link href="/" className="flex items-center space-x-2">
-                      <Image
-                        src="/logo.svg"
-                        alt="PointMe!"
-                        width={32}
-                        height={32}
-                        className="h-8 w-auto"
-                        priority
-                      />
-                      <span className="text-xl font-semibold text-gray-900">
-                        PointMe!
-                      </span>
-                    </Link>
+                    <Image
+                      src="/logo.svg"
+                      alt="PointMe"
+                      width={120}
+                      height={40}
+                      className="h-8 w-auto"
+                      priority
+                    />
                   </div>
                   <nav className="flex flex-1 flex-col">
                     <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -112,14 +105,13 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                               <Link
                                 href={item.href}
                                 className={`
-                                  group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold
+                                  group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6
                                   ${
                                     pathname === item.href
-                                      ? 'bg-gray-50 text-primary'
-                                      : 'text-gray-700 hover:text-primary hover:bg-gray-50'
+                                      ? 'bg-gray-50 text-indigo-600'
+                                      : 'text-gray-700 hover:text-indigo-600 hover:bg-gray-50'
                                   }
                                 `}
-                                onClick={onClose}
                               >
                                 {item.name}
                               </Link>
@@ -136,23 +128,18 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         </Dialog>
       </Transition.Root>
 
-      {/* Desktop Sidebar */}
+      {/* Static sidebar for desktop */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
         <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 pb-4">
           <div className="flex h-16 shrink-0 items-center">
-            <Link href="/" className="flex items-center space-x-2">
-              <Image
-                src="/logo.svg"
-                alt="PointMe!"
-                width={32}
-                height={32}
-                className="h-8 w-auto"
-                priority
-              />
-              <span className="text-xl font-semibold text-gray-900">
-                PointMe!
-              </span>
-            </Link>
+            <Image
+              src="/logo.svg"
+              alt="PointMe"
+              width={120}
+              height={40}
+              className="h-8 w-auto"
+              priority
+            />
           </div>
           <nav className="flex flex-1 flex-col">
             <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -163,11 +150,11 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                       <Link
                         href={item.href}
                         className={`
-                          group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold
+                          group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6
                           ${
                             pathname === item.href
-                              ? 'bg-gray-50 text-primary'
-                              : 'text-gray-700 hover:text-primary hover:bg-gray-50'
+                              ? 'bg-gray-50 text-indigo-600'
+                              : 'text-gray-700 hover:text-indigo-600 hover:bg-gray-50'
                           }
                         `}
                       >
@@ -183,4 +170,4 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       </div>
     </>
   );
-}
+};

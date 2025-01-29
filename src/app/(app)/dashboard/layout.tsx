@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Header from '@/components/dashboard/Header';
-import {Sidebar} from '@/components/dashboard/Sidebar';
+import { Sidebar } from '@/components/dashboard/Sidebar';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 export default function DashboardLayout({
   children,
@@ -12,60 +13,89 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, profile, loading } = useAuth();
+  const [mounted, setMounted] = useState(false);
+  const { user, profile, loading, isEmailVerified } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Protect dashboard routes
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
+    if (!loading) {
+      if (!user) {
+        router.replace(`/login?redirectTo=${encodeURIComponent(pathname)}`);
+        return;
+      }
+
+      if (!isEmailVerified) {
+        router.replace('/verify-email');
+        return;
+      }
+
+      if (profile?.role === 'business' && !profile.onboarding_completed) {
+        router.replace('/onboarding/business');
+        return;
+      }
+
+      // Ensure users are in their correct dashboard
+      const correctPath = profile?.role === 'business' 
+        ? '/dashboard/business'
+        : '/dashboard/customer';
+        
+      if (pathname === '/dashboard') {
+        router.replace(correctPath);
+      } else if (!pathname.startsWith(correctPath)) {
+        router.replace(correctPath);
+      }
     }
-  }, [user, loading, router]);
+  }, [user, profile, loading, isEmailVerified, pathname, router]);
 
   // Get the page title from the current path
   const getTitle = () => {
     const segments = pathname.split('/');
     const lastSegment = segments[segments.length - 1];
     
-    // Handle special cases
     if (lastSegment === 'business' || lastSegment === 'customer') {
       return 'Dashboard';
     }
     
-    // Capitalize and format the title
     return lastSegment
       .split('-')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
   };
 
-  // Handle loading state
-  if (loading) {
+  if (!mounted || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner className="lg" />
       </div>
     );
   }
 
-  // Handle unauthorized access
-  if (!user || !profile) {
+  if (!user || !isEmailVerified || !profile) {
     return null;
   }
 
   return (
-    <div className="min-h-screen">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
+    <div className="min-h-screen bg-gray-100">
+      <Sidebar 
+        isOpen={sidebarOpen} 
+        setIsOpen={setSidebarOpen}
+        userRole={profile.role as 'business' | 'customer'} 
+      />
+      
       <div className="lg:pl-72">
-        <Header
+        <Header 
+          title={getTitle()} 
           onMenuClick={() => setSidebarOpen(true)}
-          title={getTitle()}
+          userRole={profile.role as 'business' | 'customer'}
         />
-
         <main className="py-10">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="px-4 sm:px-6 lg:px-8">
             {children}
           </div>
         </main>

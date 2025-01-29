@@ -1,7 +1,7 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
@@ -12,53 +12,63 @@ export function withAuth<P extends object>(
   allowedRoles?: UserRole | UserRole[]
 ) {
   return function WithAuthComponent(props: P) {
+    const [mounted, setMounted] = useState(false);
     const auth = useAuth();
     const { user, profile, loading, isEmailVerified } = auth;
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectTo = searchParams.get('redirectTo');
+
+    useEffect(() => {
+      setMounted(true);
+    }, []);
 
     useEffect(() => {
       if (!loading) {
-        // Handle unauthenticated users
-        if (!user) {
-          router.replace('/login');
-          return;
-        }
-
-        // Handle unverified emails
-        if (!isEmailVerified) {
-          router.replace('/verify-email');
-          return;
-        }
-
-        // Handle role-based access
-        if (allowedRoles) {
-          const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-          if (!profile?.role || !roles.includes(profile.role as UserRole)) {
-            // Redirect based on user's role
-            if (profile?.role === 'business') {
-              router.replace('/dashboard/business');
-            } else if (profile?.role === 'customer') {
-              router.replace('/dashboard/customer');
-            } else {
-              router.replace('/');
-            }
+        const handleAuth = async () => {
+          // Handle unauthenticated users
+          if (!user) {
+            const loginPath = redirectTo 
+              ? `/login?redirectTo=${encodeURIComponent(redirectTo)}`
+              : '/login';
+            router.replace(loginPath);
             return;
           }
-        }
 
-        // Handle incomplete business onboarding
-        if (profile?.role === 'business' && !profile.onboarding_completed) {
-          router.replace('/onboarding/business');
-          return;
-        }
+          // Handle unverified emails
+          if (!isEmailVerified) {
+            router.replace('/verify-email');
+            return;
+          }
+
+          // Handle role-based access
+          if (allowedRoles && profile?.role) {
+            const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+            if (!roles.includes(profile.role as UserRole)) {
+              const dashboardPath = profile.role === 'business' 
+                ? '/dashboard/business'
+                : '/dashboard/customer';
+              router.replace(dashboardPath);
+              return;
+            }
+          }
+
+          // Handle incomplete business onboarding
+          if (profile?.role === 'business' && !profile.onboarding_completed) {
+            router.replace('/onboarding/business');
+            return;
+          }
+        };
+
+        handleAuth();
       }
-    }, [user, profile, loading, isEmailVerified, router]);
+    }, [user, profile, loading, isEmailVerified, router, redirectTo]);
 
     // Show loading state
-    if (loading) {
+    if (!mounted || loading) {
       return (
         <div className="min-h-screen flex items-center justify-center">
-          <LoadingSpinner />
+          <LoadingSpinner className="lg" />
         </div>
       );
     }
@@ -68,7 +78,7 @@ export function withAuth<P extends object>(
       return null;
     }
 
-    if (allowedRoles && profile) {
+    if (allowedRoles && profile?.role) {
       const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
       if (!roles.includes(profile.role as UserRole)) {
         return null;

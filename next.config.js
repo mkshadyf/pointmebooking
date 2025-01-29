@@ -3,96 +3,34 @@ const withPWA = require('next-pwa')({
   disable: process.env.NODE_ENV === 'development',
   register: true,
   skipWaiting: true,
+  buildExcludes: [
+    /middleware-manifest.json$/,
+    /_middleware.js$/,
+    /_buildManifest.js$/
+  ],
+  dynamicStartUrl: false,
+  cacheStartUrl: false,
   runtimeCaching: [
     {
-      urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
+      urlPattern: /^https?:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
       handler: 'CacheFirst',
       options: {
         cacheName: 'google-fonts',
         expiration: {
           maxEntries: 4,
-          maxAgeSeconds: 365 * 24 * 60 * 60 // 365 days
+          maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
         }
       }
     },
     {
-      urlPattern: /\.(?:eot|otf|ttc|ttf|woff|woff2|font.css)$/i,
+      urlPattern: /\.(?:png|jpg|jpeg|svg|webp|avif|gif|ico)$/i,
       handler: 'StaleWhileRevalidate',
       options: {
-        cacheName: 'static-font-assets',
+        cacheName: 'image-assets',
         expiration: {
-          maxEntries: 4,
-          maxAgeSeconds: 7 * 24 * 60 * 60 // 7 days
+          maxEntries: 100,
+          maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
         }
-      }
-    },
-    {
-      urlPattern: /\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i,
-      handler: 'StaleWhileRevalidate',
-      options: {
-        cacheName: 'static-image-assets',
-        expiration: {
-          maxEntries: 64,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
-        }
-      }
-    },
-    {
-      urlPattern: /\.(?:js)$/i,
-      handler: 'StaleWhileRevalidate',
-      options: {
-        cacheName: 'static-js-assets',
-        expiration: {
-          maxEntries: 32,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
-        }
-      }
-    },
-    {
-      urlPattern: /\.(?:css|less)$/i,
-      handler: 'StaleWhileRevalidate',
-      options: {
-        cacheName: 'static-style-assets',
-        expiration: {
-          maxEntries: 32,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
-        }
-      }
-    },
-    {
-      urlPattern: /\.(?:json|xml|csv)$/i,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'static-data-assets',
-        expiration: {
-          maxEntries: 32,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
-        }
-      }
-    },
-    {
-      urlPattern: /\/api\/.*$/i,
-      handler: 'NetworkFirst',
-      method: 'GET',
-      options: {
-        cacheName: 'apis',
-        expiration: {
-          maxEntries: 16,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
-        },
-        networkTimeoutSeconds: 10
-      }
-    },
-    {
-      urlPattern: /.*/i,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'others',
-        expiration: {
-          maxEntries: 32,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
-        },
-        networkTimeoutSeconds: 10
       }
     }
   ]
@@ -104,15 +42,32 @@ const nextConfig = {
   images: {
     domains: ['images.unsplash.com', 'unsplash.com'],
     unoptimized: process.env.NODE_ENV === 'development',
+    formats: ['image/avif', 'image/webp'],
   },
-  experimental: {
-    optimizeCss: true,
-    serverComponentsExternalPackages: ['@supabase/ssr'],
-  },
+  serverExternalPackages: ['@supabase/supabase-js'],
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
   poweredByHeader: false,
+  experimental: {
+    optimizePackageImports: [
+      '@headlessui/react',
+      '@heroicons/react',
+      'date-fns',
+      'react-hot-toast'
+    ]
+  },
+  webpack: (config) => {
+    config.resolve.fallback = { 
+      fs: false,
+      net: false,
+      tls: false,
+      dns: false,
+      child_process: false,
+      worker_threads: false
+    };
+    return config;
+  }
 };
 
 module.exports = withPWA(nextConfig);

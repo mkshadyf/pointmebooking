@@ -1,137 +1,104 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
-// Define protected and public routes
-const PROTECTED_ROUTES = ['/dashboard', '/onboarding'];
-const AUTH_ROUTES = ['/login', '/register', '/forgot-password'];
-const PUBLIC_ROUTES = ['/', '/services', '/businesses'];
+// Route configurations
+const PROTECTED_ROUTES = ['/dashboard', '/onboarding']
+const AUTH_ROUTES = ['/login', '/register', '/forgot-password']
+const PUBLIC_ROUTES = ['/', '/services', '/businesses']
 
-// Helper to check if path starts with any of the given prefixes
-const pathStartsWith = (path: string, prefixes: string[]): boolean => 
-  prefixes.some(prefix => path.startsWith(prefix));
+const pathStartsWith = (path: string, prefixes: string[]): boolean =>
+  prefixes.some(prefix => path.startsWith(prefix))
 
 export async function middleware(request: NextRequest) {
-  // Initialize response
   let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
+    request: { headers: request.headers },
+  })
 
   try {
-    // Initialize Supabase client
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
           get(name: string) {
-            return request.cookies.get(name)?.value;
+            return request.cookies.get(name)?.value
           },
           set(name: string, value: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            });
+            response.cookies.set({ name, value, ...options })
           },
           remove(name: string, options: CookieOptions) {
-            response.cookies.set({
-              name,
-              value: '',
-              ...options,
-            });
+            response.cookies.set({ name, value: '', ...options })
           },
         },
       }
-    );
+    )
 
-    // Get current path
-    const path = request.nextUrl.pathname;
+    const path = request.nextUrl.pathname
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-    // Check auth status
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    // Handle user errors
+    if (userError) {
+      console.error('User error:', userError)
+      response.cookies.delete('sb-access-token')
+      response.cookies.delete('sb-refresh-token')
 
-    // Handle session error
-    if (sessionError) {
-      console.error('Session error in middleware:', sessionError);
-      // Clear any invalid session cookies
-      response.cookies.delete('sb-access-token');
-      response.cookies.delete('sb-refresh-token');
-      
-      // Only redirect to login if trying to access protected route
       if (pathStartsWith(path, PROTECTED_ROUTES)) {
-        const redirectUrl = new URL('/login', request.url);
-        redirectUrl.searchParams.set('redirectTo', path);
-        return NextResponse.redirect(redirectUrl);
+        return redirectToLogin(request, path)
       }
-      return response;
+      return response
     }
 
-    // Handle protected routes
+    // Get session separately for expiration check
+    const { data: { session } } = await supabase.auth.getSession()
+
+    // Protected routes handling
     if (pathStartsWith(path, PROTECTED_ROUTES)) {
-      if (!session) {
-        console.log('Unauthorized access attempt to protected route:', path);
-        const redirectUrl = new URL('/login', request.url);
-        redirectUrl.searchParams.set('redirectTo', path);
-        return NextResponse.redirect(redirectUrl);
+      if (!user) {
+        return redirectToLogin(request, path)
       }
 
-      // Check session expiration
-      const expiresAt = session.expires_at;
-      if (expiresAt && expiresAt * 1000 < Date.now()) {
-        console.log('Session expired, redirecting to login');
-        const redirectUrl = new URL('/login', request.url);
-        redirectUrl.searchParams.set('redirectTo', path);
-        return NextResponse.redirect(redirectUrl);
+      // Validate session expiration using actual session data
+      if (session?.expires_at && session.expires_at * 1000 < Date.now()) {
+        console.log('Session expired, redirecting to login')
+        return redirectToLogin(request, path)
       }
     }
 
-    // Handle auth routes (prevent authenticated users from accessing)
-    if (pathStartsWith(path, AUTH_ROUTES) && session) {
-      console.log('Authenticated user attempting to access auth route, redirecting to dashboard');
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+    // Prevent authenticated users from accessing auth routes
+    if (pathStartsWith(path, AUTH_ROUTES) && user) {
+      console.log('Authenticated user accessing auth route, redirecting')
+      return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
-    // Add user info to request headers for server components
-    if (session?.user) {
-      const requestHeaders = new Headers(request.headers);
-      requestHeaders.set('x-user-id', session.user.id);
-      requestHeaders.set('x-user-role', session.user.user_metadata.role || 'customer');
-
-      // Create a new response with the modified headers
-      response = NextResponse.next({
-        request: {
-          headers: requestHeaders,
-        },
-      });
+    // Add authenticated user headers using validated user data
+    if (user) {
+      const headers = new Headers(request.headers)
+      headers.set('x-user-id', user.id)
+      headers.set('x-user-role', user.user_metadata?.role || 'customer')
+      response = NextResponse.next({ request: { headers } })
     }
 
-    return response;
+    return response
   } catch (error) {
-    console.error('Middleware error:', error);
+    console.error('Middleware error:', error)
     
-    // Handle critical errors by redirecting to error page
-    // Only redirect if not already on error page to prevent loops
     if (!request.nextUrl.pathname.startsWith('/error')) {
-      return NextResponse.redirect(new URL('/error', request.url));
+      return NextResponse.redirect(new URL('/error', request.url))
     }
     
-    return response;
+    return response
   }
 }
 
-// Ensure the middleware is only called for relevant paths
+// Helper function for login redirects
+function redirectToLogin(request: NextRequest, path: string) {
+  const redirectUrl = new URL('/login', request.url)
+  redirectUrl.searchParams.set('redirectTo', path)
+  return NextResponse.redirect(redirectUrl)
+}
+
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files (images, etc)
-     * - api routes (handled separately)
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api/).*)',
   ],
-};
+}

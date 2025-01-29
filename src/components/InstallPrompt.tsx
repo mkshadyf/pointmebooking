@@ -46,7 +46,7 @@ export function InstallPrompt() {
 
     try {
       // Show the browser install prompt
-      await deferredPrompt.prompt();
+    //  await deferredPrompt.prompt();
 
       // Wait for the user to respond to the prompt
       const { outcome } = await deferredPrompt.userChoice;

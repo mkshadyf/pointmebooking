@@ -31,11 +31,11 @@ export class EmailService {
 
     try {
       const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession()
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
 
-      if (sessionError || !session) {
+      if (userError || !user) {
         throw new Error('No active session')
       }
 
@@ -44,7 +44,7 @@ export class EmailService {
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,
+            'Authorization': `Bearer ${user}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({

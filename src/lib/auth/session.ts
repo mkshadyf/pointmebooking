@@ -19,20 +19,20 @@ export async function getSession(): Promise<{ user: User | null; profile: UserPr
   );
 
   try {
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const { data: { user }, error: sessionError } = await supabase.auth.getUser();
     if (sessionError) throw sessionError;
 
-    if (!session?.user) {
+    if (!user) {
       return { user: null, profile: null };
     }
 
     // Check cache first
-    const cachedData = profileCache.get(session.user.id);
+    const cachedData = profileCache.get(user.id);
     const now = Date.now();
     
     if (cachedData && (now - cachedData.timestamp) < CACHE_TTL) {
       return {
-        user: session.user,
+        user: user,
         profile: cachedData.profile,
       };
     }
@@ -41,21 +41,21 @@ export async function getSession(): Promise<{ user: User | null; profile: UserPr
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single();
 
     if (profileError) throw profileError;
 
     // Update cache
     if (profile) {
-      profileCache.set(session.user.id, {
+      profileCache.set(user.id, {
         profile,
         timestamp: now,
       });
     }
 
     return {
-      user: session.user,
+      user,
       profile,
     };
   } catch (error) {

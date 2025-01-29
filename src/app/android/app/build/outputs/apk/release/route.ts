@@ -15,7 +15,7 @@ export async function GET() {
     }
 
     const apkPath = path.join(process.cwd(), 'android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk');
-    
+
     try {
       await fs.access(apkPath);
     } catch (error) {
@@ -28,7 +28,7 @@ export async function GET() {
     }
 
     const apkFile = await fs.readFile(apkPath);
-    
+
     return new NextResponse(apkFile, {
       headers: {
         'Content-Type': 'application/vnd.android.package-archive',

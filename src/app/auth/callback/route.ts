@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
+  const redirectTo = requestUrl.searchParams.get('redirectTo') || '/dashboard';
 
   if (code) {
     const cookieStore = await cookies();
@@ -26,8 +27,28 @@ export async function GET(request: Request) {
       }
     );
 
-    await supabase.auth.exchangeCodeForSession(code);
+    const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
+    
+    if (!error && user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, onboarding_completed')
+        .eq('id', user.id)
+        .single();
+
+      // Determine redirect path based on user role and onboarding status
+      if (profile) {
+        if (profile.role === 'business' && !profile.onboarding_completed) {
+          return NextResponse.redirect(new URL('/onboarding/business', requestUrl.origin));
+        }
+        return NextResponse.redirect(new URL(
+          profile.role === 'business' ? '/dashboard/business' : '/dashboard/customer',
+          requestUrl.origin
+        ));
+      }
+    }
   }
 
-  return NextResponse.redirect(requestUrl.origin);
+  // Default redirect to home page if something went wrong
+  return NextResponse.redirect(new URL('/', requestUrl.origin));
 }
