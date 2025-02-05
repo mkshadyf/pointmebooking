@@ -1,6 +1,7 @@
+import { handleAuthError, handleClientError, handleDatabaseError } from '@/lib/errors/handlers';
+import { UserProfile } from '@/types';
 import { createBrowserClient } from '@supabase/ssr';
 import { User } from '@supabase/supabase-js';
-import { UserProfile } from '@/types';
 
 // Cache TTL in milliseconds (5 minutes)
 const CACHE_TTL = 5 * 60 * 1000;
@@ -19,8 +20,8 @@ export async function getSession(): Promise<{ user: User | null; profile: UserPr
   );
 
   try {
-    const { data: { user }, error: sessionError } = await supabase.auth.getUser();
-    if (sessionError) throw sessionError;
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error) throw handleAuthError(error);
 
     if (!user) {
       return { user: null, profile: null };
@@ -32,7 +33,7 @@ export async function getSession(): Promise<{ user: User | null; profile: UserPr
     
     if (cachedData && (now - cachedData.timestamp) < CACHE_TTL) {
       return {
-        user: user,
+        user,
         profile: cachedData.profile,
       };
     }
@@ -44,7 +45,7 @@ export async function getSession(): Promise<{ user: User | null; profile: UserPr
       .eq('id', user.id)
       .single();
 
-    if (profileError) throw profileError;
+    if (profileError) throw handleDatabaseError(profileError);
 
     // Update cache
     if (profile) {
@@ -59,7 +60,7 @@ export async function getSession(): Promise<{ user: User | null; profile: UserPr
       profile,
     };
   } catch (error) {
-    console.error('Error getting session:', error);
+    await handleClientError(error);
     return { user: null, profile: null };
   }
 }
@@ -72,7 +73,7 @@ export async function refreshSession(): Promise<{ user: User | null; profile: Us
 
   try {
     const { data: { user }, error: refreshError } = await supabase.auth.refreshSession();
-    if (refreshError) throw refreshError;
+    if (refreshError) throw handleAuthError(refreshError);
 
     if (!user) {
       return { user: null, profile: null };
@@ -87,7 +88,7 @@ export async function refreshSession(): Promise<{ user: User | null; profile: Us
       .eq('id', user.id)
       .single();
 
-    if (profileError) throw profileError;
+    if (profileError) throw handleDatabaseError(profileError);
 
     // Update cache with fresh data
     if (profile) {
@@ -99,7 +100,7 @@ export async function refreshSession(): Promise<{ user: User | null; profile: Us
 
     return { user, profile };
   } catch (error) {
-    console.error('Error refreshing session:', error);
+    await handleClientError(error);
     return { user: null, profile: null };
   }
 }

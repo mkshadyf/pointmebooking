@@ -1,280 +1,169 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+import { signInWithGoogleAction, signUpAction } from '@/app/actions';
 import Link from 'next/link';
-import { FcGoogle } from 'react-icons/fc';
-import { toast } from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
-export default function Register() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<'customer' | 'business'>('customer');
+export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const { signUp, signInWithGoogle } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const router = useRouter();
 
-  const getPasswordStrength = (password: string) => {
-    let strength = 0;
-    if (password.length >= 8) strength++;
-    if (/[A-Z]/.test(password)) strength++;
-    if (/[0-9]/.test(password)) strength++;
-    if (/[^A-Za-z0-9]/.test(password)) strength++;
-    return strength;
-  };
-
-  const getStrengthColor = (strength: number) => {
-    switch (strength) {
-      case 0:
-        return 'bg-red-500';
-      case 1:
-        return 'bg-orange-500';
-      case 2:
-        return 'bg-yellow-500';
-      case 3:
-        return 'bg-lime-500';
-      case 4:
-        return 'bg-green-500';
-      default:
-        return 'bg-gray-200';
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (loading) return;
-
-    if (!acceptedTerms) {
-      toast.error('Please accept the terms and conditions');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
-
-    const strength = getPasswordStrength(password);
-    if (strength < 3) {
-      toast.error('Password is too weak');
-      return;
-    }
-
     setLoading(true);
-    try {
-      await signUp(email, password, role);
-      toast.success('Account created successfully!');
-      router.push('/verify-email');
-    } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error('Failed to create account');
-      }
-    } finally {
+    setError(null);
+    setSuccess(null);
+
+    const formData = new FormData(e.currentTarget);
+    const response = await signUpAction(formData);
+
+    if (response.error) {
+      setError(typeof response.error === 'string' ? response.error : response.error.message);
       setLoading(false);
+      return;
+    }
+
+    if (response.success) {
+      setSuccess(response.success);
+      setLoading(false);
+    }
+
+    if (response.redirectTo) {
+      router.push(response.redirectTo);
     }
   };
 
   const handleGoogleSignIn = async () => {
-    if (loading) return;
     setLoading(true);
-    try {
-      await signInWithGoogle();
-      toast.success('Signed in successfully!');
-      router.push('/dashboard/' + role);
-    } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error('Failed to sign in with Google');
-      }
-    } finally {
+    setError(null);
+
+    const response = await signInWithGoogleAction();
+
+    if (response.error) {
+      setError(typeof response.error === 'string' ? response.error : response.error.message);
       setLoading(false);
+      return;
+    }
+
+    if (response.redirectTo) {
+      router.push(response.redirectTo);
     }
   };
 
-  const strength = getPasswordStrength(password);
-
   return (
-    <div className="flex min-h-full flex-1 flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
-          Create your account
-        </h2>
+    <div className="space-y-6">
+      <div className="text-center">
+        <h1 className="text-3xl font-bold">Create an account</h1>
+        <p className="text-gray-600 mt-2">Get started with PointMe</p>
       </div>
 
-      <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-[480px]">
-        <div className="bg-white px-6 py-12 shadow sm:rounded-lg sm:px-12">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">
-                Email address
-              </label>
-              <div className="mt-2">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6"
-                />
-              </div>
-            </div>
+      {error && (
+        <div className="bg-red-50 text-red-500 p-4 rounded-md text-sm">
+          {error}
+        </div>
+      )}
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium leading-6 text-gray-900">
-                Password
-              </label>
-              <div className="mt-2">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6"
-                />
-                {password && (
-                  <div className="mt-2">
-                    <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all ${getStrengthColor(strength)}`}
-                        style={{ width: `${(strength / 4) * 100}%` }}
-                      />
-                    </div>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Password strength:{' '}
-                      {strength === 0
-                        ? 'Very Weak'
-                        : strength === 1
-                        ? 'Weak'
-                        : strength === 2
-                        ? 'Medium'
-                        : strength === 3
-                        ? 'Strong'
-                        : 'Very Strong'}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
+      {success && (
+        <div className="bg-green-50 text-green-500 p-4 rounded-md text-sm">
+          {success}
+        </div>
+      )}
 
-            <div>
-              <label htmlFor="confirm-password" className="block text-sm font-medium leading-6 text-gray-900">
-                Confirm Password
-              </label>
-              <div className="mt-2">
-                <input
-                  id="confirm-password"
-                  name="confirm-password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium leading-6 text-gray-900">Account Type</label>
-              <div className="mt-2 space-y-4 sm:flex sm:space-x-4 sm:space-y-0">
-                <div className="flex items-center">
-                  <input
-                    id="customer"
-                    name="role"
-                    type="radio"
-                    checked={role === 'customer'}
-                    onChange={() => setRole('customer')}
-                    className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
-                  />
-                  <label htmlFor="customer" className="ml-3 block text-sm font-medium leading-6 text-gray-900">
-                    Customer
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    id="business"
-                    name="role"
-                    type="radio"
-                    checked={role === 'business'}
-                    onChange={() => setRole('business')}
-                    className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
-                  />
-                  <label htmlFor="business" className="ml-3 block text-sm font-medium leading-6 text-gray-900">
-                    Business
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center">
-              <input
-                id="terms"
-                name="terms"
-                type="checkbox"
-                checked={acceptedTerms}
-                onChange={(e) => setAcceptedTerms(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <label htmlFor="terms" className="ml-3 block text-sm leading-6 text-gray-600">
-                I agree to the{' '}
-                <Link href="/terms" className="font-semibold text-primary hover:text-primary/90">
-                  terms and conditions
-                </Link>
-              </label>
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex w-full justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Creating account...' : 'Create account'}
-              </button>
-            </div>
-          </form>
-
-          <div>
-            <div className="relative mt-10">
-              <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                <div className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center text-sm font-medium leading-6">
-                <span className="bg-white px-6 text-gray-900">Or continue with</span>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <button
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-3 rounded-md bg-white px-3 py-1.5 text-sm font-semibold leading-6 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <FcGoogle className="h-5 w-5" />
-                <span className="text-sm font-semibold leading-6">Google</span>
-              </button>
-            </div>
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+            Email
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+          />
         </div>
 
-        <p className="mt-10 text-center text-sm text-gray-500">
-          Already have an account?{' '}
-          <Link href="/login" className="font-semibold leading-6 text-primary hover:text-primary/90">
-            Sign in
-          </Link>
-        </p>
+        <div>
+          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+            Password
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+            I am a
+          </label>
+          <select
+            id="role"
+            name="role"
+            required
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            <option value="">Select your role</option>
+            <option value="business">Business Owner</option>
+            <option value="customer">Customer</option>
+          </select>
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+        >
+          {loading ? 'Creating account...' : 'Create account'}
+        </button>
+      </form>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-300" />
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="px-2 bg-white text-gray-500">Or continue with</span>
+        </div>
+      </div>
+
+      <button
+        onClick={handleGoogleSignIn}
+        disabled={loading}
+        className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+      >
+        <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+          <path
+            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+            fill="#4285F4"
+          />
+          <path
+            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+            fill="#34A853"
+          />
+          <path
+            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+            fill="#FBBC05"
+          />
+          <path
+            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+            fill="#EA4335"
+          />
+        </svg>
+        Google
+      </button>
+
+      <div className="text-center text-sm">
+        <span className="text-gray-600">Already have an account?</span>{' '}
+        <Link href="/login" className="text-indigo-600 hover:text-indigo-500">
+          Sign in
+        </Link>
       </div>
     </div>
   );

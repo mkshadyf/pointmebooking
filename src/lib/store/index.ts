@@ -1,7 +1,8 @@
+import * as serviceApi from '@/lib/api/services';
+import { handleClientError } from '@/lib/errors/handlers';
+import { BusinessCategory, BusinessProfile, Category, Service, ServiceCategory } from '@/types';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { BusinessProfile, Category, Service, BusinessCategory, ServiceCategory } from '@/types';
-import * as serviceApi from '@/lib/api/services';
 
 interface AppState {
   categories: Category[];
@@ -11,6 +12,8 @@ interface AppState {
   selectedBusiness: BusinessProfile | null;
   selectedService: Service | null;
   selectedCategory: string | null;
+  isLoading: boolean;
+  error: string | null;
   setSelectedBusiness: (business: BusinessProfile | null) => void;
   setSelectedService: (service: Service | null) => void;
   setSelectedCategory: (id: string | null) => void;
@@ -22,8 +25,6 @@ interface AppState {
   fetchAllServices: () => Promise<void>;
   fetchAllBusinesses: () => Promise<void>;
   fetchFeaturedServices: () => Promise<void>;
-  isLoading: boolean;
-  error: string | null;
 }
 
 export const useAppStore = create<AppState>()(
@@ -44,10 +45,10 @@ export const useAppStore = create<AppState>()(
       isLoading: false,
       error: null,
 
-      setSelectedBusiness: (business) => set({ selectedBusiness: business }),
-      setSelectedService: (service) => set({ selectedService: service }),
-      setSelectedCategory: (id) => set({ selectedCategory: id }),
-      setServices: (services) => set({ services }),
+      setSelectedBusiness: (business: BusinessProfile | null) => set({ selectedBusiness: business }),
+      setSelectedService: (service: Service | null) => set({ selectedService: service }),
+      setSelectedCategory: (id: string | null) => set({ selectedCategory: id }),
+      setServices: (services: Service[]) => set({ services }),
       
       fetchAllServices: async () => {
         set({ isLoading: true, error: null });
@@ -59,7 +60,7 @@ export const useAppStore = create<AppState>()(
           
           // Group services by category
           const servicesByCategory = services.reduce((acc: ServiceCategory[], service: Service) => {
-            const category = get().categories.find(c => c.id === service.category_id);
+            const category = get().categories.find((c: Category) => c.id === service.category_id);
             if (!category) return acc;
             
             const existingCategory = acc.find(c => c.id === service.category_id);
@@ -79,7 +80,7 @@ export const useAppStore = create<AppState>()(
           
           set({ serviceCategories: servicesByCategory });
         } catch (error) {
-          console.error('Error fetching services:', error);
+          await handleClientError(error);
           set({ error: 'Failed to fetch services' });
         } finally {
           set({ isLoading: false });
@@ -98,7 +99,7 @@ export const useAppStore = create<AppState>()(
           const businessesByCategory = businesses.reduce((acc: BusinessCategory[], business: BusinessProfile) => {
             if (!business.business_category) return acc;
             
-            const existingCategory = acc.find(c => c.id === business.business_category);
+            const existingCategory = acc.find((c: BusinessCategory) => c.id === business.business_category);
             if (existingCategory) {
               existingCategory.businesses.push(business);
             } else {
@@ -113,7 +114,7 @@ export const useAppStore = create<AppState>()(
           
           set({ businessCategories: businessesByCategory });
         } catch (error) {
-          console.error('Error fetching businesses:', error);
+          await handleClientError(error);
           set({ error: 'Failed to fetch businesses' });
         } finally {
           set({ isLoading: false });
@@ -125,29 +126,30 @@ export const useAppStore = create<AppState>()(
           const services = await serviceApi.getFeaturedServices();
           set({ services });
         } catch (error) {
-          console.error('Error fetching featured services:', error);
+          await handleClientError(error);
         }
       },
 
-      addService: async (service) => {
+      addService: async (service: Service) => {
         try {
           const newService = await serviceApi.createService(service);
           if (newService) {
-            set((state) => ({ services: [...state.services, newService] }));
+            set((state: AppState) => ({ services: [...state.services, newService] }));
             return newService;
           }
           throw new Error('Failed to add service');
         } catch (error) {
-          console.error('Error adding service:', error);
+          await handleClientError(error);
           throw error;
         }
       },
-      updateService: async (id, updatedService) => {
+
+      updateService: async (id: string, updatedService: Partial<Service>) => {
         try {
           const updated = await serviceApi.updateService(id, updatedService);
           if (updated) {
-            set((state) => ({
-              services: state.services.map((service) =>
+            set((state: AppState) => ({
+              services: state.services.map((service: Service) =>
                 service.id === id ? updated : service
               ),
             }));
@@ -155,32 +157,34 @@ export const useAppStore = create<AppState>()(
           }
           throw new Error('Failed to update service');
         } catch (error) {
-          console.error('Error updating service:', error);
+          await handleClientError(error);
           throw error;
         }
       },
-      deleteService: async (id) => {
+
+      deleteService: async (id: string) => {
         try {
           const success = await serviceApi.deleteService(id);
           if (success) {
-            set((state) => ({
-              services: state.services.filter((service) => service.id !== id),
+            set((state: AppState) => ({
+              services: state.services.filter((service: Service) => service.id !== id),
             }));
           } else {
             throw new Error('Failed to delete service');
           }
         } catch (error) {
-          console.error('Error deleting service:', error);
+          await handleClientError(error);
           throw error;
         }
       },
-      loadServices: async (businessId) => {
+
+      loadServices: async (businessId: string) => {
         try {
           const services = await serviceApi.getServicesByBusiness(businessId);
           set({ services });
           return services;
         } catch (error) {
-          console.error('Error loading services:', error);
+          await handleClientError(error);
           throw error;
         }
       },

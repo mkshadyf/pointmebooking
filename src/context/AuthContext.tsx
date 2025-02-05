@@ -1,475 +1,224 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { createBrowserClient } from '@supabase/ssr';
-import { User } from '@supabase/supabase-js';
+import { ROUTES } from '@/config/routes';
+import { useSupabase } from '@/lib/supabase/hooks';
 import { UserProfile } from '@/types';
-import type { AuthError } from '@supabase/supabase-js';
-import type { Database } from '@/types';
+import { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
+import { createContext, useContext, useEffect, useReducer } from 'react';
 
-const TIMEOUT_DURATION = 10000; // 10 seconds timeout
-
-export interface AuthContextType {
+interface AuthState {
   user: User | null;
   profile: UserProfile | null;
+  session: Session | null;
   loading: boolean;
+  error: string | null;
   isEmailVerified: boolean;
+}
+
+type AuthAction =
+  | { type: 'SET_USER'; payload: User | null }
+  | { type: 'SET_PROFILE'; payload: UserProfile | null }
+  | { type: 'SET_SESSION'; payload: Session | null }
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_EMAIL_VERIFIED'; payload: boolean }
+  | { type: 'RESET_STATE' };
+
+interface AuthContextType extends AuthState {
   signOut: () => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, role: 'business' | 'customer') => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  verifyResetCode: (code: string, newPassword: string) => Promise<void>;
-  verifyEmail: (code: string) => Promise<void>;
-  resendVerificationEmail: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
 }
 
-const defaultContext: AuthContextType = {
+const initialState: AuthState = {
   user: null,
   profile: null,
+  session: null,
   loading: true,
+  error: null,
   isEmailVerified: false,
-  signOut: async () => {},
-  signIn: async () => {},
-  signUp: async () => {},
-  signInWithGoogle: async () => {},
-  resetPassword: async () => {},
-  verifyResetCode: async () => {},
-  verifyEmail: async () => {},
-  resendVerificationEmail: async () => {},
-  updateProfile: async () => {},
 };
 
-export const AuthContext = createContext<AuthContextType>(defaultContext);
-
-const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
-  let timeoutId: NodeJS.Timeout | undefined;
-  
-  const timeoutPromise = new Promise<T>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new Error('Request timed out'));
-    }, timeoutMs);
-  });
-
-  try {
-    const result = await Promise.race([promise, timeoutPromise]);
-    if (timeoutId) clearTimeout(timeoutId);
-    return result;
-  } catch (error) {
-    if (timeoutId) clearTimeout(timeoutId);
-    throw error;
+function authReducer(state: AuthState, action: AuthAction): AuthState {
+  switch (action.type) {
+    case 'SET_USER':
+      return { ...state, user: action.payload };
+    case 'SET_PROFILE':
+      return { ...state, profile: action.payload };
+    case 'SET_SESSION':
+      return { ...state, session: action.payload };
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload };
+    case 'SET_EMAIL_VERIFIED':
+      return { ...state, isEmailVerified: action.payload };
+    case 'RESET_STATE':
+      return initialState;
+    default:
+      return state;
   }
-};
+}
+
+const AuthContext = createContext<AuthContextType>({
+  ...initialState,
+  signOut: async () => {},
+  updateProfile: async () => {},
+});
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
-  const [initialized, setInitialized] = useState(false);
+  const [state, dispatch] = useReducer(authReducer, initialState);
   const router = useRouter();
-  
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = useSupabase();
 
-  const fetchProfile = useCallback(async (userId: string) => {
+  const checkEmailVerification = (user: User | null) => {
+    if (!user) return false;
+    return !!user.email_confirmed_at || 
+           (user.user_metadata && user.user_metadata.email_verified);
+  };
+
+  useEffect(() => {
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        // Get initial user
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        if (mounted) {
+          if (error) throw error;
+          
+          if (user) {
+            dispatch({ type: 'SET_USER', payload: user });
+            dispatch({ type: 'SET_EMAIL_VERIFIED', payload: checkEmailVerification(user) });
+            await fetchProfile(user.id);
+          }
+        }
+
+        // Set up auth state listener
+        const { data: { subscription } } = await supabase.auth.onAuthStateChange(
+          async (event: AuthChangeEvent, session: Session | null) => {
+            if (!mounted) return;
+
+            if (session?.user) {
+              dispatch({ type: 'SET_USER', payload: session.user });
+              dispatch({ 
+                type: 'SET_EMAIL_VERIFIED', 
+                payload: checkEmailVerification(session.user)
+              });
+              await fetchProfile(session.user.id);
+            } else {
+              dispatch({ type: 'SET_USER', payload: null });
+              dispatch({ type: 'SET_PROFILE', payload: null });
+              dispatch({ type: 'SET_EMAIL_VERIFIED', payload: false });
+            }
+
+            // Handle specific auth events
+            switch (event) {
+              case 'SIGNED_OUT':
+                dispatch({ type: 'RESET_STATE' });
+                router.push(ROUTES.login.path);
+                break;
+              case 'USER_UPDATED':
+                if (session?.user) {
+                  await fetchProfile(session.user.id);
+                }
+                break;
+            }
+          }
+        );
+
+        // Set up user refresh
+        const refreshInterval = setInterval(async () => {
+          if (state.user) {
+            const { data: { user: refreshedUser }, error: refreshError } = await supabase.auth.getUser();
+            if (mounted && refreshedUser && !refreshError) {
+              dispatch({ type: 'SET_USER', payload: refreshedUser });
+              dispatch({ type: 'SET_EMAIL_VERIFIED', payload: checkEmailVerification(refreshedUser) });
+            }
+          }
+        }, 5 * 60 * 1000); // Every 5 minutes
+
+        dispatch({ type: 'SET_LOADING', payload: false });
+
+        return () => {
+          mounted = false;
+          subscription.unsubscribe();
+          clearInterval(refreshInterval);
+        };
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        if (mounted) {
+          dispatch({ type: 'SET_ERROR', payload: 'Failed to initialize authentication' });
+          dispatch({ type: 'SET_LOADING', payload: false });
+        }
+      }
+    };
+
+    initializeAuth();
+  }, [supabase, router]);
+
+  const fetchProfile = async (userId: string) => {
     try {
-      const { data: profile, error } = await supabase
+      const { data, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
-      
-      if (profile) {
-        setProfile(profile as UserProfile);
-        setIsEmailVerified(profile.email_verified);
-        return profile as UserProfile;
-      }
-      return null;
+      if (profileError) throw profileError;
+
+      dispatch({ type: 'SET_PROFILE', payload: data });
     } catch (error) {
       console.error('Error fetching profile:', error);
-      setProfile(null);
-      setIsEmailVerified(false);
-      return null;
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to fetch user profile' });
     }
-  }, [supabase]);
-
-  const handleAuthStateChange = useCallback(async () => {
-    try {
-      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError) throw userError;
-
-      setUser(currentUser);
-
-      if (currentUser) {
-        const userProfile = await fetchProfile(currentUser.id);
-        
-        if (!userProfile) {
-          // If no profile exists, create one
-          const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
-            .insert([
-              {
-                id: currentUser.id,
-                user_id: currentUser.id,
-                email: currentUser.email,
-                full_name: currentUser.user_metadata.full_name || '',
-                role: 'customer',
-                email_verified: false,
-                status: 'active',
-                onboarding_completed: false,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-            ])
-            .select('*')
-            .single();
-
-          if (createError) throw createError;
-          if (newProfile) {
-            setProfile(newProfile as UserProfile);
-            setIsEmailVerified(false);
-          }
-        }
-      } else {
-        setProfile(null);
-        setIsEmailVerified(false);
-      }
-    } catch (error) {
-      console.error('Error in auth state change:', error);
-      setUser(null);
-      setProfile(null);
-      setIsEmailVerified(false);
-    } finally {
-      setLoading(false);
-      setInitialized(true);
-    }
-  }, [supabase, fetchProfile]);
-
-  useEffect(() => {
-    handleAuthStateChange();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        await handleAuthStateChange();
-      }
-
-      if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setProfile(null);
-        setIsEmailVerified(false);
-        router.push('/');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase, router, handleAuthStateChange]);
+  };
 
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
-      router.push('/');
+      dispatch({ type: 'RESET_STATE' });
+      router.push(ROUTES.login.path);
     } catch (error) {
       console.error('Error signing out:', error);
-    }
-  };
-
-  const signIn = async (email: string, password: string) => {
-    setLoading(true);
-    try {
-      const promise = Promise.resolve(
-        supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-      ).then(({ data, error }) => {
-        if (error) throw error;
-        return { data, error };
-      });
-
-      const { data, error } = await withTimeout(promise, TIMEOUT_DURATION);
-
-      if (error) throw error;
-      if (data.user) {
-        const userProfile = await fetchProfile(data.user.id);
-        const dashboardPath = userProfile?.role === 'business' 
-                            ? '/dashboard/business' 
-                            : '/dashboard/customer';
-        router.replace(dashboardPath);
-      }
-    } catch (error: any) {
-      console.error('Sign in error:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signUp = async (email: string, password: string, role: 'business' | 'customer') => {
-    setLoading(true);
-    try {
-      const promise = Promise.resolve(
-        supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { role },
-          },
-        })
-      ).then(({ data, error }) => {
-        if (error) throw error;
-        return { data, error };
-      });
-
-      const { data, error } = await withTimeout(promise, TIMEOUT_DURATION);
-
-      if (error) throw error;
-      if (data.user) {
-        router.push('/verify-email');
-      }
-    } catch (error: any) {
-      console.error('Sign up error:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signInWithGoogle = async () => {
-    setLoading(true);
-    try {
-      const promise = Promise.resolve(
-        supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: `${window.location.origin}/auth/v1/callback`,
-            queryParams: {
-              access_type: 'offline',
-              prompt: 'consent',
-            },
-          },
-        })
-      ).then(({ error }) => {
-        if (error) throw error;
-        return { error };
-      });
-
-      const { error } = await withTimeout(promise, TIMEOUT_DURATION);
-
-      if (error) throw error;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetPassword = async (email: string) => {
-    setLoading(true);
-    try {
-      const promise = Promise.resolve(
-        supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
-        })
-      ).then(({ error }) => {
-        if (error) throw error;
-        return { error };
-      });
-
-      const { error } = await withTimeout(promise, TIMEOUT_DURATION);
-
-      if (error) throw error;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verifyResetCode = async (code: string, newPassword: string) => {
-    setLoading(true);
-    try {
-      const promise = Promise.resolve(
-        supabase.auth.updateUser({
-          password: newPassword,
-        })
-      ).then(({ error }) => {
-        if (error) throw error;
-        return { error };
-      });
-
-      const { error: updateError } = await withTimeout(promise, TIMEOUT_DURATION);
-
-      if (updateError) throw updateError;
-      router.push('/login');
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verifyEmail = async (code: string) => {
-    setLoading(true);
-    try {
-      if (!user) throw new Error('No user found');
-
-      const verifyPromise = Promise.resolve(
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .eq('verification_code', code)
-          .single()
-      ).then(({ data, error }) => {
-        if (error) throw error;
-        return { data, error };
-      });
-
-      const { data: profiles, error: verifyError } = await withTimeout(verifyPromise, TIMEOUT_DURATION);
-
-      if (verifyError || !profiles) {
-        throw new Error('Invalid verification code');
-      }
-
-      const updatePromise = Promise.resolve(
-        supabase
-          .from('profiles')
-          .update({
-            email_verified: true,
-            verification_code: undefined
-          })
-          .eq('id', user.id)
-          .select('*')
-          .single()
-      ).then(({ data, error }) => {
-        if (error) throw error;
-        return { data, error };
-      });
-
-      const { data: profile, error: updateError } = await withTimeout(updatePromise, TIMEOUT_DURATION);
-
-      if (updateError) throw updateError;
-
-      setProfile(profile as UserProfile);
-      setIsEmailVerified(true);
-      router.push('/dashboard');
-
-    } catch (error) {
-      console.error('Error verifying email:', error);
-      if (error instanceof Error) {
-        throw error;
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resendVerificationEmail = async () => {
-    setLoading(true);
-    try {
-      if (!user) throw new Error('No user found');
-
-      const verificationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-      const promise = Promise.resolve(
-        supabase
-          .from('profiles')
-          .update({
-            verification_code: verificationCode,
-            email_verified: false
-          } as Database['public']['Tables']['profiles']['Update'])
-          .eq('id', user.id)
-          .select('*')
-          .single()
-      ).then(({ data, error }) => {
-        if (error) throw error;
-        return { data, error };
-      });
-
-      const { data: profile, error: updateError } = await withTimeout(promise, TIMEOUT_DURATION);
-
-      if (updateError) throw updateError;
-
-      setProfile(profile as UserProfile);
-      setIsEmailVerified(false);
-
-      console.log('New verification code:', verificationCode);
-
-    } catch (error) {
-      console.error('Error resending verification:', error);
-      if (error instanceof Error) {
-        throw error;
-      }
-    } finally {
-      setLoading(false);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to sign out' });
     }
   };
 
   const updateProfile = async (data: Partial<UserProfile>) => {
-    setLoading(true);
+    if (!state.user) throw new Error('No user logged in');
+
     try {
-      if (!user) throw new Error('No user found');
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update(data)
+        .eq('id', state.user.id);
 
-      const promise = Promise.resolve(
-        supabase
-          .from('profiles')
-          .update({ ...data, updated_at: new Date().toISOString() })
-          .eq('id', user.id)
-      ).then(({ error }) => {
-        if (error) throw error;
-        return { error };
-      });
+      if (updateError) throw updateError;
 
-      const { error } = await withTimeout(promise, TIMEOUT_DURATION);
-
-      if (error) throw error;
-
-      await fetchProfile(user.id);
+      await fetchProfile(state.user.id);
+      dispatch({ type: 'SET_ERROR', payload: null });
     } catch (error) {
       console.error('Error updating profile:', error);
-      if (error instanceof Error) {
-        throw error;
-      }
-    } finally {
-      setLoading(false);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to update profile' });
+      throw error;
     }
   };
-
-  if (!initialized) {
-    return null;
-  }
 
   return (
     <AuthContext.Provider
       value={{
-        user,
-        profile,
-        loading,
-        isEmailVerified,
+        ...state,
         signOut,
-        signIn,
-        signUp,
-        signInWithGoogle,
-        resetPassword,
-        verifyResetCode,
-        verifyEmail,
-        resendVerificationEmail,
         updateProfile,
       }}
     >
@@ -478,10 +227,5 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export { AuthContext };
+

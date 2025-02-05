@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
 import { classNames } from '@/lib/utils';
 import { BeforeInstallPromptEvent } from '@/types/pwa';
+import { XMarkIcon } from '@heroicons/react/24/outline';
+import { useEffect, useState } from 'react';
 
 export function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -23,10 +23,9 @@ export function InstallPrompt() {
       // Prevent Chrome 67 and earlier from automatically showing the prompt
       e.preventDefault();
       // Stash the event so it can be triggered later
-      const promptEvent = e as BeforeInstallPromptEvent;
-      setDeferredPrompt(promptEvent);
+    //  setDeferredPrompt(promptEvent);
       // Show our custom install prompt
-      setShowPrompt(true);
+      setShowPrompt(false);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
@@ -46,7 +45,7 @@ export function InstallPrompt() {
 
     try {
       // Show the browser install prompt
-    //  await deferredPrompt.prompt();
+      await deferredPrompt.prompt();
 
       // Wait for the user to respond to the prompt
       const { outcome } = await deferredPrompt.userChoice;

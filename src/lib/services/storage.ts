@@ -1,3 +1,4 @@
+import { handleClientError, handleStorageError } from '@/lib/errors/handlers';
 import { createBrowserClient } from '@supabase/ssr';
 
 export async function uploadImage(
@@ -15,12 +16,12 @@ export async function uploadImage(
     const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
     const filePath = `${path}/${fileName}`;
 
-    const { error: uploadError, data } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from(bucket)
       .upload(filePath, file);
 
     if (uploadError) {
-      throw uploadError;
+      throw handleStorageError(uploadError);
     }
 
     const { data: { publicUrl } } = supabase.storage
@@ -29,7 +30,7 @@ export async function uploadImage(
 
     return publicUrl;
   } catch (error) {
-    console.error('Error uploading image:', error);
+    await handleClientError(error);
     return null;
   }
 }
@@ -49,12 +50,12 @@ export async function deleteImage(
       .remove([path]);
 
     if (error) {
-      throw error;
+      throw handleStorageError(error);
     }
 
     return true;
   } catch (error) {
-    console.error('Error deleting image:', error);
+    await handleClientError(error);
     return false;
   }
 }

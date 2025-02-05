@@ -1,5 +1,5 @@
-import { createBrowserClient } from '@supabase/ssr';
 import { Service } from '@/types';
+import { createBrowserClient } from '@supabase/ssr';
 
 interface SearchFilters {
   query?: string;
@@ -18,11 +18,26 @@ export async function searchServices(filters: SearchFilters = {}): Promise<Servi
   let query = supabase
     .from('services')
     .select(`
-      *,
-      business:business_id (
+      id,
+      name,
+      description,
+      price,
+      duration,
+      category_id,
+      image_url,
+      status,
+      is_available,
+      created_at,
+      updated_at,
+      business:business_id(
         id,
         business_name,
-        location
+        address,
+        city,
+        state,
+        contact_number,
+        contact_email,
+        logo_url
       )
     `);
 
@@ -57,11 +72,41 @@ export async function searchServices(filters: SearchFilters = {}): Promise<Servi
   const { data, error } = await query;
 
   if (error) {
-    console.error('Error searching services:', error);
-    throw error;
+    // Create a fallback error message if error.message is missing
+    const errorMessage =
+      (error as { message?: string }).message ||
+      JSON.stringify(error) ||
+      'Unknown error searching services';
+    console.error('Error searching services:', errorMessage);
+    throw new Error(errorMessage);
   }
 
-  return data || [];
+  return (data || []).map(item => ({
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    price: item.price,
+    duration: item.duration,
+    category_id: item.category_id,
+    image_url: item.image_url,
+    status: item.status,
+    is_available: item.is_available,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+    business_id: item.business?.[0]?.id,
+    business: item.business?.[0]
+      ? {
+          id: item.business[0].id,
+          name: item.business[0].business_name,
+          address: item.business[0].address,
+          city: item.business[0].city,
+          state: item.business[0].state,
+          phone: item.business[0].contact_number,
+          email: item.business[0].contact_email,
+          logo_url: item.business[0].logo_url,
+        }
+      : undefined,
+  }));
 }
 
 export function filterServicesByText(services: Service[], searchText: string): Service[] {

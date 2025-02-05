@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { BusinessProfile, UserProfile } from '@/types';
+import { useState } from 'react';
 import { BusinessDetailsStep } from './steps/BusinessDetailsStep';
+import CompletionStep from './steps/CompletionStep';
 import { ContactInfoStep } from './steps/ContactInfoStep';
 import { OperatingHoursStep } from './steps/OperatingHoursStep';
 import { ServicesStep } from './steps/ServicesStep';
-import CompletionStep from './steps/CompletionStep';
 
 interface BusinessOnboardingProps {
   onComplete?: () => void;
@@ -31,7 +31,7 @@ export default function BusinessOnboarding({ onComplete }: BusinessOnboardingPro
       // BusinessProfile specific fields
       business_name: userProfile.business_name || '',
       business_category: userProfile.business_category || '',
-      business_type: userProfile.business_type,
+      business_type: userProfile.business_type || '',
       description: userProfile.description || '',
       location: userProfile.location || '',
       contact_number: userProfile.phone || userProfile.contact_number || '',
@@ -58,11 +58,34 @@ export default function BusinessOnboarding({ onComplete }: BusinessOnboardingPro
     };
   };
 
-  const businessProfile = convertToBusinessProfile(profile);
+  const businessProfile: BusinessProfile = {
+    ...convertToBusinessProfile(profile)!,
+    user_id: profile?.id || '',
+    full_name: profile?.full_name || '',
+    business_name: profile?.business_name || '',
+    business_category: profile?.business_category || '',
+    business_type: profile?.business_type || '',
+    description: profile?.description || '',
+    location: profile?.location || '',
+    contact_number: profile?.contact_number || '',
+    working_hours: {
+      monday: { start: '09:00', end: '17:00', is_closed: false },
+      tuesday: { start: '09:00', end: '17:00', is_closed: false },
+      wednesday: { start: '09:00', end: '17:00', is_closed: false },
+      thursday: { start: '09:00', end: '17:00', is_closed: false },
+      friday: { start: '09:00', end: '17:00', is_closed: false },
+      saturday: { start: '09:00', end: '17:00', is_closed: false },
+      sunday: { start: '09:00', end: '17:00', is_closed: true },
+    },
+    services: [],
+    onboarding_completed: profile?.onboarding_completed || false,
+  };
 
   const handleStepSubmit = async (data: Partial<BusinessProfile>) => {
     try {
-      await updateProfile(data);
+      // Ensure 'status' property is of the correct type before updating the profile
+      const validatedData = { ...data, status: data.status as "active" | "inactive" | "suspended" | undefined };
+      await updateProfile(validatedData);
       if (currentStep < steps.length - 1) {
         setCurrentStep(currentStep + 1);
       } else if (onComplete) {

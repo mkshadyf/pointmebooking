@@ -1,9 +1,8 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 type UserRole = 'business' | 'customer' | 'admin';
 
@@ -12,80 +11,51 @@ export function withAuth<P extends object>(
   allowedRoles?: UserRole | UserRole[]
 ) {
   return function WithAuthComponent(props: P) {
-    const [mounted, setMounted] = useState(false);
-    const auth = useAuth();
-    const { user, profile, loading, isEmailVerified } = auth;
+    const { user, profile, loading, isEmailVerified } = useAuth();
     const router = useRouter();
-    const searchParams = useSearchParams();
-    const redirectTo = searchParams.get('redirectTo');
-
-    useEffect(() => {
-      setMounted(true);
-    }, []);
 
     useEffect(() => {
       if (!loading) {
-        const handleAuth = async () => {
-          // Handle unauthenticated users
-          if (!user) {
-            const loginPath = redirectTo 
-              ? `/login?redirectTo=${encodeURIComponent(redirectTo)}`
-              : '/login';
-            router.replace(loginPath);
-            return;
-          }
+        // Handle unauthenticated users
+        if (!user) {
+          router.replace('/login');
+          return;
+        }
 
-          // Handle unverified emails
-          if (!isEmailVerified) {
-            router.replace('/verify-email');
-            return;
-          }
+        // Handle unverified emails
+        if (!isEmailVerified) {
+          router.replace('/verify-email');
+          return;
+        }
 
-          // Handle role-based access
-          if (allowedRoles && profile?.role) {
-            const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-            if (!roles.includes(profile.role as UserRole)) {
-              const dashboardPath = profile.role === 'business' 
-                ? '/dashboard/business'
-                : '/dashboard/customer';
-              router.replace(dashboardPath);
-              return;
+        // Handle role-based access
+        if (allowedRoles) {
+          const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+          if (!profile?.role || !roles.includes(profile.role)) {
+            // Redirect based on user's role
+            if (profile?.role === 'business') {
+              router.replace('/dashboard/business');
+            } else if (profile?.role === 'customer') {
+              router.replace('/dashboard/customer');
+            } else {
+              router.replace('/');
             }
-          }
-
-          // Handle incomplete business onboarding
-          if (profile?.role === 'business' && !profile.onboarding_completed) {
-            router.replace('/onboarding/business');
             return;
           }
-        };
+        }
 
-        handleAuth();
+        // Handle incomplete business onboarding
+        if (profile?.role === 'business' && !profile.onboarding_completed) {
+          router.replace('/onboarding/business');
+          return;
+        }
       }
-    }, [user, profile, loading, isEmailVerified, router, redirectTo]);
+    }, [user, profile, loading, isEmailVerified, router]);
 
-    // Show loading state
-    if (!mounted || loading) {
-      return (
-        <div className="min-h-screen flex items-center justify-center">
-          <LoadingSpinner className="lg" />
-        </div>
-      );
+    if (loading) {
+      return <div>Loading...</div>;
     }
 
-    // Don't render if not authenticated or not authorized
-    if (!user || !isEmailVerified) {
-      return null;
-    }
-
-    if (allowedRoles && profile?.role) {
-      const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-      if (!roles.includes(profile.role as UserRole)) {
-        return null;
-      }
-    }
-
-    // Render component if all checks pass
     return <WrappedComponent {...props} />;
   };
 }

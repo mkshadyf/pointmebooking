@@ -25,8 +25,8 @@ export default function ServiceDetailPage() {
     const fetchService = async () => {
       try {
         const service = serviceCategories
-          .flatMap((cat) => cat.services)
-          .find((s) => s.id === params.id);
+          .flatMap((cat: { services: any; }) => cat.services)
+          .find((s: { id: string | string[] | undefined; }) => s.id === params.id);
 
         if (!service) throw new Error('Service not found');
 
@@ -48,8 +48,8 @@ export default function ServiceDetailPage() {
 
   // Find the business that offers this service
   const business = businessCategories
-    .flatMap((cat) => cat.businesses)
-    .find((b) => b.id === service.business_id);
+    .flatMap((cat: { businesses: any; }) => cat.businesses)
+    .find((b: { id: string; }) => b.id === service.business_id);
 
   if (!business) return <div>Business not found</div>;
 

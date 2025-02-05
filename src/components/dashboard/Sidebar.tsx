@@ -1,45 +1,51 @@
 'use client';
 
-import { Fragment } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { Dialog, Transition } from '@headlessui/react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { CalendarIcon, ChartBarIcon, CogIcon, HomeIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import Image from 'next/image';
-
-type UserRole = 'business' | 'customer';
+import { Fragment } from 'react';
 
 interface SidebarProps {
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-  userRole: UserRole;
+  role: 'business' | 'customer';
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export const Sidebar = ({ isOpen, setIsOpen, userRole }: SidebarProps) => {
+export function Sidebar({ role, isOpen = false, onClose }: SidebarProps) {
+  useAuth();
   const pathname = usePathname();
 
-  const businessNavigation = [
-    { name: 'Dashboard', href: '/dashboard/business' },
-    { name: 'Calendar', href: '/dashboard/business/calendar' },
-    { name: 'Bookings', href: '/dashboard/business/bookings' },
-    { name: 'Services', href: '/dashboard/business/services' },
-    { name: 'Settings', href: '/dashboard/business/settings' },
+  const navigation = [
+    { 
+      name: 'Dashboard', 
+      href: `/dashboard/${role}`, 
+      icon: HomeIcon 
+    },
+    { 
+      name: role === 'business' ? 'Appointments' : 'My Bookings', 
+      href: `/dashboard/${role}/appointments`, 
+      icon: CalendarIcon 
+    },
+    { 
+      name: role === 'business' ? 'Services' : 'Favorites', 
+      href: `/dashboard/${role}/${role === 'business' ? 'services' : 'favorites'}`, 
+      icon: ChartBarIcon 
+    },
+    { 
+      name: 'Settings', 
+      href: `/dashboard/${role}/settings`, 
+      icon: CogIcon 
+    },
   ];
-
-  const customerNavigation = [
-    { name: 'Dashboard', href: '/dashboard/customer' },
-    { name: 'My Bookings', href: '/dashboard/customer/bookings' },
-    { name: 'Favorites', href: '/dashboard/customer/favorites' },
-    { name: 'Settings', href: '/dashboard/customer/settings' },
-  ];
-
-  const navigation = userRole === 'business' ? businessNavigation : customerNavigation;
 
   return (
     <>
       {/* Mobile Sidebar */}
       <Transition.Root show={isOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-50 lg:hidden" onClose={() => setIsOpen(false)}>
+        <Dialog as="div" className="relative z-50 lg:hidden" onClose={onClose || (() => {})}>
           <Transition.Child
             as={Fragment}
             enter="transition-opacity ease-linear duration-300"
@@ -76,25 +82,33 @@ export const Sidebar = ({ isOpen, setIsOpen, userRole }: SidebarProps) => {
                     <button
                       type="button"
                       className="-m-2.5 p-2.5"
-                      onClick={() => setIsOpen(false)}
+                      onClick={() => {}}
                     >
                       <span className="sr-only">Close sidebar</span>
-                      <XMarkIcon className="h-6 w-6 text-white" aria-hidden="true" />
+                      <XMarkIcon
+                        className="h-6 w-6 text-white"
+                        aria-hidden="true"
+                      />
                     </button>
                   </div>
                 </Transition.Child>
 
-                {/* Sidebar component for mobile */}
+                {/* Sidebar content */}
                 <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4">
                   <div className="flex h-16 shrink-0 items-center">
-                    <Image
-                      src="/logo.svg"
-                      alt="PointMe"
-                      width={120}
-                      height={40}
-                      className="h-8 w-auto"
-                      priority
-                    />
+                    <Link href="/" className="flex items-center space-x-2">
+                      <Image
+                        src="/logo.svg"
+                        alt="PointMe!"
+                        width={32}
+                        height={32}
+                        className="h-8 w-auto"
+                        priority
+                      />
+                      <span className="text-xl font-semibold text-gray-900">
+                        PointMe!
+                      </span>
+                    </Link>
                   </div>
                   <nav className="flex flex-1 flex-col">
                     <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -105,14 +119,16 @@ export const Sidebar = ({ isOpen, setIsOpen, userRole }: SidebarProps) => {
                               <Link
                                 href={item.href}
                                 className={`
-                                  group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6
+                                  group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold
                                   ${
                                     pathname === item.href
-                                      ? 'bg-gray-50 text-indigo-600'
-                                      : 'text-gray-700 hover:text-indigo-600 hover:bg-gray-50'
+                                      ? 'bg-gray-50 text-primary'
+                                      : 'text-gray-700 hover:text-primary hover:bg-gray-50'
                                   }
                                 `}
+                                onClick={() => {}}
                               >
+                                <item.icon className="mr-3 h-6 w-6" aria-hidden="true" />
                                 {item.name}
                               </Link>
                             </li>
@@ -128,46 +144,33 @@ export const Sidebar = ({ isOpen, setIsOpen, userRole }: SidebarProps) => {
         </Dialog>
       </Transition.Root>
 
-      {/* Static sidebar for desktop */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-        <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 pb-4">
-          <div className="flex h-16 shrink-0 items-center">
-            <Image
-              src="/logo.svg"
-              alt="PointMe"
-              width={120}
-              height={40}
-              className="h-8 w-auto"
-              priority
-            />
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
+        <div className="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto">
+          <div className="flex items-center flex-shrink-0 px-4">
+            <span className="text-xl font-bold text-gray-900">PointMe!</span>
           </div>
-          <nav className="flex flex-1 flex-col">
-            <ul role="list" className="flex flex-1 flex-col gap-y-7">
-              <li>
-                <ul role="list" className="-mx-2 space-y-1">
-                  {navigation.map((item) => (
-                    <li key={item.name}>
-                      <Link
-                        href={item.href}
-                        className={`
-                          group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6
-                          ${
-                            pathname === item.href
-                              ? 'bg-gray-50 text-indigo-600'
-                              : 'text-gray-700 hover:text-indigo-600 hover:bg-gray-50'
-                          }
-                        `}
-                      >
-                        {item.name}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            </ul>
+          <nav className="mt-8 flex-1 flex flex-col">
+            <div className="px-2 space-y-1">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors
+                    ${
+                      pathname === item.href
+                        ? 'bg-primary text-white'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                >
+                  <item.icon className="mr-3 h-6 w-6" aria-hidden="true" />
+                  {item.name}
+                </Link>
+              ))}
+            </div>
           </nav>
         </div>
       </div>
     </>
   );
-};
+}

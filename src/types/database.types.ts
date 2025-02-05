@@ -6,6 +6,10 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+export type Profile = Database['public']['Tables']['profiles']['Row']
+export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
+export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
+
 export interface Database {
   public: {
     Tables: {
@@ -113,34 +117,16 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: {
-          id?: string
-          business_id: string
-          name: string
-          description: string
-          price: number
-          duration: number
-          category_id: string
-          image_url?: string
-          status?: 'active' | 'inactive' | 'deleted'
-          is_available?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          business_id?: string
-          name?: string
-          description?: string
-          price?: number
-          duration?: number
-          category_id?: string
-          image_url?: string
-          status?: 'active' | 'inactive' | 'deleted'
-          is_available?: boolean
-          created_at?: string
-          updated_at?: string
-        }
+        Insert: Omit<Database['public']['Tables']['services']['Row'], 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Database['public']['Tables']['services']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: "services_business_id_fkey"
+            columns: ["business_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       bookings: {
         Row: {

@@ -1,24 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
+import { useEffect, useState } from 'react';
 
-import { useAuth } from '@/context/AuthContext';
-import { BusinessProfile } from '@/types';
-import { toast } from 'react-hot-toast';
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import {
-  Input,
-  TextArea,
-  Label,
-  FormGroup,
-  Button,
+    Button,
+    FormGroup,
+    Input,
+    Label,
+    TextArea,
 } from '@/components/ui/form';
+import { useAuth } from '@/context/AuthContext';
 import { withAuth } from '@/lib/auth/withAuth';
+import { BusinessProfile } from '@/types';
+import { toast } from 'react-hot-toast';
 
 function BusinessSettingsPage() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<BusinessProfile | null>(null);
+  const [, setProfile] = useState<BusinessProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
     business_name: '',

@@ -7,11 +7,15 @@ import { useAppStore } from '@/lib/store';
 import { searchServices } from '@/lib/services/search';
 import { Service } from '@/types';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { SearchFilter } from '@/components/ui/SearchFilter';
+import MainNav from '@/components/navigation/MainNav';
+import { Card } from '@/components/ui/Card';
+import Image from 'next/image';
+import Link from 'next/link';
+import { MapPinIcon, ClockIcon } from '@heroicons/react/24/outline';
 
 export default function ServicesPage() {
   const searchParams = useSearchParams();
@@ -49,12 +53,13 @@ export default function ServicesPage() {
   }, [searchQuery, selectedCategory, priceRange, duration]);
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-8">
-      <div className="mx-auto max-w-7xl">
+    <>
+      <MainNav />
+      <div className="container mx-auto px-4 py-8 mt-16">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+          <h2 className="text-3xl font-bold text-gray-900">
             Available Services
-          </h1>
+          </h2>
           <p className="mt-2 text-gray-600">
             Find and book the perfect service for your needs
           </p>
@@ -62,17 +67,13 @@ export default function ServicesPage() {
 
         <SearchFilter
           onSearch={setSearchQuery}
-          categories={categories.map(category => category.name)}
+          categories={categories.map((category: { name: any; }) => category.name)}
           onCategorySelect={(category) => setSelectedCategory(category || null)}
         />
 
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-1 items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-              className="md:hidden"
-            >
+            <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="md:hidden">
               Filters
             </Button>
           </div>
@@ -91,7 +92,6 @@ export default function ServicesPage() {
               <option value="90">1.5 hours</option>
               <option value="120">2 hours</option>
             </Select>
-
             <div className="w-full md:w-64">
               <label className="mb-2 block text-sm font-medium text-gray-700">
                 Price Range: R{priceRange[0]} - R{priceRange[1]}
@@ -114,20 +114,71 @@ export default function ServicesPage() {
             </div>
           ) : services.length === 0 ? (
             <div className="flex h-64 flex-col items-center justify-center text-center">
-              <p className="text-lg font-medium text-gray-900">No services found</p>
-              <p className="mt-1 text-sm text-gray-600">
-                Try adjusting your search or filters
-              </p>
+              <p className="text-xl font-medium text-gray-900">No services found</p>
+              <p className="mt-1 text-sm text-gray-600">Try adjusting your search or filters</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {services.map((service) => (
-                <ServiceCard key={service.id} service={service} />
+                <Card 
+                  key={service.id} 
+                  className="group transition-all duration-300 hover:-translate-y-1 hover:shadow-xl overflow-hidden"
+                >
+                  {service.image_url && (
+                    <div className="relative h-48 w-full">
+                      <Image
+                        src={service.image_url}
+                        alt={service.name}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    </div>
+                  )}
+
+                  <div className="p-6">
+                    <div className="mb-4">
+                      <h3 className="text-xl font-semibold mb-2">{service.name}</h3>
+                      <p className="text-gray-600 text-sm mb-2 line-clamp-2">
+                        {service.description}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center text-gray-600">
+                        <MapPinIcon className="h-4 w-4 mr-2" />
+                        <span className="text-sm">{service.business?.address}</span>
+                      </div>
+                      <div className="flex items-center text-gray-600">
+                        <ClockIcon className="h-4 w-4 mr-2" />
+                        <span className="text-sm">{service.duration} minutes</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-4">
+                      <p className="text-xl font-bold text-gray-900">
+                        R{service.price}
+                      </p>
+                      <div className="space-x-2">
+                        <Link href={`/services/${service.id}`}>
+                          <Button variant="outline" size="sm">
+                            Details
+                          </Button>
+                        </Link>
+                        <Link href={`/services/${service.id}/book`}>
+                          <Button size="sm">
+                            Book Now
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
               ))}
             </div>
           )}
         </Suspense>
       </div>
-    </div>
+    </>
   );
 }

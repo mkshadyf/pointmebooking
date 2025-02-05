@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { AwaitedReactNode, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useAppStore } from '@/lib/store';
@@ -195,7 +195,7 @@ export default function ServiceActionPage({ params }: PageProps) {
               required
             >
               <option value="">Select a category</option>
-              {categories.map((category) => (
+              {categories.map((category: { id: string; name: string }) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
                 </option>

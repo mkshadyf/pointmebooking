@@ -1,6 +1,16 @@
 import { Provider } from "@supabase/supabase-js";
 
-export type UserRole = 'business' | 'customer' | 'admin';
+// Auth Constants
+export const USER_ROLES = ['customer', 'business', 'admin'] as const;
+export const USER_STATUSES = ['active', 'inactive', 'suspended'] as const;
+export const BOOKING_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed'] as const;
+export const SERVICE_STATUSES = ['active', 'inactive', 'deleted'] as const;
+
+// Auth Types
+export type UserRole = typeof USER_ROLES[number];
+export type UserStatus = typeof USER_STATUSES[number];
+export type BookingStatus = typeof BOOKING_STATUSES[number];
+export type ServiceStatus = typeof SERVICE_STATUSES[number];
 
 export interface UserProfile {
   id: string;
@@ -26,7 +36,7 @@ export interface UserProfile {
   avatar_url?: string;
   logo_url?: string;
   cover_image_url?: string;
-  status: 'active' | 'inactive' | 'suspended';
+  status: UserStatus;
   onboarding_completed: boolean;
   created_at: string;
   updated_at: string;
@@ -53,26 +63,12 @@ export interface WorkingHours {
 export interface BusinessProfile extends UserProfile {
   business_name: string;
   business_category: string;
-  business_type?: string;
+  business_type: string;
   description: string;
   location: string;
   contact_number: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  postal_code?: string;
-  contact_email?: string;
-  website?: string;
-  avatar_url?: string;
-  logo_url?: string;
-  cover_image_url?: string;
   working_hours: WorkingHours;
   services: Service[];
-  onboarding_completed: boolean;
-  status: 'active' | 'inactive' | 'suspended';
-  created_at: string;
-  updated_at: string;
 }
 
 export interface Service {
@@ -88,6 +84,16 @@ export interface Service {
   is_available: boolean;
   created_at: string;
   updated_at: string;
+  business?: {
+    id: string;
+    name: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    phone?: string;
+    email?: string;
+    logo_url?: string;
+  };
 }
 
 export interface Booking {

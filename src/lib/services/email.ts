@@ -12,7 +12,6 @@ interface SendEmailParams {
 
 export class EmailService {
   private static instance: EmailService
-  private supabase: any
 
   private constructor() {}
 
@@ -31,11 +30,11 @@ export class EmailService {
 
     try {
       const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
-      if (userError || !user) {
+      if (sessionError || !session) {
         throw new Error('No active session')
       }
 
@@ -44,7 +43,7 @@ export class EmailService {
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${user}`,
+            'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -71,15 +70,40 @@ export class EmailService {
     }
   }
 
-  async sendVerificationEmail(email: string, code: string): Promise<{ success: boolean; error?: string }> {
-    return this.sendEmail({
-      to: email,
-      templateName: 'verification',
-      data: {
-        code,
-        email,
-      },
-    })
+  async sendVerificationEmail(email: string): Promise<boolean> {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('No authenticated user found');
+      }
+
+      // Send verification email
+      const response = await fetch('/api/send-verification-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          userId: user.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send verification email');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error sending verification email:', error);
+      return false;
+    }
   }
 
   async sendWelcomeEmail(email: string, name: string): Promise<{ success: boolean; error?: string }> {

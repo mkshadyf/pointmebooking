@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { AwaitedReactNode, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
@@ -60,7 +60,7 @@ export function BookingForm({ selectedDate, booking, onSubmitAction, onCancelAct
           className="mt-1"
         >
           <option value="">Select a service</option>
-          {services.map((service) => (
+          {services.map((service: { id: string | number; name: string }) => (
             <option key={service.id} value={service.id}>
               {service.name}
             </option>

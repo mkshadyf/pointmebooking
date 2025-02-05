@@ -1,11 +1,11 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import { useState, useEffect } from 'react';
-import { toast } from 'react-hot-toast';
 import { PageLoading } from '@/components/ui/Loading';
+import { useAuth } from '@/context/AuthContext';
 import { BusinessProfile } from '@/types';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
 
 export default function BusinessOnboarding() {
   const { user, profile, updateProfile } = useAuth();
@@ -35,7 +35,9 @@ export default function BusinessOnboarding() {
     setLoading(true);
 
     try {
-      await updateProfile(formData);
+      const { status, ...profileData } = formData;
+      const sanitizedProfileData = { ...profileData, role: "business" } as Partial<Omit<BusinessProfile, 'status'>>;
+      await updateProfile(sanitizedProfileData);
       toast.success('Business profile created successfully!');
       router.push('/dashboard/business');
     } catch (err: unknown) {
