@@ -1,7 +1,7 @@
 import { Service } from '@/types';
 import { createBrowserClient } from '@supabase/ssr';
 
-interface SearchFilters {
+interface SearchParams {
   query?: string;
   category?: string;
   minPrice?: number;
@@ -10,79 +10,54 @@ interface SearchFilters {
   location?: string;
 }
 
-export async function searchServices(filters: SearchFilters = {}): Promise<Service[]> {
+export async function searchServices(params: SearchParams): Promise<Service[]> {
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
+
   let query = supabase
-    .from('services')
-    .select(`
-      id,
-      name,
-      description,
-      price,
-      duration,
-      category_id,
-      image_url,
-      status,
-      is_available,
-      created_at,
-      updated_at,
-      business:business_id(
-        id,
-        business_name,
-        address,
-        city,
-        state,
-        contact_number,
-        contact_email,
-        logo_url
-      )
-    `);
+    .from('service_details')
+    .select('*')
+    .eq('status', 'active')
+    .eq('is_available', true);
 
-  // Apply text search
-  if (filters.query) {
-    query = query.or(`name.ilike.%${filters.query}%,description.ilike.%${filters.query}%`);
+  // Apply filters
+  if (params.query) {
+    query = query.or(`name.ilike.%${params.query}%,description.ilike.%${params.query}%`);
   }
 
-  // Apply category filter
-  if (filters.category) {
-    query = query.eq('category_id', filters.category);
+  if (params.category) {
+    query = query.eq('category_id', params.category);
   }
 
-  // Apply price range filter
-  if (filters.minPrice !== undefined) {
-    query = query.gte('price', filters.minPrice);
-  }
-  if (filters.maxPrice !== undefined) {
-    query = query.lte('price', filters.maxPrice);
+  if (params.minPrice !== undefined) {
+    query = query.gte('price', params.minPrice);
   }
 
-  // Apply duration filter
-  if (filters.duration) {
-    query = query.eq('duration', filters.duration);
+  if (params.maxPrice !== undefined) {
+    query = query.lte('price', params.maxPrice);
   }
 
-  // Apply location filter
-  if (filters.location) {
-    query = query.eq('business.location', filters.location);
+  if (params.duration) {
+    query = query.eq('duration', params.duration);
+  }
+
+  if (params.location) {
+    query = query.or(`business_city.ilike.%${params.location}%,business_state.ilike.%${params.location}%`);
   }
 
   const { data, error } = await query;
 
   if (error) {
-    // Create a fallback error message if error.message is missing
-    const errorMessage =
-      (error as { message?: string }).message ||
-      JSON.stringify(error) ||
-      'Unknown error searching services';
-    console.error('Error searching services:', errorMessage);
-    throw new Error(errorMessage);
+    console.error('Error searching services:', error);
+    return [];
   }
 
-  return (data || []).map(item => ({
+  // Transform the data to match our Service type
+  return data.map((item: any) => ({
     id: item.id,
+    business_id: item.business_id,
     name: item.name,
     description: item.description,
     price: item.price,
@@ -93,19 +68,20 @@ export async function searchServices(filters: SearchFilters = {}): Promise<Servi
     is_available: item.is_available,
     created_at: item.created_at,
     updated_at: item.updated_at,
-    business_id: item.business?.[0]?.id,
-    business: item.business?.[0]
-      ? {
-          id: item.business[0].id,
-          name: item.business[0].business_name,
-          address: item.business[0].address,
-          city: item.business[0].city,
-          state: item.business[0].state,
-          phone: item.business[0].contact_number,
-          email: item.business[0].contact_email,
-          logo_url: item.business[0].logo_url,
-        }
-      : undefined,
+    business: {
+      id: item.business_id,
+      name: item.business_name,
+      address: item.business_address,
+      city: item.business_city,
+      state: item.business_state,
+      phone: item.business_phone,
+      email: item.business_email,
+      logo_url: item.business_logo_url,
+    },
+    category: {
+      name: item.category_name,
+      icon: item.category_icon
+    }
   }));
 }
 

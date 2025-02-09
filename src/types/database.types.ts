@@ -6,10 +6,6 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Profile = Database['public']['Tables']['profiles']['Row']
-export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
-export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
-
 export interface Database {
   public: {
     Tables: {
@@ -19,14 +15,11 @@ export interface Database {
           user_id: string
           email: string
           full_name: string
-          avatar_url?: string
-          logo_url?: string
-          cover_image_url?: string
-          phone?: string
           role: 'customer' | 'business' | 'admin'
           email_verified: boolean
           verification_code?: string
-          onboarding_completed: boolean
+          verification_attempts: number
+          last_verification_attempt?: string
           business_name?: string
           business_type?: string
           business_category?: string
@@ -39,7 +32,11 @@ export interface Database {
           city?: string
           state?: string
           postal_code?: string
+          avatar_url?: string
+          logo_url?: string
+          cover_image_url?: string
           status: 'active' | 'inactive' | 'suspended'
+          onboarding_completed: boolean
           created_at: string
           updated_at: string
         }
@@ -47,86 +44,61 @@ export interface Database {
           id?: string
           user_id: string
           email: string
-          full_name: string
-          avatar_url?: string
-          logo_url?: string
-          cover_image_url?: string
-          phone?: string
+          full_name?: string
           role?: 'customer' | 'business' | 'admin'
           email_verified?: boolean
           verification_code?: string
-          onboarding_completed?: boolean
           business_name?: string
-          business_type?: string
-          business_category?: string
-          description?: string
-          location?: string
-          contact_number?: string
-          contact_email?: string
-          website?: string
-          address?: string
-          city?: string
-          state?: string
-          postal_code?: string
           status?: 'active' | 'inactive' | 'suspended'
-          created_at?: string
-          updated_at?: string
+          onboarding_completed?: boolean
         }
         Update: {
-          id?: string
-          user_id?: string
           email?: string
           full_name?: string
-          avatar_url?: string
-          logo_url?: string
-          cover_image_url?: string
-          phone?: string
           role?: 'customer' | 'business' | 'admin'
           email_verified?: boolean
           verification_code?: string
-          onboarding_completed?: boolean
           business_name?: string
-          business_type?: string
-          business_category?: string
-          description?: string
-          location?: string
-          contact_number?: string
-          contact_email?: string
-          website?: string
-          address?: string
-          city?: string
-          state?: string
-          postal_code?: string
           status?: 'active' | 'inactive' | 'suspended'
-          created_at?: string
-          updated_at?: string
+          onboarding_completed?: boolean
         }
       }
       services: {
         Row: {
           id: string
           business_id: string
+          category_id: string
           name: string
           description: string
           price: number
           duration: number
-          category_id: string
           image_url?: string
           status: 'active' | 'inactive' | 'deleted'
           is_available: boolean
           created_at: string
           updated_at: string
         }
-        Insert: Omit<Database['public']['Tables']['services']['Row'], 'id' | 'created_at' | 'updated_at'>
-        Update: Partial<Database['public']['Tables']['services']['Insert']>
-        Relationships: [
-          {
-            foreignKeyName: "services_business_id_fkey"
-            columns: ["business_id"]
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          }
-        ]
+        Insert: {
+          id?: string
+          business_id: string
+          category_id: string
+          name: string
+          description: string
+          price: number
+          duration: number
+          image_url?: string
+          status?: 'active' | 'inactive' | 'deleted'
+          is_available?: boolean
+        }
+        Update: {
+          name?: string
+          description?: string
+          price?: number
+          duration?: number
+          image_url?: string
+          status?: 'active' | 'inactive' | 'deleted'
+          is_available?: boolean
+        }
       }
       bookings: {
         Row: {
@@ -134,47 +106,71 @@ export interface Database {
           service_id: string
           customer_id: string
           business_id: string
+          customer_name: string
           date: string
           start_time: string
           end_time: string
+          total_amount: number
           status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
           notes?: string
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
           service_id: string
           customer_id: string
           business_id: string
+          customer_name: string
           date: string
           start_time: string
           end_time: string
+          total_amount?: number
           status?: 'pending' | 'confirmed' | 'cancelled' | 'completed'
           notes?: string
-          created_at?: string
         }
         Update: {
-          id?: string
-          service_id?: string
-          customer_id?: string
-          business_id?: string
-          date?: string
-          start_time?: string
-          end_time?: string
           status?: 'pending' | 'confirmed' | 'cancelled' | 'completed'
           notes?: string
-          created_at?: string
         }
       }
     }
     Views: {
-      [_ in never]: never
+      service_details: {
+        Row: {
+          id: string
+          business_id: string
+          category_id: string
+          name: string
+          description: string
+          price: number
+          duration: number
+          image_url?: string
+          status: 'active' | 'inactive' | 'deleted'
+          is_available: boolean
+          business_name: string
+          business_address?: string
+          business_city?: string
+          business_state?: string
+          business_phone?: string
+          business_email?: string
+          category_name: string
+          created_at: string
+          updated_at: string
+        }
+      }
     }
     Functions: {
-      [_ in never]: never
+      handle_new_user: {
+        Args: Record<string, never>
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      user_role: 'customer' | 'business' | 'admin'
+      user_status: 'active' | 'inactive' | 'suspended'
+      service_status: 'active' | 'inactive' | 'deleted'
+      booking_status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
     }
   }
 }

@@ -1,13 +1,27 @@
-import { InstallPrompt } from "@/components/InstallPrompt";
 import ToastHost from '@/components/ToastHost';
 import { AuthProvider } from "@/context/AuthContext";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 const inter = Inter({
-  subsets: ["latin"],
+  subsets: ['latin'],
+  display: 'swap',
+  fallback: [
+    '-apple-system',
+    'BlinkMacSystemFont',
+    'Segoe UI',
+    'Roboto',
+    'Oxygen',
+    'Ubuntu',
+    'Cantarell',
+    'Fira Sans',
+    'Droid Sans',
+    'Helvetica Neue',
+    'sans-serif',
+  ],
+  preload: true,
+  adjustFontFallback: true,
 });
 
 export const metadata: Metadata = {
@@ -61,7 +75,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full bg-background">
+    <html lang="en" className={`h-full bg-background ${inter.className}`}>
       <head>
         <meta name="application-name" content="PointMe!" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -72,10 +86,8 @@ export default function RootLayout({
         <meta name="theme-color" content="#2563eb" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       </head>
-      <body className={`${inter.className} h-full antialiased`}>
+      <body className="h-full antialiased">
         <AuthProvider>
-          <Toaster position="top-center" />
-          <InstallPrompt />
           {children}
           <ToastHost />
         </AuthProvider>

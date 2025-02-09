@@ -5,11 +5,11 @@ import { useEffect, useState } from 'react';
 
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import {
-    Button,
-    FormGroup,
-    Input,
-    Label,
-    TextArea,
+  Button,
+  FormGroup,
+  Input,
+  Label,
+  TextArea,
 } from '@/components/ui/form';
 import { useAuth } from '@/context/AuthContext';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -379,4 +379,4 @@ function BusinessSettingsPage() {
   );
 }
 
-export default withAuth(BusinessSettingsPage, ['business']);
+export default withAuth(BusinessSettingsPage);

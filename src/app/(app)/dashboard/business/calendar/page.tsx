@@ -1,84 +1,93 @@
 'use client';
 
-import { useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
-import { format } from 'date-fns';
-import { Calendar } from '@/components/calendar/Calendar';
 import { BookingForm } from '@/components/bookings/BookingForm';
+import { Calendar } from '@/components/calendar/Calendar';
+import { useAuth } from '@/context/AuthContext';
 import { withAuth } from '@/lib/auth/withAuth';
-import { Booking, Service } from '@/types';
-import { useAppStore } from '@/lib/store';
+import { Booking } from '@/types';
+import { createBrowserClient } from '@supabase/ssr';
+import { useState } from 'react';
 
-function BusinessCalendarPage() {
-  const [selectedDate, setSelectedDate] = useState<Date>();
-  const [selectedBooking, setSelectedBooking] = useState<Booking>();
-  const { services } = useAppStore();
-
+export default withAuth(function BusinessCalendarPage() {
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const { user } = useAuth();
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-    setSelectedBooking(undefined);
-  };
-
   const handleBookingSelect = (booking: Booking) => {
     setSelectedBooking(booking);
-    setSelectedDate(new Date(booking.start_time));
   };
 
-  const handleBookingSubmit = async (bookingData: Partial<Booking>) => {
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    setSelectedBooking(null);
+  };
+
+  const handleBookingUpdate = async (updatedBooking: Partial<Booking>) => {
     try {
-      if (selectedBooking) {
-        // Update existing booking
-        const { error } = await supabase
-          .from('bookings')
-          .update(bookingData)
-          .eq('id', selectedBooking.id);
+      const { error } = await supabase
+        .from('bookings')
+        .update(updatedBooking)
+        .eq('id', selectedBooking?.id);
 
-        if (error) throw error;
-      } else {
-        // Create new booking
-        const { error } = await supabase
-          .from('bookings')
-          .insert([bookingData]);
-
-        if (error) throw error;
-      }
-
-      // Reset selection
-      setSelectedDate(undefined);
-      setSelectedBooking(undefined);
+      if (error) throw error;
+      setSelectedBooking(null);
     } catch (error) {
-      console.error('Error handling booking:', error);
+      console.error('Error updating booking:', error);
     }
   };
 
-  const handleCancel = () => {
-    setSelectedDate(undefined);
-    setSelectedBooking(undefined);
+  const handleBookingCreate = async (newBooking: Partial<Booking>) => {
+    try {
+      const bookingData = {
+        ...newBooking,
+        business_id: user?.id,
+        status: 'pending',
+        date: selectedDate?.toISOString().split('T')[0],
+      };
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .insert(bookingData)
+        .select()
+        .single();
+
+      if (error) throw error;
+      setSelectedBooking(data);
+    } catch (error) {
+      console.error('Error creating booking:', error);
+    }
   };
 
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="mb-8 text-2xl font-bold">Business Calendar</h1>
-      <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
-        <Calendar
-          selectedDate={selectedDate}
-          onDateSelect={handleDateSelect}
-          onBookingSelect={handleBookingSelect}
-        />
-        <BookingForm
-          selectedDate={selectedDate}
-          booking={selectedBooking}
-          onSubmitAction={handleBookingSubmit}
-          onCancelAction={handleCancel}
-        />
+    <div className="p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="col-span-1">
+          <Calendar
+            selectedDate={selectedDate}
+            onDateSelect={handleDateSelect}
+            onBookingSelect={handleBookingSelect}
+          />
+        </div>
+        
+        {(selectedBooking || selectedDate) && (
+          <div className="col-span-1">
+            <BookingForm
+              selectedDate={selectedDate}
+              booking={selectedBooking || undefined}
+              onSubmitAction={selectedBooking ? handleBookingUpdate : handleBookingCreate}
+              onCancelAction={() => {
+                setSelectedBooking(null);
+                setSelectedDate(undefined);
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
-}
-
-export default withAuth(BusinessCalendarPage, ['business']);
+});

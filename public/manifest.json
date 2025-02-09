@@ -1,31 +1,12 @@
 {
   "name": "PointMe",
   "short_name": "PointMe",
-  "description": "Your personal booking and scheduling assistant",
+  "description": "Book local services online with PointMe. Find and schedule appointments with service providers in your area.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
   "orientation": "portrait",
-  "scope": "/",
-  "prefer_related_applications": false,
-  "categories": ["business", "lifestyle", "productivity"],
-  "shortcuts": [
-    {
-      "name": "Book Service",
-      "short_name": "Book",
-      "description": "Book a new service",
-      "url": "/services",
-      "icons": [{ "src": "/icons/book-192x192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "My Bookings",
-      "short_name": "Bookings",
-      "description": "View your bookings",
-      "url": "/dashboard/customer",
-      "icons": [{ "src": "/icons/bookings-192x192.png", "sizes": "192x192" }]
-    }
-  ],
   "icons": [
     {
       "src": "/icons/icon-72x72.png",
@@ -76,27 +57,31 @@
       "purpose": "any maskable"
     }
   ],
+  "shortcuts": [
+    {
+      "name": "Book Service",
+      "short_name": "Book",
+      "description": "Book a new service",
+      "url": "/services",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Bookings",
+      "short_name": "Bookings",
+      "description": "View your bookings",
+      "url": "/dashboard/customer/bookings",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["business", "productivity", "utilities"],
   "screenshots": [
     {
-      "src": "/screenshots/home-mobile.jpg",
-      "sizes": "1080x1920",
-      "type": "image/jpeg",
-      "platform": "narrow",
-      "label": "Home screen of PointMe"
-    },
-    {
-      "src": "/screenshots/services-mobile.jpg",
-      "sizes": "1080x1920",
-      "type": "image/jpeg",
-      "platform": "narrow",
-      "label": "Services screen"
-    },
-    {
-      "src": "/screenshots/booking-mobile.jpg",
-      "sizes": "1080x1920",
-      "type": "image/jpeg",
-      "platform": "narrow",
-      "label": "Booking screen"
+      "src": "/screenshots/home.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Home page of PointMe"
     }
-  ]
+  ],
+  "prefer_related_applications": false
 }

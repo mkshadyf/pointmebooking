@@ -1,77 +1,140 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { ROUTES } from '@/config/routes';
 import { useAuth } from '@/context/AuthContext';
-import { createClient } from '@/utils/supabase/client';
+import { EmailService } from '@/lib/services/email';
+import { notify } from '@/lib/utils/notifications';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export default function VerifyEmailPage() {
-  const { user } = useAuth();
+  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
+  const { user } = useAuth();
 
-  useEffect(() => {
-    if (!user) {
-      router.replace('/login');
-    }
-  }, [user, router]);
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code) return;
 
-  const handleResendEmail = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
-
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: user?.email!,
+      const response = await fetch('/api/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
       });
 
-      if (error) throw error;
+      const data = await response.json();
 
-      setSuccess('Verification email has been resent!');
-    } catch (error: any) {
-      setError(error.message);
+      // Check for specific error responses (expired or invalid code)
+      if (!response.ok) {
+        const errMsg = data.error ? data.error.toLowerCase() : '';
+        if (errMsg.includes("expired") || errMsg.includes("invalid")) {
+          throw new Error("The verification code is invalid or has expired. Please request a new code.");
+        }
+        throw new Error(data.error || 'Failed to verify email');
+      }
+
+      notify.success('EMAIL_VERIFICATION_SUCCESS');
+      router.push(ROUTES.customerDashboard.path);
+    } catch (error) {
+      notify.error('EMAIL_VERIFICATION_FAILED', { error: error as Error });
     } finally {
       setLoading(false);
     }
   };
 
+  const handleResend = async () => {
+    if (!user?.email) return;
+
+    setResending(true);
+    try {
+      const emailService = EmailService.getInstance();
+      await emailService.sendVerificationEmail(user.email);
+      notify.success('EMAIL_VERIFICATION_SENT');
+    } catch (error) {
+      notify.error('EMAIL_VERIFICATION_FAILED', { error: error as Error });
+    } finally {
+      setResending(false);
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold">Verify your email</h1>
-        <p className="text-gray-600 mt-2">
-          We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.
+    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          Verify your email
+        </h2>
+        <p className="mt-2 text-center text-sm text-gray-600">
+          We sent a verification code to your email.
+          Please enter it below to verify your account.
         </p>
       </div>
 
-      {error && (
-        <div className="bg-red-50 text-red-500 p-4 rounded-md text-sm">
-          {error}
-        </div>
-      )}
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          <form className="space-y-6" onSubmit={handleVerify}>
+            <div>
+              <label htmlFor="code" className="block text-sm font-medium text-gray-700">
+                Verification Code
+              </label>
+              <div className="mt-1">
+                <Input
+                  id="code"
+                  name="code"
+                  type="text"
+                  required
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  className="uppercase"
+                  placeholder="Enter verification code"
+                  maxLength={6}
+                />
+              </div>
+            </div>
 
-      {success && (
-        <div className="bg-green-50 text-green-500 p-4 rounded-md text-sm">
-          {success}
-        </div>
-      )}
+            <div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={loading || !code}
+                loading={loading}
+              >
+                Verify Email
+              </Button>
+            </div>
+          </form>
 
-      <div className="text-center">
-        <p className="text-gray-600 text-sm">
-          Didn't receive the email?{' '}
-          <button
-            onClick={handleResendEmail}
-            disabled={loading}
-            className="text-indigo-600 hover:text-indigo-500 font-medium disabled:opacity-50"
-          >
-            {loading ? 'Sending...' : 'Click here to resend'}
-          </button>
-        </p>
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">
+                  Didn't receive the code?
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleResend}
+                disabled={resending}
+                loading={resending}
+              >
+                Resend Code
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

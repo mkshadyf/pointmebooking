@@ -1,6 +1,8 @@
+'use client';
+
 import { Header } from '@/components/dashboard/Header';
 import { Sidebar } from '@/components/dashboard/Sidebar';
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -8,17 +10,41 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, role }: DashboardLayoutProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar role={role} />
-      <div className="flex-1 flex flex-col">
-        <Header role={role} />
-        <main className="flex-1 p-6 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
-            {children}
+    <>
+      {/* Sidebar */}
+      <Sidebar
+        role={role}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+
+      {/* Main content wrapper */}
+      <div className="flex min-h-screen flex-col lg:pl-72">
+        <Header role={role} onMobileMenuClick={() => setSidebarOpen(true)} />
+        
+        {/* Main content */}
+        <main className="flex-1">
+          <div className="py-6">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              {children}
+            </div>
           </div>
         </main>
+
+        {/* Footer */}
+        <footer className="border-t border-gray-200 bg-white">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="py-4">
+              <p className="text-center text-sm text-gray-500">
+                &copy; {new Date().getFullYear()} PointMe. All rights reserved.
+              </p>
+            </div>
+          </div>
+        </footer>
       </div>
-    </div>
+    </>
   );
 } 

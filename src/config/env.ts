@@ -24,7 +24,7 @@ const optionalEnvVars = {
   environment: {
     nodeEnv: (process.env.NODE_ENV || 'development') as Environment,
     appEnv: (process.env.NEXT_PUBLIC_APP_ENV || 'development') as AppEnvironment,
-    isVercel: process.env.VERCEL === 'true',
+    isVercel: !!process.env.VERCEL, // Convert to boolean using double negation
   },
   // Feature flags
   features: {

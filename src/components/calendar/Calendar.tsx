@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
-import interactionPlugin from '@fullcalendar/interaction';
 import { useAuth } from '@/context/AuthContext';
 import { Booking } from '@/types';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import FullCalendar from '@fullcalendar/react';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import { createBrowserClient } from '@supabase/ssr';
+import { useEffect, useState } from 'react';
 
 interface CalendarProps {
   selectedDate?: Date;
@@ -20,7 +20,7 @@ interface CustomerProfile {
   full_name: string;
 }
 
-export function Calendar({ selectedDate, onDateSelect, onBookingSelect }: CalendarProps) {
+export function Calendar({ onDateSelect, onBookingSelect }: CalendarProps) {
   const [bookings, setBookings] = useState<(Booking & { customer?: CustomerProfile })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();

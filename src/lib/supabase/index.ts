@@ -1,7 +1,16 @@
-import { createServerClient } from '@supabase/ssr';
+import { createBrowserClient, createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
-export const createClient = async () => {
+// Browser client
+export const createBrowserSupabaseClient = () => {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+};
+
+// Server client
+export const createServerSupabaseClient = async () => {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -15,7 +24,7 @@ export const createClient = async () => {
         set(name: string, value: string, options: any) {
           cookieStore.set(name, value, options);
         },
-        remove(name: string, options: any) {
+        remove(options: any) {
           cookieStore.delete(options);
         },
       },
@@ -23,8 +32,9 @@ export const createClient = async () => {
   );
 };
 
+// User related functions
 export async function getUser() {
-  const supabase = createClient();
+  const supabase = createServerSupabaseClient();
   try {
     const { data: { user }, error } = await (await supabase).auth.getUser();
     if (error) throw error;
@@ -39,7 +49,7 @@ export async function getUserProfile() {
   const user = await getUser();
   if (!user) return null;
 
-  const supabase = createClient();
+  const supabase = createServerSupabaseClient();
   try {
     const { data, error } = await (await supabase)
       .from('profiles')
@@ -56,7 +66,7 @@ export async function getUserProfile() {
 }
 
 export async function updateUserProfile(userId: string, updates: any) {
-  const supabase = createClient();
+  const supabase = createServerSupabaseClient();
   try {
     const { data, error } = await (await supabase)
       .from('profiles')
@@ -72,3 +82,8 @@ export async function updateUserProfile(userId: string, updates: any) {
     return null;
   }
 }
+
+// React hook for browser client
+export function useSupabase() {
+  return createBrowserSupabaseClient();
+} 

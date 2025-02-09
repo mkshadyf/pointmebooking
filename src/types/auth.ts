@@ -1,5 +1,13 @@
 import { User } from '@supabase/supabase-js';
-import { Profile } from '@/types/database.types';
+
+export interface Profile {
+  id: string;
+  email: string;
+  role: 'business' | 'customer' | 'admin';
+  onboarding_completed: boolean;
+  business_name?: string;
+  // Add additional fields as required by your application.
+}
 
 export interface AuthContextType {
   user: User | null;
@@ -8,7 +16,7 @@ export interface AuthContextType {
   error: string | null;
   isEmailVerified: boolean;
   signOut: () => Promise<void>;
-  updateProfile: (updates: Partial<Profile>) => Promise<void>;
+  updateProfile: (data: Partial<Profile>) => Promise<void>;
 }
 
 export interface AuthState {
@@ -19,7 +27,9 @@ export interface AuthState {
   isEmailVerified: boolean;
 }
 
-export interface AuthAction {
-  type: 'SET_USER' | 'SET_PROFILE' | 'SET_LOADING' | 'SET_ERROR' | 'SET_EMAIL_VERIFIED';
-  payload?: any;
-}
+export type AuthAction =
+  | { type: 'SET_USER'; payload: User }
+  | { type: 'SET_PROFILE'; payload: Profile }
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'RESET_STATE' };

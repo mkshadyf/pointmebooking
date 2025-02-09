@@ -34,21 +34,24 @@ export function handleValidationError(error: ZodError): AppError {
 }
 
 // Handle Supabase auth errors
-export function handleAuthError(error: AuthError): AppError {
-  switch (error.status) {
-    case 400:
-      return createError(ErrorCode.AUTH_INVALID_CREDENTIALS);
-    case 401:
-      return createError(ErrorCode.AUTH_SESSION_EXPIRED);
-    case 403:
-      return createError(ErrorCode.AUTH_UNAUTHORIZED);
-    case 404:
-      return createError(ErrorCode.AUTH_MISSING_PROFILE);
-    case 422:
-      return createError(ErrorCode.VALIDATION_ERROR, { details: error.message });
-    default:
-      return createError(ErrorCode.UNKNOWN_ERROR, { details: error.message });
+export function handleAuthError(error: unknown): string {
+  const defaultMessage = 'Authentication failed. Please try again.';
+  
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    
+    if (message.includes('email') || message.includes('user')) {
+      return 'Invalid email address';
+    }
+    if (message.includes('password')) {
+      return 'Incorrect password';
+    }
+    if (message.includes('network')) {
+      return 'Network error. Please check your connection.';
+    }
   }
+  
+  return defaultMessage;
 }
 
 // Handle database errors
@@ -90,7 +93,7 @@ export function handleError(error: unknown): AppError {
     return handleValidationError(error);
   }
   if (error instanceof AuthError) {
-    return handleAuthError(error);
+    return createError(ErrorCode.UNKNOWN_ERROR, { details: handleAuthError(error) });
   }
   if (error instanceof Error) {
     return createError(ErrorCode.UNKNOWN_ERROR, { details: error.message });
@@ -132,4 +135,9 @@ export async function handleClientError(error: unknown): Promise<void> {
       stack: appError.stack
     });
   }
-} 
+}
+
+export const handleProfileError = (error: unknown) => {
+  console.error('Profile error:', error);
+  return 'Failed to update profile. Please try again.';
+}; 

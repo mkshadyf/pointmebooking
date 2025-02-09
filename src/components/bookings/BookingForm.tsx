@@ -1,15 +1,14 @@
 'use client';
 
-import { AwaitedReactNode, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal, useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
-import { useForm } from 'react-hook-form';
-import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { useAuth } from '@/context/AuthContext';
 import { useAppStore } from '@/lib/store';
 import { Booking } from '@/types';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { toast } from 'react-hot-toast';
 
 interface BookingFormProps {
   selectedDate?: Date;
@@ -38,7 +37,7 @@ export function BookingForm({ selectedDate, booking, onSubmitAction, onCancelAct
     try {
       await onSubmitAction(data);
       toast.success(booking ? 'Booking updated successfully!' : 'Booking created successfully!');
-      reset();
+        reset();
       onCancelAction();
     } catch (error) {
       console.error('Error handling booking:', error);

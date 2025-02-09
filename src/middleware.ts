@@ -1,151 +1,110 @@
-import { canAccessRoute, getRedirectPath, getRouteConfig, ROUTES } from '@/config/routes';
-import { createError } from '@/lib/errors/handlers';
-import { ErrorCode } from '@/lib/errors/types';
-import { UserRole } from '@/types';
+import { ROUTES } from '@/config/routes';
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from './lib/supabase/client';
 
-// Define protected and public routes
+// Define public routes that don't require authentication
+const PUBLIC_ROUTES = [
+  '/',
+  '/services',
+  '/businesses',
+  ROUTES.login.path,
+  ROUTES.register.path,
+  ROUTES.forgotPassword.path,
+];
 
 // Helper to check if path starts with any of the given prefixes
 
 // Helper function for login redirects
-function redirectToLogin(request: NextRequest, path: string) {
-  const redirectUrl = new URL(ROUTES.login.path, request.url);
-  redirectUrl.searchParams.set('redirectTo', path);
-  return NextResponse.redirect(redirectUrl);
-}
 
 // Helper function for error redirects
-function redirectToError(request: NextRequest, code: ErrorCode, redirectTo?: string) {
-  const error = createError(code);
-  const redirectUrl = new URL(ROUTES.error.path, request.url);
-  redirectUrl.searchParams.set('code', error.code);
-  redirectUrl.searchParams.set('message', error.message);
-  if (redirectTo) {
-    redirectUrl.searchParams.set('redirectTo', redirectTo);
-  }
-  return NextResponse.redirect(redirectUrl);
-}
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
-
-  try {
-    // Create supabase client
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: any) {
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            });
-          },
-          remove(name: string, options: any) {
-            response.cookies.delete({
-              name,
-              ...options,
-            });
-          },
+  // Create supabase client
+  const supabase = createServerClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
         },
-      }
-    );
-
-    // Get current path
-    const path = request.nextUrl.pathname;
-    const routeConfig = getRouteConfig(path);
-
-    // If no route config found, allow access (for static files etc.)
-    if (!routeConfig) {
-      return response;
-    }
-
-    // Get user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    // Handle auth routes (login, register, etc.)
-    if (!routeConfig.requiresAuth) {
-      if (user) {
-        // If user is already logged in, redirect to appropriate dashboard
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (profile) {
-          const redirectTo = request.nextUrl.searchParams.get('redirectTo') || 
-            getRedirectPath(profile.role as UserRole, true, profile.onboarding_completed);
-          return NextResponse.redirect(new URL(redirectTo, request.url));
-        }
-      }
-      return response;
-    }
-
-    // Handle protected routes
-    if (!user || userError) {
-      return redirectToLogin(request, path);
-    }
-
-    // Get user profile
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError || !profile) {
-      return redirectToError(request, ErrorCode.PROFILE_NOT_FOUND);
-    }
-
-    // Check role-based access
-    if (!canAccessRoute(profile.role as UserRole, path)) {
-      return redirectToError(request, ErrorCode.AUTH_UNAUTHORIZED);
-    }
-
-    // Check email verification if required
-    if (routeConfig.requiresVerification && !profile.email_verified) {
-      return NextResponse.redirect(new URL(ROUTES.verifyEmail.path, request.url));
-    }
-
-    // Check onboarding status if required
-    if (routeConfig.requiresOnboarding && !profile.onboarding_completed && !path.includes('/onboarding')) {
-      const onboardingPath = profile.role === 'business' 
-        ? ROUTES.businessOnboarding.path 
-        : ROUTES.customerOnboarding.path;
-      return NextResponse.redirect(new URL(onboardingPath, request.url));
-    }
-
-    // Add user context to headers
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-user-id', user.id);
-    requestHeaders.set('x-user-role', profile.role);
-
-    return NextResponse.next({
-      request: {
-        headers: requestHeaders,
+        set(name: string, value: string, options: any) {
+          request.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options: any) {
+          request.cookies.delete({ name, ...options });
+        },
       },
-    });
-  } catch (error) {
-    console.error('Middleware error:', error);
-    return redirectToError(request, ErrorCode.UNKNOWN_ERROR);
+    }
+  );
+
+  const { data: { session }, error } = await supabase.auth.getSession();
+  const path = request.nextUrl.pathname;
+
+  // Skip auth check for public assets
+  if (
+    path.startsWith('/_next') ||
+    path.startsWith('/api') ||
+    path === '/manifest.json' ||
+    path === '/favicon.ico' ||
+    path.match(/\.(ico|png|jpg|jpeg|svg|css|js|webp|gif)$/)
+  ) {
+    return NextResponse.next();
   }
+
+  // Check if the current path is public
+  const isPublicRoute = PUBLIC_ROUTES.some(route => path.startsWith(route));
+
+  // Allow access to public routes
+  if (isPublicRoute) {
+    // If user is logged in and trying to access login/register pages, redirect to dashboard
+    if (session && [ROUTES.login.path, ROUTES.register.path].some(route => path.startsWith(route))) {
+      const redirectUrl = new URL(
+        session.user?.user_metadata?.role === 'business' 
+          ? ROUTES.businessDashboard.path 
+          : ROUTES.customerDashboard.path,
+        request.url
+      );
+      return NextResponse.redirect(redirectUrl);
+    }
+    return NextResponse.next();
+  }
+
+  // Protected routes
+  if (!session || error) {
+    // Only add redirectTo for protected routes, not for direct login attempts
+    const loginUrl = new URL(ROUTES.login.path, request.url);
+    if (!path.startsWith(ROUTES.login.path)) {
+      loginUrl.searchParams.set('redirectTo', path);
+    }
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Onboarding check for business users
+  if (
+    session.user?.user_metadata?.role === 'business' && 
+    !session.user?.user_metadata?.onboarding_completed &&
+    !path.startsWith(ROUTES.businessOnboarding.path)
+  ) {
+    return NextResponse.redirect(new URL(ROUTES.businessOnboarding.path, request.url));
+  }
+
+  return NextResponse.next();
 }
 
-// Ensure the middleware is only called for relevant paths
+// Update the config matcher to explicitly exclude manifest.json and other static files
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    /*
+     * Match all paths except:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - manifest.json
+     * - favicon.ico
+     * - public files (images, etc)
+     */
+    '/((?!_next/static|_next/image|api|manifest.json|favicon.ico).*)',
   ],
 };

@@ -1,61 +1,57 @@
 'use client';
 
+import { PageLoading } from '@/components/ui/Loading';
 import { useAuth } from '@/context/AuthContext';
+import { UserRole } from '@/types';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { ComponentType, useEffect } from 'react';
 
-type UserRole = 'business' | 'customer' | 'admin';
+interface WithAuthProps {
+  allowedRoles?: UserRole[];
+  requireVerified?: boolean;
+  requireOnboarding?: boolean;
+}
 
 export function withAuth<P extends object>(
-  WrappedComponent: React.ComponentType<P>,
-  allowedRoles?: UserRole | UserRole[]
+  WrappedComponent: ComponentType<P>,
+  { allowedRoles, requireVerified = true, requireOnboarding = true }: WithAuthProps = {}
 ) {
   return function WithAuthComponent(props: P) {
-    const { user, profile, loading, isEmailVerified } = useAuth();
+    const { user, profile, loading } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
       if (!loading) {
-        // Handle unauthenticated users
         if (!user) {
-          router.replace('/login');
+        router.push('/login');
+          return;
+      }
+
+        if (requireVerified && !profile?.email_verified) {
+        router.push('/verify-email');
           return;
         }
 
-        // Handle unverified emails
-        if (!isEmailVerified) {
-          router.replace('/verify-email');
-          return;
-        }
+        if (profile) {
+          // Check role access
+          if (allowedRoles && !allowedRoles.includes(profile.role)) {
+            router.push(profile.role === 'business' ? '/dashboard/business' : '/dashboard/customer');
+            return;
+    }
 
-        // Handle role-based access
-        if (allowedRoles) {
-          const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-          if (!profile?.role || !roles.includes(profile.role)) {
-            // Redirect based on user's role
-            if (profile?.role === 'business') {
-              router.replace('/dashboard/business');
-            } else if (profile?.role === 'customer') {
-              router.replace('/dashboard/customer');
-            } else {
-              router.replace('/');
-            }
+          // Check onboarding for business users
+          if (requireOnboarding && profile.role === 'business' && !profile.onboarding_completed) {
+            router.push('/onboarding/business');
             return;
           }
         }
-
-        // Handle incomplete business onboarding
-        if (profile?.role === 'business' && !profile.onboarding_completed) {
-          router.replace('/onboarding/business');
-          return;
-        }
       }
-    }, [user, profile, loading, isEmailVerified, router]);
+    }, [user, profile, loading, router]);
 
-    if (loading) {
-      return <div>Loading...</div>;
+    if (loading || !user || !profile) {
+      return <PageLoading />;
     }
 
     return <WrappedComponent {...props} />;
-  };
+};
 }

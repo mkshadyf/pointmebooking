@@ -73,15 +73,15 @@ export default withAuth(function CustomerDashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Hero Banner */}
-      <div className="relative h-48 w-full mb-8 rounded-md overflow-hidden shadow">
-        <Image 
-          src="/images/customer-hero.jpg" 
-          alt="Welcome Banner" 
-          fill 
-          className="object-cover" 
-        />
+      {/* Hero Section */}
+      <section className="relative bg-gradient-to-r from-blue-600 to-indigo-700 py-16">
+        <div className="container mx-auto px-4">
+          <div className="text-center text-white">
+            <h1 className="text-3xl font-bold sm:text-4xl">Welcome back, {profile?.full_name || 'Customer'}!</h1>
+            <p className="mt-4 text-lg text-white/80">Manage your appointments and discover new services.</p>
+          </div>
       </div>
+      </section>
 
       <h1 className="text-3xl font-bold mb-4">Customer Dashboard</h1>
       <div className="min-h-screen bg-gray-50 py-8">
@@ -254,4 +254,4 @@ export default withAuth(function CustomerDashboard() {
       </div>
     </div>
   );
-}, 'customer');
+});

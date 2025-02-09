@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import BusinessOnboarding from '@/components/onboarding/BusinessOnboarding';
+import { PageLoading } from '@/components/ui/Loading';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import BusinessOnboarding  from '@/components/onboarding/BusinessOnboarding';
-import { PageLoading } from '@/components/ui/Loading';
+import { useEffect } from 'react';
 
 export default function OnboardingPage() {
   const { user, loading, profile } = useAuth();
@@ -26,4 +26,4 @@ export default function OnboardingPage() {
   if (!user || user.role !== 'business') return null;
 
   return <BusinessOnboarding />;
-}
+} 

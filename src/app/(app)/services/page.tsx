@@ -1,6 +1,6 @@
 'use client';
 
-import MainNav from '@/components/navigation/MainNav';
+import { Navigation } from '@/components/navigation';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -172,7 +172,7 @@ function ServicesContent() {
               </div>
             </Card>
           ))}
-        </div>
+        </div>  
       )}
     </div>
   );
@@ -182,7 +182,7 @@ function ServicesContent() {
 export default function ServicesPage() {
   return (
     <>
-      <MainNav />
+      <Navigation type="main" />
       <Suspense fallback={<LoadingSpinner />}>
         <ServicesContent />
       </Suspense>

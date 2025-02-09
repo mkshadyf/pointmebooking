@@ -1,4 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr';
+import { ErrorCode } from '../errors/types';
 
 interface EmailTemplateData {
   [key: string]: string | number | boolean | null | undefined;
@@ -80,7 +81,46 @@ export class EmailService {
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
-        throw new Error('No authenticated user found');
+        throw new Error(ErrorCode.AUTH_UNAUTHORIZED);
+      }
+
+      // Check verification attempts
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('verification_attempts, last_verification_attempt')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError) {
+        throw new Error(ErrorCode.PROFILE_NOT_FOUND);
+      }
+
+      // Check rate limiting
+      if (profile.verification_attempts >= 5) {
+        const lastAttempt = new Date(profile.last_verification_attempt || 0);
+        const timeSinceLastAttempt = Date.now() - lastAttempt.getTime();
+        const cooldownPeriod = 5 * 60 * 1000; // 5 minutes
+
+        if (timeSinceLastAttempt < cooldownPeriod) {
+          throw new Error(ErrorCode.API_RATE_LIMIT);
+        }
+      }
+
+      // Generate verification code
+      const verificationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+      // Update profile with new verification code and increment attempts
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          verification_code: verificationCode,
+          verification_attempts: (profile.verification_attempts || 0) + 1,
+          last_verification_attempt: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        throw new Error(ErrorCode.PROFILE_UPDATE_FAILED);
       }
 
       // Send verification email
@@ -92,17 +132,18 @@ export class EmailService {
         body: JSON.stringify({
           email,
           userId: user.id,
+          code: verificationCode
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send verification email');
+        throw new Error(ErrorCode.REQUEST_FAILED);
       }
 
       return true;
     } catch (error) {
       console.error('Error sending verification email:', error);
-      return false;
+      throw error;
     }
   }
 

@@ -1,18 +1,18 @@
 'use client';
 
+import Navigation from '@/components/navigation/Navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useAppStore } from '@/lib/store';
 import {
-    ArrowRightIcon,
-    CalendarIcon,
-    ChartBarIcon,
-    ClockIcon,
-    MapPinIcon,
-    ShieldCheckIcon,
-    UserGroupIcon
+  ArrowRightIcon,
+  CalendarIcon,
+  ChartBarIcon,
+  ClockIcon,
+  MapPinIcon,
+  ShieldCheckIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 interface StaticCategory {
@@ -126,12 +126,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Navigation type="main" />
       {/* Hero Section */}
       <section
-        className="relative bg-cover bg-center"
-        style={{ backgroundImage: 'url(/images/hero-image.jpg)' }}
+        className="relative bg-cover bg-center bg-gradient-to-r from-blue-600 to-indigo-700"
       >
-        <div className="bg-black/50">
+        <div className="absolute inset-0 bg-black/50">
           <div className="container mx-auto px-6 py-32 text-center text-white">
             <h1 className="text-4xl font-bold sm:text-6xl">{heroContent.title}</h1>
             <p className="mt-6 text-lg">{heroContent.description}</p>
@@ -222,14 +222,14 @@ export default function Home() {
       </section>
 
       {/* Install Prompt (optional) */}
-      {showInstallPrompt && (
+      {/* {showInstallPrompt && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white shadow text-center">
           <p className="text-sm text-gray-700">Install our app for a better experience!</p>
           <button className="mt-2 inline-flex items-center px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary">
             Install Now
           </button>
         </div>
-      )}
+      )} */}
     </div>
   );
 }
