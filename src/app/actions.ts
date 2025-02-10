@@ -128,7 +128,7 @@ export const signInAction = async (formData: FormData): Promise<AuthResponse> =>
 
     // Check email verification
     if (!profile.email_verified) {
-      return { redirectTo: "/verify-email" };
+      return { redirectTo: "/auth/verify-email" };
     }
 
     // Check onboarding status for business users

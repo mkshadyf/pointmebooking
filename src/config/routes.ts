@@ -66,7 +66,7 @@ export const ROUTES: Record<string, RouteConfig> = {
     requiresOnboarding: false,
   },
   verifyEmail: {
-    path: '/verify-email',
+    path: '/auth/verify-email',
     allowedRoles: ['customer', 'business', 'admin'],
     requiresAuth: true,
     requiresVerification: false,
