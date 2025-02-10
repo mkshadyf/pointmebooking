@@ -14,8 +14,9 @@ import {
   ShieldCheckIcon,
   UserGroupIcon
 } from '@heroicons/react/24/outline';
+import { createBrowserClient } from '@supabase/ssr';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 const features = [
   {
@@ -50,30 +51,89 @@ const features = [
   },
 ];
 
+interface Service {
+  id: string;
+  business_id: string;
+  name: string;
+  description: string;
+  price: number;
+  duration: number;
+  category_id: string;
+  image_url: string;
+  is_available: boolean;
+  created_at: string;
+  updated_at: string;
+  status: string | null;
+  business?: {
+    id: string;
+    name: string;
+    address: string;
+    city: string;
+    state: string;
+    phone: string;
+    email: string;
+    logo_url: string;
+  };
+  category?: {
+    name: string;
+    icon: string;
+  };
+}
+
 export default function Home() {
   const { categories } = useAppStore();
+  const [featuredServices, setFeaturedServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const { fetchFeaturedServices, services } = useAppStore();
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  const fetchFeaturedServices = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select(`
+          *,
+          business:profiles!services_business_id_fkey (
+            id,
+            business_name,
+            address,
+            city,
+            state,
+            phone,
+            email,
+            logo_url
+          ),
+          category:categories (
+            name,
+            icon
+          )
+        `)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+      if (error) throw error;
+      setFeaturedServices(data || []);
+    } catch (err) {
+      console.error('Error fetching services:', err);
+      setError('Failed to load services');
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase]);
 
   useEffect(() => {
-    const loadServices = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        await fetchFeaturedServices();
-      } catch (err) {
-        setError('Failed to load services');
-        console.error('Error loading services:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadServices();
+    fetchFeaturedServices();
   }, [fetchFeaturedServices]);
+
+  const handleSearch = useCallback((query: string) => {
+    // Implement search functionality
+    console.log('Search query:', query);
+  }, []);
 
   return (
     <div className="min-h-screen bg-white">
@@ -93,20 +153,19 @@ export default function Home() {
           {/* Search Component */}
           <div className="mx-auto mt-8 max-w-2xl">
             <SearchFilter
-              onSearch={setSearchQuery}
               categories={categories.map(cat => cat.name)}
-              onCategorySelect={setSelectedCategory}
+              onSearch={handleSearch}
             />
           </div>
         </div>
       </section>
 
-      {/* Featured Services */}
+      {/* Services Section */}
       <section className="py-16">
         <div className="container mx-auto px-6">
-          <h2 className="text-3xl font-bold text-gray-900">Featured Services</h2>
+          <h2 className="text-3xl font-bold text-gray-900">Latest Services</h2>
           <p className="mt-2 text-gray-600">
-            Explore our most popular services
+            Explore our available services
           </p>
           
           <div className="mt-8">
@@ -123,14 +182,14 @@ export default function Home() {
                   Try again
                 </button>
               </div>
-            ) : services.length === 0 ? (
+            ) : featuredServices.length === 0 ? (
               <div className="text-center py-12">
                 <h3 className="text-lg font-medium text-gray-900">No services available</h3>
                 <p className="mt-2 text-gray-500">Check back later for new services</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {services.slice(0, 6).map((service) => (
+                {featuredServices.map((service) => (
                   <ServiceCard key={service.id} service={service} />
                 ))}
               </div>

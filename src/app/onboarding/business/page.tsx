@@ -48,9 +48,8 @@ export default function BusinessOnboarding() {
     setLoading(true);
 
     try {
-      const { status, ...profileData } = formData;
       const sanitizedProfileData = {
-        ...profileData,
+        ...formData,
         role: "business",
         onboarding_completed: true
       } as Partial<Omit<BusinessProfile, 'status'>>;

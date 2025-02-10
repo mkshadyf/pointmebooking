@@ -68,12 +68,6 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-interface ErrorFallbackProps {
-  error: AppError;
-  resetError: () => void;
-}
-
-
 // HOC to wrap components with error boundary
 export function withErrorBoundary<P extends object>(
   WrappedComponent: React.ComponentType<P>,
@@ -87,3 +81,4 @@ export function withErrorBoundary<P extends object>(
     );
   };
 }
+
