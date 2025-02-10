@@ -1,22 +1,22 @@
 'use client';
 
-import { AwaitedReactNode, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import { useAppStore } from '@/lib/store';
-import { toast } from 'react-hot-toast';
-import {
-  Input,
-  TextArea,
-  Label,
-  FormGroup,
-  Button,
-} from '@/components/ui/form';
 import { Card } from '@/components/ui/Card';
+import {
+  Button,
+  FormGroup,
+  Input,
+  Label,
+  TextArea,
+} from '@/components/ui/form';
 import { ImageUpload } from '@/components/ui/ImageUpload';
+import { useAuth } from '@/context/AuthContext';
 import * as serviceApi from '@/lib/api/services';
-import { Service } from '@/types';
 import { uploadImage } from '@/lib/services/storage';
+import { useAppStore } from '@/lib/store';
+import { Service } from '@/types';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
 
 interface PageProps {
   params: { action: string };
@@ -49,7 +49,7 @@ export default function ServiceActionPage({ params }: PageProps) {
           if (service) {
             setFormData({
               name: service.name,
-              description: service.description,
+              description: service.description || '',
               price: service.price.toString(),
               duration: service.duration.toString(),
               category_id: service.category_id,

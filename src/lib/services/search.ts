@@ -1,5 +1,6 @@
 import { Service } from '@/types';
 import { createBrowserClient } from '@supabase/ssr';
+import { handleClientError } from '../errors/handlers';
 
 interface SearchParams {
   query?: string;
@@ -16,73 +17,114 @@ export async function searchServices(params: SearchParams): Promise<Service[]> {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  let query = supabase
-    .from('service_details')
-    .select('*')
-    .eq('status', 'active')
-    .eq('is_available', true);
-
-  // Apply filters
-  if (params.query) {
-    query = query.or(`name.ilike.%${params.query}%,description.ilike.%${params.query}%`);
-  }
-
-  if (params.category) {
-    query = query.eq('category_id', params.category);
-  }
-
-  if (params.minPrice !== undefined) {
-    query = query.gte('price', params.minPrice);
-  }
-
-  if (params.maxPrice !== undefined) {
-    query = query.lte('price', params.maxPrice);
-  }
-
-  if (params.duration) {
-    query = query.eq('duration', params.duration);
-  }
-
-  if (params.location) {
-    query = query.or(`business_city.ilike.%${params.location}%,business_state.ilike.%${params.location}%`);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error('Error searching services:', error);
-    return [];
-  }
-
-  // Transform the data to match our Service type
-  return data.map((item: any) => ({
-    id: item.id,
-    business_id: item.business_id,
-    name: item.name,
-    description: item.description,
-    price: item.price,
-    duration: item.duration,
-    category_id: item.category_id,
-    image_url: item.image_url,
-    status: item.status,
-    is_available: item.is_available,
-    created_at: item.created_at,
-    updated_at: item.updated_at,
-    business: {
-      id: item.business_id,
-      name: item.business_name,
-      address: item.business_address,
-      city: item.business_city,
-      state: item.business_state,
-      phone: item.business_phone,
-      email: item.business_email,
-      logo_url: item.business_logo_url,
-    },
-    category: {
-      name: item.category_name,
-      icon: item.category_icon
+  try {
+    // Add artificial delay in development
+    if (process.env.NODE_ENV === 'development') {
+      await new Promise(resolve => setTimeout(resolve, 1500));
     }
-  }));
+
+    // First get the services
+    let servicesQuery = supabase
+      .from('services')
+      .select(`
+        *,
+        business:businesses (
+          id,
+          business_name,
+          address,
+          city,
+          state,
+          phone,
+          email,
+          logo_url
+        ),
+        category:categories (
+          id,
+          name,
+          icon
+        )
+      `)
+      .eq('status', 'active')
+      .eq('is_available', true);
+
+    // Apply filters
+    if (params.query) {
+      servicesQuery = servicesQuery.or(`name.ilike.%${params.query}%,description.ilike.%${params.query}%`);
+    }
+
+    if (params.category) {
+      servicesQuery = servicesQuery.eq('category_id', params.category);
+    }
+
+    if (params.minPrice !== undefined) {
+      servicesQuery = servicesQuery.gte('price', params.minPrice);
+    }
+
+    if (params.maxPrice !== undefined) {
+      servicesQuery = servicesQuery.lte('price', params.maxPrice);
+    }
+
+    if (params.duration) {
+      servicesQuery = servicesQuery.eq('duration', params.duration);
+    }
+
+    // Handle location filter
+    if (params.location) {
+      const { data: businesses } = await supabase
+        .from('businesses')
+        .select('id')
+        .or(`city.ilike.%${params.location}%,state.ilike.%${params.location}%`);
+      
+      if (businesses && businesses.length > 0) {
+        servicesQuery = servicesQuery.in('business_id', businesses.map(b => b.id));
+      } else {
+        return []; // No businesses found in location
+      }
+    }
+
+    const { data: services, error: servicesError } = await servicesQuery;
+
+    if (servicesError) {
+      console.error('Error fetching services:', servicesError);
+      throw servicesError;
+    }
+
+    if (!services) return [];
+
+    // Transform the data to match our Service type
+    return services.map((item: any) => ({
+      id: item.id,
+      business_id: item.business_id,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      duration: item.duration,
+      category_id: item.category_id,
+      image_url: item.image_url,
+      status: item.status,
+      is_available: item.is_available,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      business: item.business ? {
+        id: item.business.id,
+        name: item.business.business_name,
+        address: item.business.address,
+        city: item.business.city,
+        state: item.business.state,
+        phone: item.business.phone,
+        email: item.business.email,
+        logo_url: item.business.logo_url,
+      } : undefined,
+      category: item.category ? {
+        name: item.category.name,
+        icon: item.category.icon
+      } : undefined
+    }));
+  } catch (error) {
+    console.error('Error in searchServices:', error);
+    await handleClientError(error);
+    return []; // Return empty array instead of throwing to prevent UI errors
+  }
 }
 
 export function filterServicesByText(services: Service[], searchText: string): Service[] {
@@ -91,7 +133,7 @@ export function filterServicesByText(services: Service[], searchText: string): S
   const searchLower = searchText.toLowerCase();
   return services.filter(service => 
     service.name.toLowerCase().includes(searchLower) ||
-    service.description.toLowerCase().includes(searchLower)
+    (service.description?.toLowerCase().includes(searchLower) ?? false)
   );
 }
 

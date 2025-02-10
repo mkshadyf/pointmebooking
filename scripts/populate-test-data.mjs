@@ -264,10 +264,10 @@ async function createServiceCategories() {
   ];
 
   // Delete existing categories
-  await supabase.from('service_categories').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  await supabase.from('categories').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
   const { error } = await supabase
-    .from('service_categories')
+    .from('categories')
     .insert(categories);
 
   if (error) {
@@ -279,7 +279,7 @@ async function createServiceCategories() {
 // Helper function to get category ID by name
 async function getCategoryId(categoryName) {
   const { data, error } = await supabase
-    .from('service_categories')
+    .from('categories')
     .select('id')
     .eq('name', categoryName)
     .single();

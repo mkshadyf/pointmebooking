@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Service, Category } from '@/types';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 import { Slider } from '@/components/ui/Slider';
-import { useRouter } from 'next/navigation';
+import { formatCurrency } from '@/lib/utils';
+import { Category, Service } from '@/types';
 import Image from 'next/image';
-import { formatCurrency }  from '@/lib/utils';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 const defaultImages = {
   massage: '/images/placeholder/massage.jpg',
@@ -34,7 +33,7 @@ export function ServicesGrid({ services, categories, showFilters = true }: Servi
   const filteredServices = services
     .filter((service) => {
       const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.description.toLowerCase().includes(searchTerm.toLowerCase());
+        (service.description?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
       const matchesCategory = !selectedCategory || service.category_id === selectedCategory;
       const matchesPrice = service.price >= priceRange[0] && service.price <= priceRange[1];
       const matchesDuration = !durationFilter || service.duration <= durationFilter;

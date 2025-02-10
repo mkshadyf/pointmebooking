@@ -3,13 +3,14 @@
 import { createBrowserClient } from '@supabase/ssr';
 import { useEffect, useState } from 'react';
 
+import { DeleteAccount } from '@/components/settings/DeleteAccount';
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import {
-  Button,
-  FormGroup,
-  Input,
-  Label,
-  TextArea,
+    Button,
+    FormGroup,
+    Input,
+    Label,
+    TextArea,
 } from '@/components/ui/form';
 import { useAuth } from '@/context/AuthContext';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -143,238 +144,259 @@ function BusinessSettingsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="mb-8 text-2xl font-bold">Business Settings</h1>
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
-          <div>
-            <Label>Business Logo</Label>
-            <div className="mt-2">
-              <ImageUpload
-                initialUrl={formData.logo_url}
-                onChange={(file) => handleImageUpload(file, 'logo')}
-                maxSize={5}
-                aspectRatio={1}
-              />
-            </div>
-            <p className="mt-2 text-sm text-gray-500">
-              Recommended: Square image, at least 200x200px
-            </p>
+      <div className="max-w-3xl mx-auto">
+        <h1 className="text-2xl font-bold mb-8">Business Settings</h1>
+
+        <div className="space-y-8">
+          {/* Profile Settings Section */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-xl font-semibold mb-4">Profile Settings</h2>
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+                <div>
+                  <Label>Business Logo</Label>
+                  <div className="mt-2">
+                    <ImageUpload
+                      initialUrl={formData.logo_url}
+                      onChange={(file) => handleImageUpload(file, 'logo')}
+                      maxSize={5}
+                      aspectRatio={1}
+                    />
+                  </div>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Recommended: Square image, at least 200x200px
+                  </p>
+                </div>
+
+                <div>
+                  <Label>Cover Image</Label>
+                  <div className="mt-2">
+                    <ImageUpload
+                      initialUrl={formData.cover_image_url}
+                      onChange={(file) => handleImageUpload(file, 'cover')}
+                      maxSize={10}
+                      aspectRatio={16/9}
+                    />
+                  </div>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Recommended: 16:9 ratio, at least 1200x675px
+                  </p>
+                </div>
+              </div>
+
+              <FormGroup>
+                <Label htmlFor="business_name">Business Name</Label>
+                <Input
+                  type="text"
+                  id="business_name"
+                  name="business_name"
+                  required
+                  fullWidth
+                  value={formData.business_name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, business_name: e.target.value })
+                  }
+                  placeholder="Enter your business name"
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <Label htmlFor="business_type">Business Type</Label>
+                <Input
+                  type="text"
+                  id="business_type"
+                  name="business_type"
+                  fullWidth
+                  value={formData.business_type}
+                  onChange={(e) =>
+                    setFormData({ ...formData, business_type: e.target.value })
+                  }
+                  placeholder="Enter your business type"
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <Label htmlFor="business_category">Business Category</Label>
+                <Input
+                  type="text"
+                  id="business_category"
+                  name="business_category"
+                  fullWidth
+                  value={formData.business_category}
+                  onChange={(e) =>
+                    setFormData({ ...formData, business_category: e.target.value })
+                  }
+                  placeholder="Enter your business category"
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <Label htmlFor="description">Description</Label>
+                <TextArea
+                  id="description"
+                  name="description"
+                  rows={4}
+                  fullWidth
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  placeholder="Describe your business"
+                />
+              </FormGroup>
+
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <FormGroup>
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    type="text"
+                    id="location"
+                    name="location"
+                    fullWidth
+                    value={formData.location}
+                    onChange={(e) =>
+                      setFormData({ ...formData, location: e.target.value })
+                    }
+                    placeholder="Enter your business location"
+                  />
+                </FormGroup>
+
+                <FormGroup>
+                  <Label htmlFor="contact_number">Contact Number</Label>
+                  <Input
+                    type="tel"
+                    id="contact_number"
+                    name="contact_number"
+                    fullWidth
+                    value={formData.contact_number}
+                    onChange={(e) =>
+                      setFormData({ ...formData, contact_number: e.target.value })
+                    }
+                    placeholder="Enter your contact number"
+                  />
+                </FormGroup>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <FormGroup>
+                  <Label htmlFor="contact_email">Contact Email</Label>
+                  <Input
+                    type="email"
+                    id="contact_email"
+                    name="contact_email"
+                    fullWidth
+                    value={formData.contact_email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, contact_email: e.target.value })
+                    }
+                    placeholder="Enter your contact email"
+                  />
+                </FormGroup>
+
+                <FormGroup>
+                  <Label htmlFor="website">Website</Label>
+                  <Input
+                    type="url"
+                    id="website"
+                    name="website"
+                    fullWidth
+                    value={formData.website}
+                    onChange={(e) =>
+                      setFormData({ ...formData, website: e.target.value })
+                    }
+                    placeholder="Enter your website URL"
+                  />
+                </FormGroup>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <FormGroup>
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    type="text"
+                    id="address"
+                    name="address"
+                    fullWidth
+                    value={formData.address}
+                    onChange={(e) =>
+                      setFormData({ ...formData, address: e.target.value })
+                    }
+                    placeholder="Enter your address"
+                  />
+                </FormGroup>
+
+                <FormGroup>
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    type="text"
+                    id="city"
+                    name="city"
+                    fullWidth
+                    value={formData.city}
+                    onChange={(e) =>
+                      setFormData({ ...formData, city: e.target.value })
+                    }
+                    placeholder="Enter your city"
+                  />
+                </FormGroup>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <FormGroup>
+                  <Label htmlFor="state">State/Province</Label>
+                  <Input
+                    type="text"
+                    id="state"
+                    name="state"
+                    fullWidth
+                    value={formData.state}
+                    onChange={(e) =>
+                      setFormData({ ...formData, state: e.target.value })
+                    }
+                    placeholder="Enter your state/province"
+                  />
+                </FormGroup>
+
+                <FormGroup>
+                  <Label htmlFor="postal_code">Postal Code</Label>
+                  <Input
+                    type="text"
+                    id="postal_code"
+                    name="postal_code"
+                    fullWidth
+                    value={formData.postal_code}
+                    onChange={(e) =>
+                      setFormData({ ...formData, postal_code: e.target.value })
+                    }
+                    placeholder="Enter your postal code"
+                  />
+                </FormGroup>
+              </div>
+
+              <div className="pt-6">
+                <Button
+                  type="submit"
+                  className="w-full sm:w-auto"
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </form>
           </div>
 
-          <div>
-            <Label>Cover Image</Label>
-            <div className="mt-2">
-              <ImageUpload
-                initialUrl={formData.cover_image_url}
-                onChange={(file) => handleImageUpload(file, 'cover')}
-                maxSize={10}
-                aspectRatio={16/9}
-              />
-            </div>
-            <p className="mt-2 text-sm text-gray-500">
-              Recommended: 16:9 ratio, at least 1200x675px
-            </p>
+          {/* Business Settings Section */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-xl font-semibold mb-4">Business Settings</h2>
+            {/* Add business settings form here */}
+          </div>
+
+          {/* Danger Zone */}
+          <div className="bg-white shadow rounded-lg p-6 border border-red-200">
+            <h2 className="text-xl font-semibold mb-4 text-red-600">Danger Zone</h2>
+            <DeleteAccount />
           </div>
         </div>
-
-        <FormGroup>
-          <Label htmlFor="business_name">Business Name</Label>
-          <Input
-            type="text"
-            id="business_name"
-            name="business_name"
-            required
-            fullWidth
-            value={formData.business_name}
-            onChange={(e) =>
-              setFormData({ ...formData, business_name: e.target.value })
-            }
-            placeholder="Enter your business name"
-          />
-        </FormGroup>
-
-        <FormGroup>
-          <Label htmlFor="business_type">Business Type</Label>
-          <Input
-            type="text"
-            id="business_type"
-            name="business_type"
-            fullWidth
-            value={formData.business_type}
-            onChange={(e) =>
-              setFormData({ ...formData, business_type: e.target.value })
-            }
-            placeholder="Enter your business type"
-          />
-        </FormGroup>
-
-        <FormGroup>
-          <Label htmlFor="business_category">Business Category</Label>
-          <Input
-            type="text"
-            id="business_category"
-            name="business_category"
-            fullWidth
-            value={formData.business_category}
-            onChange={(e) =>
-              setFormData({ ...formData, business_category: e.target.value })
-            }
-            placeholder="Enter your business category"
-          />
-        </FormGroup>
-
-        <FormGroup>
-          <Label htmlFor="description">Description</Label>
-          <TextArea
-            id="description"
-            name="description"
-            rows={4}
-            fullWidth
-            value={formData.description}
-            onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
-            }
-            placeholder="Describe your business"
-          />
-        </FormGroup>
-
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <FormGroup>
-            <Label htmlFor="location">Location</Label>
-            <Input
-              type="text"
-              id="location"
-              name="location"
-              fullWidth
-              value={formData.location}
-              onChange={(e) =>
-                setFormData({ ...formData, location: e.target.value })
-              }
-              placeholder="Enter your business location"
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label htmlFor="contact_number">Contact Number</Label>
-            <Input
-              type="tel"
-              id="contact_number"
-              name="contact_number"
-              fullWidth
-              value={formData.contact_number}
-              onChange={(e) =>
-                setFormData({ ...formData, contact_number: e.target.value })
-              }
-              placeholder="Enter your contact number"
-            />
-          </FormGroup>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <FormGroup>
-            <Label htmlFor="contact_email">Contact Email</Label>
-            <Input
-              type="email"
-              id="contact_email"
-              name="contact_email"
-              fullWidth
-              value={formData.contact_email}
-              onChange={(e) =>
-                setFormData({ ...formData, contact_email: e.target.value })
-              }
-              placeholder="Enter your contact email"
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label htmlFor="website">Website</Label>
-            <Input
-              type="url"
-              id="website"
-              name="website"
-              fullWidth
-              value={formData.website}
-              onChange={(e) =>
-                setFormData({ ...formData, website: e.target.value })
-              }
-              placeholder="Enter your website URL"
-            />
-          </FormGroup>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <FormGroup>
-            <Label htmlFor="address">Address</Label>
-            <Input
-              type="text"
-              id="address"
-              name="address"
-              fullWidth
-              value={formData.address}
-              onChange={(e) =>
-                setFormData({ ...formData, address: e.target.value })
-              }
-              placeholder="Enter your address"
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label htmlFor="city">City</Label>
-            <Input
-              type="text"
-              id="city"
-              name="city"
-              fullWidth
-              value={formData.city}
-              onChange={(e) =>
-                setFormData({ ...formData, city: e.target.value })
-              }
-              placeholder="Enter your city"
-            />
-          </FormGroup>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <FormGroup>
-            <Label htmlFor="state">State/Province</Label>
-            <Input
-              type="text"
-              id="state"
-              name="state"
-              fullWidth
-              value={formData.state}
-              onChange={(e) =>
-                setFormData({ ...formData, state: e.target.value })
-              }
-              placeholder="Enter your state/province"
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label htmlFor="postal_code">Postal Code</Label>
-            <Input
-              type="text"
-              id="postal_code"
-              name="postal_code"
-              fullWidth
-              value={formData.postal_code}
-              onChange={(e) =>
-                setFormData({ ...formData, postal_code: e.target.value })
-              }
-              placeholder="Enter your postal code"
-            />
-          </FormGroup>
-        </div>
-
-        <div className="pt-6">
-          <Button
-            type="submit"
-            className="w-full sm:w-auto"
-          >
-            Save Changes
-          </Button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 }

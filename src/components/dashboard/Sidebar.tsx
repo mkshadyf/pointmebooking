@@ -13,6 +13,7 @@ interface SidebarProps {
   role: 'business' | 'customer';
   isOpen?: boolean;
   onClose?: () => void;
+  className?: string;
 }
 
 function NavItem({ item, isActive }: { item: NavigationItem; isActive: boolean }) {
@@ -45,14 +46,12 @@ function Logo() {
         className="h-8 w-auto"
         priority
       />
-      <span className="text-xl font-semibold text-gray-900">
-        PointMe!
-      </span>
+     
     </Link>
   );
 }
 
-export function Sidebar({ role, isOpen = false, onClose }: SidebarProps) {
+export function Sidebar({ role, isOpen = false, onClose, className }: SidebarProps) {
   const { profile } = useAuth();
   const pathname = usePathname();
   const navigation = getNavigation(role);
@@ -104,7 +103,7 @@ export function Sidebar({ role, isOpen = false, onClose }: SidebarProps) {
       <Transition.Root show={isOpen} as={Fragment}>
         <Dialog
           as="div"
-          className="relative z-[100] lg:hidden"
+          className={`relative z-[100] lg:hidden ${className}`}
           onClose={onClose || (() => {})}
         >
           <Transition.Child
@@ -160,7 +159,7 @@ export function Sidebar({ role, isOpen = false, onClose }: SidebarProps) {
       </Transition.Root>
 
       {/* Desktop Sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
+      <div className={`hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col ${className}`}>
         <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white">
           {sidebarContent}
         </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { PageLoading } from '@/components/ui/Loading';
+import { ROUTES } from '@/config/routes';
 import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/types';
 import { useRouter } from 'next/navigation';
@@ -22,28 +23,38 @@ export function withAuth<P extends object>(
 
     useEffect(() => {
       if (!loading) {
+        // Not authenticated
         if (!user) {
-        router.push('/login');
-          return;
-      }
-
-        if (requireVerified && !profile?.email_verified) {
-        router.push('/verify-email');
+          router.push(ROUTES.login.path);
           return;
         }
 
-        if (profile) {
-          // Check role access
-          if (allowedRoles && !allowedRoles.includes(profile.role)) {
-            router.push(profile.role === 'business' ? '/dashboard/business' : '/dashboard/customer');
-            return;
-    }
+        if (!profile) {
+          router.push(ROUTES.login.path);
+          return;
+        }
 
-          // Check onboarding for business users
-          if (requireOnboarding && profile.role === 'business' && !profile.onboarding_completed) {
-            router.push('/onboarding/business');
-            return;
+        // Email verification check
+        if (requireVerified && !profile.email_verified) {
+          router.push(ROUTES.verifyEmail.path);
+          return;
+        }
+
+        // Role access check
+        if (allowedRoles && !allowedRoles.includes(profile.role)) {
+          // Redirect to appropriate dashboard based on role
+          if (profile.role === 'business') {
+            router.push(ROUTES.businessDashboard.path);
+          } else {
+            router.push(ROUTES.customerDashboard.path);
           }
+          return;
+        }
+
+        // Onboarding check for business users
+        if (requireOnboarding && profile.role === 'business' && !profile.onboarding_completed) {
+          router.push(ROUTES.businessOnboarding.path);
+          return;
         }
       }
     }, [user, profile, loading, router]);
@@ -52,6 +63,11 @@ export function withAuth<P extends object>(
       return <PageLoading />;
     }
 
+    // Extra role check to prevent any possibility of wrong content display
+    if (allowedRoles && !allowedRoles.includes(profile.role)) {
+      return <PageLoading />;
+    }
+
     return <WrappedComponent {...props} />;
-};
+  };
 }

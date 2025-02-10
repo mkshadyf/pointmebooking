@@ -13,22 +13,24 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <>
+    <div className="flex min-h-screen">
       {/* Sidebar */}
       <Sidebar
         role={role}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        className="fixed inset-y-0 left-0 w-72 bg-white shadow-lg z-30"
       />
 
       {/* Main content wrapper */}
-      <div className="flex min-h-screen flex-col lg:pl-72">
+      <div className="flex-1 flex flex-col lg:pl-72">
+        {/* Header */}
         <Header role={role} onMobileMenuClick={() => setSidebarOpen(true)} />
         
         {/* Main content */}
-        <main className="flex-1">
-          <div className="py-6">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <main className="flex-1 overflow-y-auto pt-16 lg:pt-0">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="py-6">
               {children}
             </div>
           </div>
@@ -45,6 +47,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           </div>
         </footer>
       </div>
-    </>
+    </div>
   );
 } 

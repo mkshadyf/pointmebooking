@@ -22,6 +22,7 @@ DECLARE
     staff_user_id UUID;
     business_id UUID;
     staff_id UUID;
+    admin_user_id UUID;
 BEGIN
     -- Create a business user
     INSERT INTO auth.users (email, email_confirmed_at, raw_user_meta_data)
@@ -41,6 +42,12 @@ BEGIN
     ON CONFLICT (email) DO UPDATE SET email_confirmed_at = NOW()
     RETURNING id INTO staff_user_id;
 
+    -- Create admin user
+    INSERT INTO auth.users (email, email_confirmed_at, raw_user_meta_data)
+    VALUES ('admin@pointme.com', NOW(), '{"role": "admin"}'::jsonb)
+    ON CONFLICT (email) DO UPDATE SET email_confirmed_at = NOW()
+    RETURNING id INTO admin_user_id;
+
     -- Create profiles
     INSERT INTO public.profiles (
         user_id,
@@ -57,6 +64,30 @@ BEGIN
     ON CONFLICT (user_id) DO UPDATE SET
         email_verified = EXCLUDED.email_verified,
         onboarding_completed = EXCLUDED.onboarding_completed;
+
+    -- Create admin profile
+    INSERT INTO public.profiles (
+        id,
+        user_id,
+        full_name,
+        email,
+        role,
+        email_verified,
+        status,
+        onboarding_completed
+    ) VALUES (
+        admin_user_id,
+        admin_user_id,
+        'System Admin',
+        'admin@pointme.com',
+        'admin',
+        true,
+        'active',
+        true
+    )
+    ON CONFLICT (user_id) DO UPDATE SET
+        email_verified = true,
+        onboarding_completed = true;
 
     -- Create sample business
     INSERT INTO public.businesses (
@@ -149,36 +180,94 @@ BEGIN
 
     -- Create sample services
     INSERT INTO public.services (
+        id, 
+        business_id, 
+        name, 
+        description, 
+        price, 
+        duration, 
+        category_id, 
+        image_url, 
+        status,
+        is_available, 
+        created_at, 
+        updated_at
+    ) VALUES 
+    ('3f80ace0-7093-42a6-9b21-15085ab954da', '8d0fa00c-f36b-4bc4-b56c-e6d07a0ee174', 'Haircut', 'Professional haircut service', 50.00, 45, '24968233-1d17-42d5-b087-e0147d74a840', 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?q=80&w=2074&auto=format&fit=crop', 'active', true, '2025-01-22 22:41:48.892635+00', '2025-01-22 22:41:48.892635+00'),
+    ('c59de468-9c0c-4a31-9af0-4c1fd8b61eb1', '8d0fa00c-f36b-4bc4-b56c-e6d07a0ee174', 'Manicure', 'Professional nail care service', 35.00, 30, '24968233-1d17-42d5-b087-e0147d74a840', 'https://images.unsplash.com/photo-1610992015732-2449b0dd2b8f?q=80&w=2070&auto=format&fit=crop', 'active', true, '2025-01-22 22:41:48.892635+00', '2025-01-22 22:41:48.892635+00'),
+    ('dafae2e8-5169-408f-af56-352cfbdf087c', '8d0fa00c-f36b-4bc4-b56c-e6d07a0ee174', 'Hair Coloring', 'Professional hair coloring service', 120.00, 90, '24968233-1d17-42d5-b087-e0147d74a840', 'https://images.unsplash.com/photo-1560869713-da86a9ec0580?q=80&w=2070&auto=format&fit=crop', 'active', true, '2025-01-22 22:41:48.892635+00', '2025-01-22 22:41:48.892635+00')
+    ON CONFLICT (id) DO UPDATE SET
+        category_id = EXCLUDED.category_id,
+        status = EXCLUDED.status;
+
+    -- Create admin-managed featured services
+    INSERT INTO public.services (
+        id,
         business_id,
-        category_id,
         name,
         description,
         price,
         duration,
+        category_id,
+        image_url,
         status,
-        is_available
-    ) 
-    SELECT 
-        business_id,
-        c.id,
-        service_name,
-        service_description,
-        service_price,
-        service_duration,
+        is_available,
+        created_at,
+        updated_at,
+        created_by_id,
+        approved_by_id,
+        approved_at,
+        featured,
+        featured_order,
+        approval_status,
+        admin_notes
+    ) VALUES 
+    (
+        gen_random_uuid(),
+        '8d0fa00c-f36b-4bc4-b56c-e6d07a0ee174',
+        'Premium Spa Package',
+        'Luxurious full-day spa treatment including massage, facial, and body wrap',
+        299.99,
+        240,
+        '24968233-1d17-42d5-b087-e0147d74a840',
+        'https://images.unsplash.com/photo-1544161515-4ab6ce6db874',
         'active',
-        true
-    FROM (
-        SELECT id FROM categories WHERE name = 'Beauty & Wellness' LIMIT 1
-    ) c
-    CROSS JOIN (
-        VALUES 
-            ('Haircut & Style', 'Professional haircut and styling service', 350, 60),
-            ('Manicure', 'Classic manicure with polish', 250, 45),
-            ('Pedicure', 'Relaxing pedicure treatment', 300, 60),
-            ('Facial Treatment', 'Deep cleansing facial with massage', 450, 75),
-            ('Hair Coloring', 'Professional hair coloring service', 800, 120)
-    ) AS services(service_name, service_description, service_price, service_duration)
-    ON CONFLICT DO NOTHING;
+        true,
+        NOW(),
+        NOW(),
+        admin_user_id,
+        admin_user_id,
+        NOW(),
+        true,
+        1,
+        'approved',
+        'Verified premium service provider'
+    ),
+    (
+        gen_random_uuid(),
+        '8d0fa00c-f36b-4bc4-b56c-e6d07a0ee174',
+        'Wellness Consultation',
+        'Comprehensive wellness assessment and personalized treatment plan',
+        150.00,
+        90,
+        '380d854a-d475-4d52-a888-e8dd6bb4d53d',
+        'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d',
+        'active',
+        true,
+        NOW(),
+        NOW(),
+        admin_user_id,
+        admin_user_id,
+        NOW(),
+        true,
+        2,
+        'approved',
+        'Certified wellness expert'
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        featured = EXCLUDED.featured,
+        featured_order = EXCLUDED.featured_order,
+        admin_notes = EXCLUDED.admin_notes;
 
     -- Generate sample bookings
     INSERT INTO public.bookings (

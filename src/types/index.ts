@@ -75,24 +75,29 @@ export interface Service {
   id: string;
   business_id: string;
   name: string;
-  description: string;
+  description: string | null;
   price: number;
   duration: number;
-  category_id: string;
-  image_url?: string;
-  status: 'active' | 'inactive' | 'deleted';
+  image_url: string | null;
   is_available: boolean;
   created_at: string;
   updated_at: string;
+  status: string | null;
+  category_id: string;
   business?: {
     id: string;
     name: string;
+    description?: string;
     address?: string;
     city?: string;
     state?: string;
     phone?: string;
     email?: string;
     logo_url?: string;
+  };
+  category?: {
+    name: string;
+    icon?: string;
   };
 }
 
@@ -191,3 +196,4 @@ export interface AuthContextType {
 }
 
 export type { Database } from './database.types';
+

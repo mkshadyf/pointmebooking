@@ -21,12 +21,12 @@ async function setupDatabase() {
     console.log('Setting up database...');
 
     // Create tables using the REST API
-    const { error: categoriesError } = await supabase.from('service_categories').select('*').limit(1);
+    const { error: categoriesError } = await supabase.from('categories').select('*').limit(1);
     if (categoriesError) {
-      console.log('Creating service_categories table...');
-      await supabase.rest.from('service_categories').post({
+      console.log('Creating categories table...');
+      await supabase.rest.from('categories').post({
         body: {
-          name: 'CREATE TABLE IF NOT EXISTS service_categories (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT NOT NULL, description TEXT, icon TEXT, created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone(\'utc\'::text, now()) NOT NULL, updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone(\'utc\'::text, now()) NOT NULL)'
+          name: 'CREATE TABLE IF NOT EXISTS categories (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT NOT NULL, description TEXT, icon TEXT, created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone(\'utc\'::text, now()) NOT NULL, updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone(\'utc\'::text, now()) NOT NULL);'
         }
       });
     }
@@ -36,7 +36,7 @@ async function setupDatabase() {
       console.log('Creating services table...');
       await supabase.rest.from('services').post({
         body: {
-          name: 'CREATE TABLE IF NOT EXISTS services (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, business_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, category_id UUID REFERENCES service_categories(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT, price DECIMAL(10,2) NOT NULL, duration INTEGER NOT NULL, image_url TEXT, is_available BOOLEAN DEFAULT true, created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone(\'utc\'::text, now()) NOT NULL, updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone(\'utc\'::text, now()) NOT NULL)'
+          name: 'CREATE TABLE IF NOT EXISTS services (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, business_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, category_id UUID REFERENCES categories(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT, price DECIMAL(10,2) NOT NULL, duration INTEGER NOT NULL, image_url TEXT, is_available BOOLEAN DEFAULT true, created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone(\'utc\'::text, now()) NOT NULL, updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone(\'utc\'::text, now()) NOT NULL)'
         }
       });
     }
@@ -53,9 +53,9 @@ async function setupDatabase() {
 
     // Enable RLS
     console.log('Enabling Row Level Security...');
-    await supabase.rest.from('service_categories').post({
+    await supabase.rest.from('categories').post({
       body: {
-        name: 'ALTER TABLE service_categories ENABLE ROW LEVEL SECURITY;'
+        name: 'ALTER TABLE categories ENABLE ROW LEVEL SECURITY;'
       }
     });
     await supabase.rest.from('services').post({
@@ -106,10 +106,10 @@ async function setupDatabase() {
       }
     });
 
-    // Service categories policies
-    await supabase.rest.from('service_categories').post({
+    // Categories policies
+    await supabase.rest.from('categories').post({
       body: {
-        name: 'CREATE POLICY "Service categories are viewable by everyone" ON service_categories FOR SELECT USING (true);'
+        name: 'CREATE POLICY "Categories are viewable by everyone" ON categories FOR SELECT USING (true);'
       }
     });
 

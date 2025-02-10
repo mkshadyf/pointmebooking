@@ -1,191 +1,241 @@
 'use client';
 
 import { Navigation } from '@/components/navigation';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { ServiceCard } from '@/components/services/ServiceCard';
 import { SearchFilter } from '@/components/ui/SearchFilter';
-import { Select } from '@/components/ui/Select';
-import { Slider } from '@/components/ui/Slider';
+import { ServiceCardSkeletonGrid } from '@/components/ui/ServiceCardSkeleton';
 import { searchServices } from '@/lib/services/search';
 import { useAppStore } from '@/lib/store';
 import { Service } from '@/types';
-import { ClockIcon, MapPinIcon } from '@heroicons/react/24/outline';
-import Image from 'next/image';
-import Link from 'next/link';
+import { FunnelIcon } from '@heroicons/react/24/outline';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
-// Separate component for the services content that uses useSearchParams
-function ServicesContent() {
+const ITEMS_PER_PAGE = 9;
+
+export default function ServicesPage() {
   const searchParams = useSearchParams();
-  const categoryId = searchParams.get('category');
   const { categories } = useAppStore();
-  
-  const [services, setServices] = useState<Service[]>([]);
+  const [, setServices] = useState<Service[]>([]);
+  const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(categoryId);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
-  const [duration, setDuration] = useState<number | undefined>();
+  const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
+
+  // Get initial search query and category from URL
+  const initialQuery = searchParams.get('q') || '';
+  const initialCategory = searchParams.get('category') || null;
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory);
 
   useEffect(() => {
     const loadServices = async () => {
       try {
         setLoading(true);
+        setError(null);
         const results = await searchServices({
           query: searchQuery,
           category: selectedCategory || undefined,
-          minPrice: priceRange[0],
-          maxPrice: priceRange[1],
-          duration,
         });
         setServices(results);
-      } catch (error) {
-        console.error('Error loading services:', error);
+        setFilteredServices(results);
+      } catch (err) {
+        setError('Failed to load services. Please try again.');
       } finally {
         setLoading(false);
       }
     };
 
     loadServices();
-  }, [searchQuery, selectedCategory, priceRange, duration]);
+  }, [searchQuery, selectedCategory]);
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setPage(1);
+  };
+
+  const handleCategorySelect = (category: string | null) => {
+    setSelectedCategory(category);
+    setPage(1);
+  };
+
+  const paginatedServices = filteredServices.slice(0, page * ITEMS_PER_PAGE);
+  const hasMore = paginatedServices.length < filteredServices.length;
 
   return (
-    <div className="container mx-auto px-4 py-8 mt-16">
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-900">
-          Available Services
-        </h2>
-        <p className="mt-2 text-gray-600">
-          Find and book the perfect service for your needs
-        </p>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <Navigation type="main" />
 
-      <SearchFilter
-        onSearch={setSearchQuery}
-        categories={categories.map((category: { name: any; }) => category.name)}
-        onCategorySelect={(category) => setSelectedCategory(category || null)}
-      />
-
-      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-1 items-center gap-2">
-          <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="md:hidden">
-            Filters
-          </Button>
-        </div>
-
-        <div className={`space-y-4 md:flex md:items-center md:gap-4 md:space-y-0 ${
-          showFilters ? 'block' : 'hidden md:flex'
-        }`}>
-          <Select 
-            value={duration?.toString() || ''}
-            onChange={(e) => setDuration(e.target.value ? Number(e.target.value) : undefined)}
-            className="w-full md:w-48"
-          >
-            <option value="">Any Duration</option>
-            <option value="30">30 minutes</option>
-            <option value="60">1 hour</option>
-            <option value="90">1.5 hours</option>
-            <option value="120">2 hours</option>
-          </Select>
-          <div className="w-full md:w-64">
-            <label className="mb-2 block text-sm font-medium text-gray-700">
-              Price Range: R{priceRange[0]} - R{priceRange[1]}
-            </label>
-            <Slider
-              min={0}
-              max={1000}
-              step={10}
-              value={priceRange}
-              onValueChange={(value: number[]) => setPriceRange([value[0], value[1]])}
-            />
+      <main className="pt-16 sm:pt-20">
+        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+          {/* Search and Filter Header */}
+          <div className="mb-4 sm:mb-6">
+            <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Browse Services</h1>
+              <div className="w-full sm:w-96">
+                <SearchFilter
+                  onSearch={handleSearch}
+                  categories={categories.map(cat => cat.name)}
+                  onCategorySelect={handleCategorySelect}
+                  className="w-full"
+                />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {loading ? (
-        <div className="flex h-64 items-center justify-center">
-          <LoadingSpinner />
-        </div>
-      ) : services.length === 0 ? (
-        <div className="flex h-64 flex-col items-center justify-center text-center">
-          <p className="text-xl font-medium text-gray-900">No services found</p>
-          <p className="mt-1 text-sm text-gray-600">Try adjusting your search or filters</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {services.map((service) => (
-            <Card 
-              key={service.id} 
-              className="group transition-all duration-300 hover:-translate-y-1 hover:shadow-xl overflow-hidden"
+          <div className="relative flex flex-col lg:flex-row gap-6">
+            {/* Filters Sidebar - Mobile Drawer */}
+            <aside 
+              className={`
+                fixed inset-0 lg:relative lg:inset-auto lg:block lg:w-64
+                transform transition-transform duration-200 ease-in-out z-40
+                ${showFilters ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+                ${showFilters ? 'pt-16 sm:pt-20' : ''} lg:pt-0 
+              `}
             >
-              {service.image_url && (
-                <div className="relative h-48 w-full">
-                  <Image
-                    src={service.image_url}
-                    alt={service.name}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                </div>
-              )}
+              {/* Mobile Overlay */}
+              <div 
+                className={`fixed inset-0 bg-black bg-opacity-50 lg:hidden ${showFilters ? 'block' : 'hidden'}`}
+                onClick={() => setShowFilters(false)}
+              />
 
-              <div className="p-6">
-                <div className="mb-4">
-                  <h3 className="text-xl font-semibold mb-2">{service.name}</h3>
-                  <p className="text-gray-600 text-sm mb-2 line-clamp-2">
-                    {service.description}
-                  </p>
-                </div>
-
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center text-gray-600">
-                    <MapPinIcon className="h-4 w-4 mr-2" />
-                    <span className="text-sm">{service.business?.address}</span>
+              {/* Filter Content */}
+              <div className="relative h-full lg:h-auto bg-white shadow-xl lg:shadow-sm lg:rounded-lg">
+                <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(100vh-4rem)] lg:max-h-[calc(100vh-8rem)]">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
+                    <button
+                      onClick={() => setShowFilters(false)}
+                      className="lg:hidden p-2 text-gray-500 hover:text-gray-700"
+                    >
+                      <span className="sr-only">Close filters</span>
+                      ×
+                    </button>
                   </div>
-                  <div className="flex items-center text-gray-600">
-                    <ClockIcon className="h-4 w-4 mr-2" />
-                    <span className="text-sm">{service.duration} minutes</span>
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-between mt-4">
-                  <p className="text-xl font-bold text-gray-900">
-                    R{service.price}
-                  </p>
-                  <div className="space-x-2">
-                    <Link href={`/services/${service.id}`}>
-                      <Button variant="outline" size="sm">
-                        Details
-                      </Button>
-                    </Link>
-                    <Link href={`/services/${service.id}/book`}>
-                      <Button size="sm">
-                        Book Now
-                      </Button>
-                    </Link>
+                  <div className="space-y-6">
+                    {/* Categories */}
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-900 mb-3">Categories</h3>
+                      <div className="space-y-3">
+                        {categories.map(category => (
+                          <label key={category.id} className="flex items-center">
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                              checked={selectedCategory === category.name}
+                              onChange={() => handleCategorySelect(selectedCategory === category.name ? null : category.name)}
+                            />
+                            <span className="ml-3 text-sm text-gray-600">{category.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Price Range */}
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-900 mb-3">Price Range</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs text-gray-500">Min</label>
+                          <input type="number" className="w-full px-3 py-1 text-sm border rounded-md" placeholder="0" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">Max</label>
+                          <input type="number" className="w-full px-3 py-1 text-sm border rounded-md" placeholder="1000+" />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </Card>
-          ))}
-        </div>  
-      )}
+            </aside>
+
+            {/* Mobile Filter Toggle */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="fixed bottom-4 right-4 lg:hidden bg-purple-600 text-white p-3 rounded-full shadow-lg z-30"
+              aria-label="Toggle filters"
+            >
+              <FunnelIcon className="h-6 w-6" />
+            </button>
+
+            {/* Services Grid */}
+            <div className="flex-1 min-w-0">
+              {loading ? (
+                <ServiceCardSkeletonGrid />
+              ) : error ? (
+                <div className="text-center p-6 bg-white rounded-lg shadow-sm">
+                  <h2 className="text-xl font-bold text-gray-900 mb-2">Oops!</h2>
+                  <p className="text-gray-600 mb-4">{error}</p>
+                  <button
+                    onClick={() => {
+                      setLoading(true);
+                      searchServices({
+                        query: searchQuery,
+                        category: selectedCategory || undefined,
+                      })
+                        .then(results => {
+                          setServices(results);
+                          setFilteredServices(results);
+                          setError(null);
+                        })
+                        .catch(() => setError('Failed to load services'))
+                        .finally(() => setLoading(false));
+                    }}
+                    className="text-purple-600 hover:text-purple-700 font-medium"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              ) : filteredServices.length === 0 ? (
+                <div className="text-center p-6 bg-white rounded-lg shadow-sm">
+                  <h2 className="text-xl font-bold text-gray-900 mb-2">No services found</h2>
+                  <p className="text-gray-600">
+                    Try adjusting your search or filters to find what you're looking for
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <h2 className="text-sm font-medium text-gray-500">
+                      {filteredServices.length} {filteredServices.length === 1 ? 'service' : 'services'} found
+                    </h2>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500 whitespace-nowrap">Sort by:</span>
+                      <select className="w-full sm:w-auto text-sm border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
+                        <option>Most Relevant</option>
+                        <option>Price: Low to High</option>
+                        <option>Price: High to Low</option>
+                        <option>Newest First</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+                    {paginatedServices.map((service) => (
+                      <ServiceCard key={service.id} service={service} />
+                    ))}
+                  </div>
+
+                  {hasMore && (
+                    <div className="mt-6 sm:mt-8 text-center">
+                      <button
+                        onClick={() => setPage(p => p + 1)}
+                        className="inline-flex items-center px-4 sm:px-6 py-2 text-sm sm:text-base border border-purple-600 text-purple-600 rounded-full hover:bg-purple-50 transition-colors"
+                      >
+                        Load More Services
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
 
-// Main page component with Suspense boundary
-export default function ServicesPage() {
-  return (
-    <>
-      <Navigation type="main" />
-      <Suspense fallback={<LoadingSpinner />}>
-        <ServicesContent />
-      </Suspense>
-    </>
-  );
-}

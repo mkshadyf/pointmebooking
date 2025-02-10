@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { BusinessProfile, Service } from '@/types';
+import { useState } from 'react';
   
 export interface StepProps {
   initialData: BusinessProfile | null;
@@ -21,6 +21,7 @@ const defaultService: Service = {
   created_at: '',
   updated_at: '',
   status: 'active',
+  image_url: null
 };
 
 export function ServicesStep({ initialData, onNextAction, onBackAction }: StepProps) {
@@ -94,7 +95,7 @@ export function ServicesStep({ initialData, onNextAction, onBackAction }: StepPr
             <textarea
               id={`service-description-${index}`}
               required
-              value={service.description}
+              value={service.description || ''}
               onChange={(e) => updateService(index, { description: e.target.value })}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
               rows={3}

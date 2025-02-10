@@ -81,10 +81,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Get user profile for role and onboarding status
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, onboarding_completed, email_verified')
+    .eq('id', session.user.id)
+    .single();
+
+  // Check email verification first
+  if (profile && !profile.email_verified && !path.startsWith(ROUTES.verifyEmail.path)) {
+    return NextResponse.redirect(new URL(ROUTES.verifyEmail.path, request.url));
+  }
+
   // Onboarding check for business users
   if (
-    session.user?.user_metadata?.role === 'business' && 
-    !session.user?.user_metadata?.onboarding_completed &&
+    profile?.role === 'business' && 
+    !profile.onboarding_completed &&
     !path.startsWith(ROUTES.businessOnboarding.path)
   ) {
     return NextResponse.redirect(new URL(ROUTES.businessOnboarding.path, request.url));

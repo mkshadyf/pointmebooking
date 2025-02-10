@@ -45,9 +45,7 @@ function Logo() {
         className="h-8 w-auto"
         priority
       />
-      <span className="text-xl font-semibold text-gray-900">
-        PointMe!
-      </span>
+    
     </Link>
   );
 }

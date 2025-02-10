@@ -1,249 +1,227 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import { useAppStore } from '@/lib/store';
-import { useRouter } from 'next/navigation';
-import { toast } from 'react-hot-toast';
-import { Service, WorkingHours } from '@/types';
+import { Navigation } from '@/components/navigation';
+import { Button } from '@/components/ui/Button';
 import { PageLoading } from '@/components/ui/Loading';
-import { format, addDays, startOfDay, eachHourOfInterval } from 'date-fns';
-import { CalendarDaysIcon, ClockIcon, MapPinIcon, PhoneIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '@/context/AuthContext';
+import { getService } from '@/lib/api/services';
+import { notify } from '@/lib/utils/notifications';
+import { Service } from '@/types';
+import {
+    CalendarIcon,
+    ClockIcon,
+    CurrencyDollarIcon,
+    MapPinIcon,
+    PhoneIcon,
+    UserIcon,
+} from '@heroicons/react/24/outline';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-export default function ServiceDetailPage() {
+export default function ServiceDetailsPage() {
   const params = useParams();
-  const { user } = useAuth();
-  const { serviceCategories, businessCategories } = useAppStore();
   const router = useRouter();
+  const { user } = useAuth();
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
-  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchService = async () => {
+    const loadService = async () => {
+      if (!params?.id) {
+        setError('Service ID is required');
+        setLoading(false);
+        return;
+      }
+      
       try {
-        const service = serviceCategories
-          .flatMap((cat: { services: any; }) => cat.services)
-          .find((s: { id: string | string[] | undefined; }) => s.id === params.id);
-
-        if (!service) throw new Error('Service not found');
-
-        setService(service);
+        setLoading(true);
+        setError(null);
+        const serviceData = await getService(params.id as string);
+        if (!serviceData) {
+          throw new Error('Service not found');
+        }
+        setService(serviceData);
       } catch (err) {
-        console.error('Error fetching service:', err);
+        console.error('Error loading service:', err);
+        setError('Failed to load service details');
+        notify.error('Failed to load service details');
       } finally {
         setLoading(false);
       }
     };
 
-    if (params.id) {
-      fetchService();
-    }
-  }, [params.id, serviceCategories]);
+    loadService();
+  }, [params?.id]);
 
-  if (loading) return <PageLoading />;
-  if (!service) return <div>Service not found</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation type="main" />
+        <PageLoading />
+      </div>
+    );
+  }
 
-  // Find the business that offers this service
-  const business = businessCategories
-    .flatMap((cat: { businesses: any; }) => cat.businesses)
-    .find((b: { id: string; }) => b.id === service.business_id);
-
-  if (!business) return <div>Business not found</div>;
-
-  // Generate available dates (next 7 days)
-  const availableDates = Array.from({ length: 7 }, (_, i) => addDays(new Date(), i));
-
-  // Generate time slots for the selected date
-  const generateTimeSlots = () => {
-    const workingHours = business.working_hours;
-    if (!workingHours) return [];
-
-    const today = new Date();
-    const selectedDay = format(selectedDate, 'EEEE').toLowerCase() as keyof WorkingHours;
-    const dayHours = workingHours[selectedDay];
-
-    if (!dayHours || typeof dayHours === 'string') return [];
-
-    const startTime = dayHours.start;
-    const endTime = dayHours.end;
-    
-    if (!startTime || !endTime) return [];
-
-    const startHour = parseInt(startTime.split(':')[0]);
-    const endHour = parseInt(endTime.split(':')[0]);
-    
-    const start = new Date(selectedDate);
-    start.setHours(startHour, 0, 0);
-    
-    const end = new Date(selectedDate);
-    end.setHours(endHour, 0, 0);
-
-    // If selected date is today, filter out past times
-    if (selectedDate.toDateString() === today.toDateString()) {
-      const currentHour = today.getHours();
-      start.setHours(Math.max(startHour, currentHour + 1), 0, 0);
-      if (start >= end) return [];
-    }
-
-    return eachHourOfInterval({ start, end });
-  };
-
-  const timeSlots = generateTimeSlots();
-
-  const handleBooking = async () => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-
-    if (!selectedDate || !selectedTime) {
-      toast.error('Please select a date and time');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // In a real app, this would make an API call to create the booking
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success('Booking request sent successfully!');
-      router.push('/dashboard/customer');
-    } catch (error) {
-      toast.error('Failed to create booking:' + error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (error || !service) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation type="main" />
+        <div className="container mx-auto px-4 py-16 text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            {error || 'Service not found'}
+          </h1>
+          <Button onClick={() => router.back()}>Go Back</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="px-6 py-8">
-            {/* Service Details */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2">
-                <h1 className="text-3xl font-bold text-gray-900">{service.name}</h1>
-                <p className="mt-4 text-lg text-gray-600">{service.description}</p>
-                <div className="mt-6 space-y-4">
-                  <div className="flex items-center">
-                    <ClockIcon className="h-5 w-5 text-gray-400" />
-                    <span className="ml-2 text-gray-600">Duration:</span>
-                    <span className="ml-2 font-medium">{service.duration} minutes</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-2xl font-bold text-primary">R{service.price}</span>
-                    <span className="ml-2 text-gray-500">per session</span>
-                  </div>
-                </div>
+    <div className="min-h-screen bg-gray-50">
+      <Navigation type="main" />
 
-                {/* Business Details */}
-                <div className="mt-8 pt-8 border-t border-gray-200">
-                  <h2 className="text-2xl font-semibold text-gray-900">
-                    About {business.business_name}
-                  </h2>
-                  <p className="mt-4 text-gray-600">{business.description}</p>
-                  <div className="mt-6 space-y-4">
-                    <div className="flex items-center">
-                      <MapPinIcon className="h-5 w-5 text-gray-400" />
-                      <span className="ml-2">{business.location}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <PhoneIcon className="h-5 w-5 text-gray-400" />
-                      <span className="ml-2">{business.contact_number}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <CalendarDaysIcon className="h-5 w-5 text-gray-400" />
-                      <span className="ml-2">
-                        {business.working_hours.start} - {business.working_hours.end}
-                      </span>
-                    </div>
+      {/* Hero Section */}
+      <div className="relative h-96 bg-gray-900">
+        {service.image_url ? (
+          <Image
+            src={service.image_url}
+            alt={service.name}
+            fill
+            className="object-cover opacity-60"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-700 via-violet-600 to-indigo-700 opacity-75" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+        
+        <div className="relative container mx-auto px-4 h-full flex flex-col justify-end pb-8">
+          <div className="flex items-center gap-2 mb-2">
+            {service.category?.icon && (
+              <span className="material-icons text-white/90">{service.category.icon}</span>
+            )}
+            {service.category?.name && (
+              <span className="text-white/90">{service.category.name}</span>
+            )}
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-4">{service.name}</h1>
+          <div className="flex flex-wrap items-center gap-4 text-white/90">
+            <div className="flex items-center gap-2">
+              <CurrencyDollarIcon className="h-5 w-5" />
+              <span>R{service.price}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <ClockIcon className="h-5 w-5" />
+              <span>{service.duration} mins</span>
+            </div>
+            {service.business?.city && (
+              <div className="flex items-center gap-2">
+                <MapPinIcon className="h-5 w-5" />
+                <span>{service.business.city}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="container mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-2xl shadow-sm p-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">About this service</h2>
+              <p className="text-gray-600 whitespace-pre-wrap">{service.description}</p>
+              
+              {service.business?.description && (
+                <div className="mt-8 pt-8 border-t border-gray-100">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">About the business</h3>
+                  <p className="text-gray-600 whitespace-pre-wrap">{service.business.description}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Business Info */}
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <div className="flex items-center gap-4 mb-6">
+                {service.business?.logo_url ? (
+                  <Image
+                    src={service.business.logo_url}
+                    alt={`${service.business.name || 'Business'} logo`}
+                    width={64}
+                    height={64}
+                    className="rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center">
+                    <UserIcon className="h-8 w-8 text-purple-600" />
                   </div>
+                )}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {service.business?.name || 'Business Name'}
+                  </h3>
+                  {service.business?.city && (
+                    <p className="text-gray-600">{service.business.city}</p>
+                  )}
                 </div>
               </div>
 
-              {/* Booking Section */}
-              <div className="lg:col-span-1 bg-gray-50 p-6 rounded-lg">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Book Your Session</h3>
-                
-                {/* Date Selection */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Select Date
-                  </label>
-                  <div className="grid grid-cols-7 gap-2">
-                    {availableDates.map((date) => (
-                      <button
-                        key={date.toISOString()}
-                        onClick={() => setSelectedDate(date)}
-                        className={`p-2 text-center rounded-lg ${
-                          selectedDate?.toDateString() === date.toDateString()
-                            ? 'bg-primary text-white'
-                            : 'bg-white hover:bg-gray-100'
-                        }`}
-                      >
-                        <div className="text-xs">{format(date, 'EEE')}</div>
-                        <div className="font-semibold">{format(date, 'd')}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Time Selection */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Select Time
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {timeSlots.map((time) => (
-                      <button
-                        key={time.toISOString()}
-                        onClick={() => setSelectedTime(format(time, 'HH:mm'))}
-                        className={`p-2 text-center rounded-lg ${
-                          selectedTime === format(time, 'HH:mm')
-                            ? 'bg-primary text-white'
-                            : 'bg-white hover:bg-gray-100'
-                        }`}
-                      >
-                        {format(time, 'h:mm a')}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Summary */}
-                {selectedDate && selectedTime && (
-                  <div className="mb-6 p-4 bg-white rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-2">Booking Summary</h4>
-                    <div className="text-sm text-gray-600">
-                      <p>Date: {format(selectedDate, 'MMMM d, yyyy')}</p>
-                      <p>Time: {selectedTime}</p>
-                      <p className="mt-2 font-medium text-primary">Total: R{service.price}</p>
+              {/* Contact Info */}
+              {(service.business?.phone || service.business?.email || service.business?.address) && (
+                <div className="space-y-3 border-t border-gray-200 pt-4">
+                  {service.business.address && (
+                    <div className="flex items-center gap-3 text-gray-600">
+                      <MapPinIcon className="h-5 w-5 flex-shrink-0" />
+                      <span className="line-clamp-2">{service.business.address}</span>
                     </div>
-                  </div>
-                )}
+                  )}
+                  {service.business.phone && (
+                    <div className="flex items-center gap-3 text-gray-600">
+                      <PhoneIcon className="h-5 w-5 flex-shrink-0" />
+                      <span>{service.business.phone}</span>
+                    </div>
+                  )}
+                  {service.business.email && (
+                    <div className="flex items-center gap-3 text-gray-600">
+                      <svg className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      <span className="break-all">{service.business.email}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
-                {/* Book Button */}
-                <button
-                  onClick={handleBooking}
-                  disabled={loading || !selectedDate || !selectedTime}
-                  className="w-full px-6 py-3 text-base font-medium rounded-lg shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading
-                    ? 'Processing...'
-                    : user
-                    ? 'Confirm Booking'
-                    : 'Sign in to Book'}
-                </button>
-
-                {!user && (
-                  <p className="mt-2 text-sm text-gray-500 text-center">
-                    Please sign in to book this service
-                  </p>
-                )}
-              </div>
+            {/* Booking Button */}
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <Button
+                onClick={() => router.push(`/services/${service.id}/book`)}
+                className="w-full flex items-center justify-center gap-2"
+                disabled={!service.is_available}
+              >
+                <CalendarIcon className="h-5 w-5" />
+                {service.is_available ? 'Book Now' : 'Not Available'}
+              </Button>
+              {!user && service.is_available && (
+                <p className="mt-3 text-sm text-center text-gray-500">
+                  <Link href="/login" className="text-purple-600 hover:text-purple-700">
+                    Sign in
+                  </Link>{' '}
+                  to book this service
+                </p>
+              )}
+              {!service.is_available && (
+                <p className="mt-3 text-sm text-center text-gray-500">
+                  This service is currently not available for booking
+                </p>
+              )}
             </div>
           </div>
         </div>
