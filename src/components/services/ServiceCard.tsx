@@ -1,117 +1,89 @@
 'use client';
 
+import { BaseCard } from '@/components/ui/shared/BaseCard';
 import { Service } from '@/types';
-import { ArrowRightIcon } from '@heroicons/react/24/outline';
-import Image from 'next/image';
+import { MapPinIcon } from '@heroicons/react/24/outline';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-export interface ServiceCardProps {
+interface ServiceCardProps {
   service: Service;
-  onEdit?: () => void;
-  onDelete?: () => void;
+  showActions?: boolean;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  minimal?: boolean;
 }
 
-export function ServiceCard({ service, onEdit, onDelete }: ServiceCardProps) {
+export function ServiceCard({ 
+  }: ServiceCardProps) {
   const router = useRouter();
-  const [imageError, setImageError] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
   const [isNavigating, setIsNavigating] = useState(false);
 
-  const handleImageError = () => {
-    setImageError(true);
-    setImageLoading(false);
-  };
+  const businessAddress = service.business ? 
+    [service.business.address, service.business.city, service.business.state]
+      .filter(Boolean)
+      .join(', ') : 
+    'Address not available';
 
-  const handleImageLoad = () => {
-    setImageLoading(false);
-  };
-
-  const handleImageRetry = () => {
-    setImageError(false);
-    setImageLoading(true);
-  };
-
-  const handleClick = async (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleClick = async () => {
+    if (isNavigating || !service.id) return;
     setIsNavigating(true);
     await router.push(`/services/${service.id}`);
   };
 
   return (
-    <div
-      onClick={handleClick}
-      className="group relative overflow-hidden rounded-lg bg-white shadow-md transition-all hover:shadow-xl cursor-pointer"
+    <BaseCard
+      title={service.name}
+      description={service.description || undefined}
+      imageUrl={service.image_url}
+      logoUrl={service.business?.logo_url || null}
+      minimal={minimal}
+      onClick={!showActions ? handleClick : undefined}
     >
-      <div className="relative h-48 w-full bg-gray-100">
-        {service.image_url && !imageError ? (
-          <>
-            <Image
-              src={service.image_url}
-              alt={service.name}
-              fill
-              className={`object-cover transition-transform duration-300 group-hover:scale-105 ${
-                imageLoading ? 'opacity-0' : 'opacity-100'
-              }`}
-              onError={handleImageError}
-              onLoad={handleImageLoad}
-            />
-            {imageLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      {!minimal && (
+        <>
+          {service.business && (
+            <div className="mt-4 flex items-center text-sm text-gray-500">
+              <MapPinIcon className="h-4 w-4 mr-1" />
+              <span>{businessAddress}</span>
+            </div>
+          )}
+          
+          <div className="mt-4 flex items-center justify-between">
+            <div className="text-lg font-semibold text-gray-900">
+              ${service.price.toFixed(2)}
+            </div>
+            {showActions ? (
+              <div className="flex space-x-2">
+                {onEdit && (
+                  <button
+                    onClick={() => onEdit(service.id)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    Edit
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    onClick={() => onDelete(service.id)}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    Delete
+                  </button>
+                )}
               </div>
-            )}
-          </>
-        ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 text-gray-400">
-            {imageError ? (
-              <>
-                <span className="mb-2 text-sm">Failed to load image</span>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleImageRetry();
-                  }}
-                  className="text-sm text-purple-600 hover:text-purple-700"
-                >
-                  Retry
-                </button>
-              </>
             ) : (
-              <span className="text-sm">No image available</span>
+              <button
+                onClick={handleClick}
+                disabled={isNavigating}
+                className="flex items-center text-purple-600 hover:text-purple-800"
+              >
+                View Details →
+              </button>
             )}
           </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-      </div>
-
-      <div className="p-6">
-        <h3 className="text-xl font-semibold text-gray-900">{service.name}</h3>
-        <p className="mt-2 text-gray-600 line-clamp-2">{service.description}</p>
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-lg font-bold text-purple-600">R{service.price}</span>
-          {onEdit && (
-            <button onClick={onEdit} className="text-blue-600 hover:underline">
-              Edit
-            </button>
-          )}
-          {onDelete && (
-            <button onClick={onDelete} className="text-red-600 hover:underline">
-              Delete
-            </button>
-          )}
-          <div className="flex items-center text-sm text-gray-500">
-            <span>{service.duration} mins</span>
-            <ArrowRightIcon className="ml-2 h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100" />
-          </div>
-        </div>
-      </div>
-
-      {isNavigating && (
-        <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
+        </>
       )}
-    </div>
+    </BaseCard>
   );
 } 

@@ -86,4 +86,59 @@ export async function updateUserProfile(userId: string, updates: any) {
 // React hook for browser client
 export function useSupabase() {
   return createBrowserSupabaseClient();
-} 
+}
+
+// Configuration
+export * from './config';
+
+// Client exports
+export {
+    createClient,
+    createServerSupabaseClient, supabase, type SupabaseClient
+} from './client';
+
+// Auth exports
+export {
+    AuthProvider,
+    useAuth,
+    withAuth
+} from './auth';
+
+// Hook exports
+export {
+    useSupabaseAuth,
+    useSupabaseRealtime,
+    useSupabaseStorage,
+    type UseSupabaseRealtimeOptions,
+    type UseSupabaseStorageOptions,
+    type UseSupabaseStorageReturn
+} from './hooks';
+
+// Service exports
+export {
+    BookingService,
+    CategoryService,
+    ProfileService,
+    ServiceService
+} from './services';
+
+// Type exports
+export * from './types';
+
+// Constants
+export const SUPABASE_CONFIG = {
+  STORAGE_BUCKETS: {
+    PUBLIC: 'public',
+    AVATARS: 'avatars',
+    LOGOS: 'logos',
+    SERVICES: 'services',
+  },
+  MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
+  ALLOWED_FILE_TYPES: ['image/jpeg', 'image/png', 'image/webp'],
+  CACHE_DURATION: 5 * 60 * 1000, // 5 minutes
+  REALTIME_CHANNELS: {
+    BOOKINGS: 'bookings',
+    SERVICES: 'services',
+    PROFILES: 'profiles',
+  },
+} as const; 

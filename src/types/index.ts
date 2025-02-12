@@ -1,17 +1,24 @@
 import { Provider } from "@supabase/supabase-js";
 
-// Auth Constants
+// Base types
+export * from './api';
+export * from './auth';
+export * from './booking';
+export * from './database.types';
+
+// Constants
 export const USER_ROLES = ['customer', 'business', 'admin'] as const;
 export const USER_STATUSES = ['active', 'inactive', 'suspended'] as const;
 export const BOOKING_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed'] as const;
 export const SERVICE_STATUSES = ['active', 'inactive', 'deleted'] as const;
 
-// Auth Types
+// Derived types
 export type UserRole = typeof USER_ROLES[number];
 export type UserStatus = typeof USER_STATUSES[number];
 export type BookingStatus = typeof BOOKING_STATUSES[number];
 export type ServiceStatus = typeof SERVICE_STATUSES[number];
 
+// Base interfaces
 export interface UserProfile {
   id: string;
   user_id: string;
@@ -56,8 +63,6 @@ export interface WorkingHours {
   friday: DayHours;
   saturday: DayHours;
   sunday: DayHours;
-  start?: string; // Legacy support
-  end?: string;   // Legacy support
 }
 
 export interface BusinessProfile extends UserProfile {
@@ -82,7 +87,7 @@ export interface Service {
   is_available: boolean;
   created_at: string;
   updated_at: string;
-  status: string | null;
+  status: ServiceStatus;
   category_id: string;
   business?: {
     id: string;
@@ -109,7 +114,7 @@ export interface Booking {
   date: string;
   start_time: string;
   end_time: string;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  status: BookingStatus;
   notes?: string;
   created_at: string;
 }
@@ -121,60 +126,9 @@ export interface Category {
   icon?: string;
   created_at: string;
   updated_at: string;
-}
-
-export interface BusinessCategory {
-  id: string;
-  name: string;
-  businesses: BusinessProfile[];
-}
-
-export interface ServiceCategory {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  services: Service[];
-}
-
-export interface Business {
-  id: string;
-  user_id: string;
-  name: string;
-  description?: string;
-  logo_url?: string;
-  cover_image_url?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  postal_code?: string;
-  country?: string;
-  phone?: string;
-  email?: string;
-  website?: string;
-  operating_hours?: {
-    [key: string]: {
-      open: string;
-      close: string;
-      is_closed: boolean;
-    };
-  };
-  status: 'active' | 'inactive' | 'pending' | 'suspended';
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Profile {
-  id: string;
-  user_id: string;
-  email: string;
-  full_name: string;
-  avatar_url?: string;
-  phone?: string;
-  role: 'customer' | 'business' | 'admin';
-  status: 'active' | 'inactive' | 'suspended';
-  created_at: string;
-  updated_at: string;
+  businesses?: BusinessProfile[];
+  services?: Service[];
+  service_count?: number;
 }
 
 export interface AuthContextType {
@@ -194,6 +148,4 @@ export interface AuthContextType {
   resendVerificationEmail: () => Promise<{ success: boolean; error?: string }>;
   verificationAttempts: number;
 }
-
-export type { Database } from './database.types';
 

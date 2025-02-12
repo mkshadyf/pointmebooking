@@ -1,6 +1,7 @@
 import { signOutAction } from '@/app/actions';
 import { ROUTES } from '@/config/routes';
 import { useAuth } from '@/context/AuthContext';
+import { classNames } from '@/lib/utils';
 import { Disclosure, Menu, Transition } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
@@ -13,10 +14,6 @@ type NavigationType = 'main' | 'dashboard';
 
 interface NavigationProps {
   type: NavigationType;
-}
-
-function classNames(...classes: string[]) {
-  return classes.filter(Boolean).join(' ');
 }
 
 export default function Navigation({ type }: NavigationProps) {

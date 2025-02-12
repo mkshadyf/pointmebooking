@@ -13,91 +13,162 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          email: string
           full_name: string
-          role: 'customer' | 'business' | 'admin'
+          email: string
+          role: string
           email_verified: boolean
           verification_code?: string
-          verification_attempts: number
-          last_verification_attempt?: string
           business_name?: string
           business_type?: string
           business_category?: string
           description?: string
           location?: string
           contact_number?: string
-          contact_email?: string
-          website?: string
+          phone?: string
           address?: string
           city?: string
           state?: string
           postal_code?: string
+          contact_email?: string
+          website?: string
           avatar_url?: string
           logo_url?: string
           cover_image_url?: string
-          status: 'active' | 'inactive' | 'suspended'
+          status: string
           onboarding_completed: boolean
           created_at: string
           updated_at: string
+          working_hours?: Json
         }
         Insert: {
-          id?: string
-          user_id: string
-          email: string
+          id: string
+          user_id?: string
           full_name?: string
-          role?: 'customer' | 'business' | 'admin'
+          email: string
+          role: string
           email_verified?: boolean
           verification_code?: string
           business_name?: string
-          status?: 'active' | 'inactive' | 'suspended'
+          business_type?: string
+          business_category?: string
+          description?: string
+          location?: string
+          contact_number?: string
+          phone?: string
+          address?: string
+          city?: string
+          state?: string
+          postal_code?: string
+          contact_email?: string
+          website?: string
+          avatar_url?: string
+          logo_url?: string
+          cover_image_url?: string
+          status?: string
           onboarding_completed?: boolean
+          created_at?: string
+          updated_at?: string
+          working_hours?: Json
         }
         Update: {
-          email?: string
+          id?: string
+          user_id?: string
           full_name?: string
-          role?: 'customer' | 'business' | 'admin'
+          email?: string
+          role?: string
           email_verified?: boolean
           verification_code?: string
           business_name?: string
-          status?: 'active' | 'inactive' | 'suspended'
+          business_type?: string
+          business_category?: string
+          description?: string
+          location?: string
+          contact_number?: string
+          phone?: string
+          address?: string
+          city?: string
+          state?: string
+          postal_code?: string
+          contact_email?: string
+          website?: string
+          avatar_url?: string
+          logo_url?: string
+          cover_image_url?: string
+          status?: string
           onboarding_completed?: boolean
+          created_at?: string
+          updated_at?: string
+          working_hours?: Json
         }
       }
       services: {
         Row: {
           id: string
           business_id: string
-          category_id: string
           name: string
-          description: string
+          description: string | null
           price: number
           duration: number
-          image_url?: string
-          status: 'active' | 'inactive' | 'deleted'
+          image_url: string | null
           is_available: boolean
+          created_at: string
+          updated_at: string
+          status: string
+          category_id: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          name: string
+          description?: string | null
+          price: number
+          duration: number
+          image_url?: string | null
+          is_available?: boolean
+          created_at?: string
+          updated_at?: string
+          status?: string
+          category_id: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          name?: string
+          description?: string | null
+          price?: number
+          duration?: number
+          image_url?: string | null
+          is_available?: boolean
+          created_at?: string
+          updated_at?: string
+          status?: string
+          category_id?: string
+        }
+      }
+      categories: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          icon: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
-          business_id: string
-          category_id: string
           name: string
-          description: string
-          price: number
-          duration: number
-          image_url?: string
-          status?: 'active' | 'inactive' | 'deleted'
-          is_available?: boolean
+          description?: string | null
+          icon?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Update: {
+          id?: string
           name?: string
-          description?: string
-          price?: number
-          duration?: number
-          image_url?: string
-          status?: 'active' | 'inactive' | 'deleted'
-          is_available?: boolean
+          description?: string | null
+          icon?: string | null
+          created_at?: string
+          updated_at?: string
         }
       }
       bookings: {
@@ -106,71 +177,47 @@ export interface Database {
           service_id: string
           customer_id: string
           business_id: string
-          customer_name: string
           date: string
           start_time: string
           end_time: string
-          total_amount: number
-          status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
-          notes?: string
+          status: string
+          notes: string | null
           created_at: string
-          updated_at: string
         }
         Insert: {
           id?: string
           service_id: string
           customer_id: string
           business_id: string
-          customer_name: string
           date: string
           start_time: string
           end_time: string
-          total_amount?: number
-          status?: 'pending' | 'confirmed' | 'cancelled' | 'completed'
-          notes?: string
+          status?: string
+          notes?: string | null
+          created_at?: string
         }
         Update: {
-          status?: 'pending' | 'confirmed' | 'cancelled' | 'completed'
-          notes?: string
+          id?: string
+          service_id?: string
+          customer_id?: string
+          business_id?: string
+          date?: string
+          start_time?: string
+          end_time?: string
+          status?: string
+          notes?: string | null
+          created_at?: string
         }
       }
     }
     Views: {
-      service_details: {
-        Row: {
-          id: string
-          business_id: string
-          category_id: string
-          name: string
-          description: string
-          price: number
-          duration: number
-          image_url?: string
-          status: 'active' | 'inactive' | 'deleted'
-          is_available: boolean
-          business_name: string
-          business_address?: string
-          business_city?: string
-          business_state?: string
-          business_phone?: string
-          business_email?: string
-          category_name: string
-          created_at: string
-          updated_at: string
-        }
-      }
+      [_ in never]: never
     }
     Functions: {
-      handle_new_user: {
-        Args: Record<string, never>
-        Returns: undefined
-      }
+      [_ in never]: never
     }
     Enums: {
-      user_role: 'customer' | 'business' | 'admin'
-      user_status: 'active' | 'inactive' | 'suspended'
-      service_status: 'active' | 'inactive' | 'deleted'
-      booking_status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+      [_ in never]: never
     }
   }
 }

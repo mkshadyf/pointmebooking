@@ -1,56 +1,72 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { SearchService, ServiceService } from '@/lib/supabase/services';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options: any) {
-          cookieStore.set({ name, value, ...options });
-        },
-        remove(name: string, options: any) {
-          cookieStore.delete({ name, ...options });
-        },
-      },
-    }
-  );
-
   try {
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status') || 'active';
-    const isAvailable = searchParams.get('is_available') === 'true';
-    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
+    const query = searchParams.get('q') || undefined;
+    const category = searchParams.get('category') || undefined;
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
 
-    let query = supabase
-      .from('services')
-      .select('*')
-      .eq('status', status);
-
-    if (typeof isAvailable === 'boolean') {
-      query = query.eq('is_available', isAvailable);
+    if (query) {
+      const results = await SearchService.searchServices(query, { category, page, limit });
+      return NextResponse.json(results);
     }
 
-    if (limit) {
-      query = query.limit(limit);
+    if (category) {
+      const services = await ServiceService.getByCategory(category);
+      return NextResponse.json({ data: services });
     }
 
-    const { data: services, error } = await query;
-
-    if (error) {
-      console.error('Supabase error:', error);
-      return NextResponse.json({ error: 'Failed to fetch services' }, { status: 500 });
-    }
-
-    return NextResponse.json(services);
+    const services = await ServiceService.getAll();
+    return NextResponse.json({ data: services });
   } catch (error) {
-    console.error('Error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Error in services API:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const service = await ServiceService.create(body);
+    return NextResponse.json(service);
+  } catch (error) {
+    console.error('Error in services API:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'Service ID is required' }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const service = await ServiceService.update(id, body);
+    return NextResponse.json(service);
+  } catch (error) {
+    console.error('Error in services API:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'Service ID is required' }, { status: 400 });
+    }
+
+    await ServiceService.delete(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error in services API:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
