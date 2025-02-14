@@ -2,21 +2,52 @@
 
 import { Navigation } from '@/components/navigation';
 import { ServiceCard } from '@/components/services/ServiceCard';
+import { ServiceCardSkeletonGrid } from '@/components/services/ServiceCardSkeletonGrid';
 import { SearchFilter } from '@/components/ui/SearchFilter';
-import { ServiceCardSkeletonGrid } from '@/components/ui/ServiceCardSkeleton';
-import { searchServices } from '@/lib/services/search';
-import { useAppStore } from '@/lib/store';
-import { Service } from '@/types';
+import { SearchService } from '@/lib/supabase/services';
+import { useStore } from '@/lib/supabase/store';
+import { Service, SERVICE_STATUSES, ServiceStatus } from '@/types';
 import { FunnelIcon } from '@heroicons/react/24/outline';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+  
 
 const ITEMS_PER_PAGE = 9;
 
+function assertServiceStatus(status: string): ServiceStatus {
+  return SERVICE_STATUSES.includes(status as ServiceStatus)
+    ? (status as ServiceStatus)
+    : 'inactive';
+}
+
+function mapServiceWithRelationsToService(dbService: any): Service {
+  const { business, category, status, ...serviceData } = dbService;
+  
+  return {
+    ...serviceData,
+    status: assertServiceStatus(status),
+    business: business ? {
+      id: business.id,
+      name: business.business_name || '',
+      description: business.description || undefined,
+      address: business.address || undefined,
+      city: business.city || undefined,
+      state: business.state || undefined,
+      phone: business.phone || undefined,
+      email: business.email || undefined,
+      logo_url: business.logo_url || undefined,
+    } : undefined,
+    category: category ? {
+      name: category.name,
+      icon: category.icon || undefined,
+    } : undefined,
+  } as Service;
+}
+
 export default function ServicesPage() {
   const searchParams = useSearchParams();
-  const { categories } = useAppStore();
-  const [, setServices] = useState<Service[]>([]);
+  const { categories } = useStore();
+  const [services, setServices] = useState<Service[]>([]);
   const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,21 +65,24 @@ export default function ServicesPage() {
       try {
         setLoading(true);
         setError(null);
-        const results = await searchServices({
-          query: searchQuery,
+        const results = await SearchService.searchServices(searchQuery || '', {
           category: selectedCategory || undefined,
+          page,
+          limit: ITEMS_PER_PAGE
         });
-        setServices(results);
-        setFilteredServices(results);
+        const mappedServices = results.data.map(mapServiceWithRelationsToService);
+        setServices(mappedServices);
+        setFilteredServices(mappedServices);
       } catch (err) {
         setError('Failed to load services. Please try again.');
+        console.error('Error loading services:', err);
       } finally {
         setLoading(false);
       }
     };
 
     loadServices();
-  }, [searchQuery, selectedCategory]);
+  }, [searchQuery, selectedCategory, page]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -60,8 +94,7 @@ export default function ServicesPage() {
     setPage(1);
   };
 
-  const paginatedServices = filteredServices.slice(0, page * ITEMS_PER_PAGE);
-  const hasMore = paginatedServices.length < filteredServices.length;
+  const hasMore = services.length >= page * ITEMS_PER_PAGE;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -172,13 +205,15 @@ export default function ServicesPage() {
                   <button
                     onClick={() => {
                       setLoading(true);
-                      searchServices({
-                        query: searchQuery,
+                      SearchService.searchServices(searchQuery || '', {
                         category: selectedCategory || undefined,
+                        page,
+                        limit: ITEMS_PER_PAGE
                       })
-                        .then(results => {
-                          setServices(results);
-                          setFilteredServices(results);
+                        .then((results) => {
+                          const mappedServices = results.data.map(mapServiceWithRelationsToService);
+                          setServices(mappedServices);
+                          setFilteredServices(mappedServices);
                           setError(null);
                         })
                         .catch(() => setError('Failed to load services'))
@@ -214,18 +249,22 @@ export default function ServicesPage() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                    {paginatedServices.map((service) => (
-                      <ServiceCard key={service.id} service={service} />
+                    {filteredServices.map((service) => (
+                      <ServiceCard
+                        key={service.id}
+                        service={service}
+                        minimal={false}
+                      />
                     ))}
                   </div>
 
                   {hasMore && (
-                    <div className="mt-6 sm:mt-8 text-center">
+                    <div className="mt-8 flex justify-center">
                       <button
                         onClick={() => setPage(p => p + 1)}
-                        className="inline-flex items-center px-4 sm:px-6 py-2 text-sm sm:text-base border border-purple-600 text-purple-600 rounded-full hover:bg-purple-50 transition-colors"
+                        className="px-4 py-2 text-sm font-medium text-purple-600 bg-white border border-purple-300 rounded-md hover:bg-purple-50"
                       >
-                        Load More Services
+                        Load More
                       </button>
                     </div>
                   )}

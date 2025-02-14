@@ -1,20 +1,18 @@
 'use client';
 
+import { Button, FormGroup, TextArea } from '@/components';
 import { Card } from '@/components/ui/Card';
-import {
-  Button,
-  FormGroup,
-  Input,
-  Label,
-  TextArea,
-} from '@/components/ui/form';
+ 
 import { ImageUpload } from '@/components/ui/ImageUpload';
-import { useAuth } from '@/context/AuthContext';
-import * as serviceApi from '@/lib/api/services';
-import { uploadImage } from '@/lib/services/storage';
-import { useAppStore } from '@/lib/store';
+import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
+import { useStore } from '@/lib/supabase/store';
+ 
+import { Input } from '@/components/ui/Input';
+import { useSupabaseStorage } from '@/lib/supabase/hooks/useSupabaseStorage';
+import { ServiceService } from '@/lib/supabase/services/service.service';
 import { Service } from '@/types';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Label } from 'node_modules/@headlessui/react/dist/components/label/label';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 
@@ -27,7 +25,7 @@ export default function ServiceActionPage({ params }: PageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const { categories } = useAppStore();
+  const { categories } = useStore();
   const serviceId = searchParams.get('id');
 
   const [formData, setFormData] = useState({
@@ -41,11 +39,13 @@ export default function ServiceActionPage({ params }: PageProps) {
 
   const [isLoading, setIsLoading] = useState(false);
 
+  const { uploadFile } = useSupabaseStorage({ bucket: 'service-images' });
+
   useEffect(() => {
     if (action === 'edit' && serviceId) {
       const fetchService = async () => {
         try {
-          const service = await serviceApi.getService(serviceId);
+          const service = await   ServiceService.getById(serviceId);
           if (service) {
             setFormData({
               name: service.name,
@@ -85,10 +85,10 @@ export default function ServiceActionPage({ params }: PageProps) {
       } as const satisfies Omit<Service, 'id' | 'created_at' | 'updated_at'>;
 
       if (action === 'edit' && serviceId) {
-        await serviceApi.updateService(serviceId, serviceData);
+        await   ServiceService.update(serviceId, serviceData);
         toast.success('Service updated successfully');
       } else {
-        await serviceApi.createService(serviceData);
+        await ServiceService.create(serviceData);
         toast.success('Service created successfully');
       }
 
@@ -102,10 +102,19 @@ export default function ServiceActionPage({ params }: PageProps) {
   };
 
   const handleImageUpload = async (file: File) => {
-    const url = await uploadImage(file, 'service-images', `service-${serviceId}`);
-    if (url) {
-      setFormData((prev) => ({ ...prev, image_url: url }));
+    try {
+      const url = await uploadFile(file);
+      if (url) {
+        setFormData((prev) => ({ ...prev, image_url: url }));
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
     }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   return (
@@ -116,7 +125,7 @@ export default function ServiceActionPage({ params }: PageProps) {
             {action === 'edit' ? 'Edit Service' : 'Create Service'}
           </h1>
 
-          <FormGroup>
+          < FormGroup>
             <Label htmlFor="image">Service Image</Label>
             <ImageUpload
               initialUrl={formData.image_url}
@@ -131,10 +140,9 @@ export default function ServiceActionPage({ params }: PageProps) {
             <Label htmlFor="name">Service Name</Label>
             <Input
               id="name"
+              name="name"
               value={formData.name}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, name: e.target.value }))
-              }
+              onChange={handleChange}
               required
             />
           </FormGroup>
@@ -143,10 +151,9 @@ export default function ServiceActionPage({ params }: PageProps) {
             <Label htmlFor="description">Description</Label>
             <TextArea
               id="description"
+              name="description"
               value={formData.description}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, description: e.target.value }))
-              }
+              onChange={handleChange}
               required
             />
           </FormGroup>
@@ -160,9 +167,7 @@ export default function ServiceActionPage({ params }: PageProps) {
                 min="0"
                 step="0.01"
                 value={formData.price}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, price: e.target.value }))
-                }
+                onChange={handleChange}
                 required
               />
             </FormGroup>
@@ -175,9 +180,7 @@ export default function ServiceActionPage({ params }: PageProps) {
                 min="15"
                 step="15"
                 value={formData.duration}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, duration: e.target.value }))
-                }
+                onChange={handleChange}
                 required
               />
             </FormGroup>

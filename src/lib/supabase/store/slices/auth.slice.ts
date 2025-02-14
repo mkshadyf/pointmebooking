@@ -1,90 +1,137 @@
-import { AuthService } from '@/lib/api/services/auth.service';
-import { UserProfile } from '@/types';
+import { AuthService } from '@/lib/supabase/services/auth.service';
+import type { AuthProfile } from '@/lib/supabase/types/auth.types';
 import { StateCreator } from 'zustand';
+import { RootState } from '../store';
+
+// Helper function for handling async auth actions
+const handleAuthAction = async <T>(
+  set: (state: Partial<AuthState>) => void,
+  action: () => Promise<T>,
+  onSuccess?: (result: T) => Promise<void>
+) => {
+  set({ isLoading: true, error: null });
+  try {
+    const result = await action();
+    if (result && onSuccess) {
+      await onSuccess(result);
+    }
+  } catch (error) {
+    set({
+      error: error instanceof Error ? error.message : 'Failed to perform action',
+    });
+    throw error;
+  } finally {
+    set({ isLoading: false });
+  }
+};
 
 export interface AuthState {
-  user: UserProfile | null;
-  loading: boolean;
+  user: AuthProfile | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
   error: string | null;
   initialized: boolean;
+  setUser: (user: AuthProfile | null) => void;
+  setIsAuthenticated: (isAuthenticated: boolean) => void;
+  setIsLoading: (isLoading: boolean) => void;
 }
 
 export interface AuthActions {
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, role: string) => Promise<void>;
+  register: (email: string, password: string, role: 'customer' | 'business') => Promise<void>;
   logout: () => Promise<void>;
-  updateProfile: (data: Partial<UserProfile>) => Promise<void>;
+  updateProfile: (data: Partial<AuthProfile>) => Promise<void>;
   clearError: () => void;
-  setUser: (user: UserProfile | null) => void;
 }
 
 export interface AuthSlice extends AuthState, AuthActions {}
 
 const initialState: AuthState = {
   user: null,
-  loading: false,
+  isAuthenticated: false,
+  isLoading: true,
   error: null,
   initialized: false,
+  setUser: () => {},
+  setIsAuthenticated: () => {},
+  setIsLoading: () => {},
 };
 
-export const createAuthSlice: StateCreator<AuthSlice> = (set) => ({
+export const authSlice: StateCreator<RootState, [], [], AuthState> = (set) => ({
   ...initialState,
 
   login: async (email: string, password: string) => {
-    set({ loading: true, error: null });
-    try {
-      const { data, error } = await AuthService.login({ email, password });
-      if (error) throw error;
-      if (data) {
-        set({ user: data, loading: false });
+    await handleAuthAction(
+      set,
+      () => AuthService.login({ email, password }),
+      async () => {
+        const profile = await AuthService.getProfile();
+        if (profile) {
+          set({ user: profile, isAuthenticated: true });
+        }
       }
-    } catch (error) {
-      set({ error: (error as Error).message, loading: false });
-    }
+    );
   },
 
-  register: async (email: string, password: string, role: string) => {
-    set({ loading: true, error: null });
-    try {
-      const { data, error } = await AuthService.register({ email, password, role });
-      if (error) throw error;
-      if (data) {
-        set({ user: data, loading: false });
+  register: async (email: string, password: string, role: 'customer' | 'business') => {
+    await handleAuthAction(
+      set,
+      () => AuthService.register({ email, password, role }),
+      async () => {
+        const profile = await AuthService.getProfile();
+        if (profile) {
+          set({ user: profile, isAuthenticated: true });
+        }
       }
-    } catch (error) {
-      set({ error: (error as Error).message, loading: false });
-    }
+    );
   },
 
   logout: async () => {
-    set({ loading: true, error: null });
-    try {
-      const { error } = await AuthService.logout();
-      if (error) throw error;
-      set({ user: null, loading: false });
-    } catch (error) {
-      set({ error: (error as Error).message, loading: false });
-    }
+    await handleAuthAction(
+      set,
+      async () => {
+        await AuthService.logout();
+        return true;
+      },
+      async () => {
+        set({ user: null, isAuthenticated: false });
+      }
+    );
   },
 
-  updateProfile: async (data: Partial<UserProfile>) => {
-    set({ loading: true, error: null });
-    try {
-      const { data: updatedProfile, error } = await AuthService.updateProfile(data);
-      if (error) throw error;
-      if (updatedProfile) {
-        set({ user: updatedProfile, loading: false });
+  updateProfile: async (data: Partial<AuthProfile>) => {
+    await handleAuthAction<AuthProfile>(
+      set,
+      () => AuthService.updateProfile(data),
+      async (profile) => {
+        set({ user: profile });
       }
-    } catch (error) {
-      set({ error: (error as Error).message, loading: false });
-    }
+    );
   },
 
   clearError: () => {
     set({ error: null });
   },
 
-  setUser: (user: UserProfile | null) => {
+  setUser: (user: AuthProfile | null) => {
     set({ user, initialized: true });
   },
-}); 
+
+  setIsAuthenticated: (isAuthenticated) => {
+    set({ isAuthenticated });
+  },
+
+  setIsLoading: (isLoading) => {
+    set({ isLoading });
+  },
+});
+
+// Selectors
+export const selectUser = (state: RootState) => state.user;
+export const selectIsAuthenticated = (state: RootState) => state.isAuthenticated;
+export const selectIsLoading = (state: RootState) => state.isLoading;
+
+// Store hook
+export const useAuthStore = (selector: (state: AuthState) => any) => {
+  return selector;
+}; 

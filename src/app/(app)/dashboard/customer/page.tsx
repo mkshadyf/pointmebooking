@@ -1,18 +1,18 @@
 'use client';
 
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { useAuth } from '@/context/AuthContext';
-import { withAuth } from '@/lib/auth/withAuth';
-import { useAppStore } from '@/lib/store';
+ 
+import { LoadingSpinner } from '@/components/ui/loading/LoadingSpinner';
+import { useAuth, withAuth } from '@/lib/supabase';
+import { useStore } from '@/lib/supabase/store';
 import { classNames } from '@/lib/utils';
 import {
-    ArrowPathIcon,
-    BuildingOfficeIcon,
-    CalendarIcon,
-    CheckIcon,
-    ClockIcon,
-    StarIcon,
-    XMarkIcon
+  ArrowPathIcon,
+  BuildingOfficeIcon,
+  CalendarIcon,
+  CheckIcon,
+  ClockIcon,
+  StarIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import Image from 'next/image';
@@ -52,7 +52,7 @@ const stats = [
 
 export default withAuth(function CustomerDashboard() {
   const { user, profile } = useAuth();
-  const { serviceCategories, businessCategories } = useAppStore();
+  const { serviceCategories, businessCategories } = useStore();
 
   // Filter bookings for current customer
   const customerBookings = mockBookings.filter(

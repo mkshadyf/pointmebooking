@@ -1,12 +1,13 @@
-import * as serviceApi from '@/lib/api/services';
-import { handleClientError } from '@/lib/errors/handlers';
-import { BusinessCategory, BusinessProfile, Category, Service, ServiceCategory } from '@/types';
+import { SearchService } from '@/lib/supabase/services/search.service';
+import { ServiceService } from '@/lib/supabase/services/service.service';
+import { handleClientError } from '@/lib/supabase/utils/errors';
+import { BusinessCategory, BusinessProfile, Category, Service, ServiceCategory, ServiceStatus } from '@/types';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { createPersistMiddleware, errorBoundary, logger, performanceTracker } from './middleware';
-import { createAuthSlice, type AuthSlice } from './slices/auth.slice';
+import { authSlice } from './slices/auth.slice';
 
-interface AppState {
+// Base state without actions
+interface BaseState {
   categories: Category[];
   businessCategories: BusinessCategory[];
   serviceCategories: ServiceCategory[];
@@ -16,6 +17,10 @@ interface AppState {
   selectedCategory: string | null;
   isLoading: boolean;
   error: string | null;
+}
+
+// Actions as a separate interface
+interface Actions {
   setSelectedBusiness: (business: BusinessProfile | null) => void;
   setSelectedService: (service: Service | null) => void;
   setSelectedCategory: (id: string | null) => void;
@@ -29,52 +34,48 @@ interface AppState {
   fetchFeaturedServices: () => Promise<void>;
 }
 
-interface StoreState extends AuthSlice {}
+// Combined store state type
+export type StoreState = BaseState & Actions;
 
-// Create store with middleware
-const createStore = () => {
-  return create<StoreState>()(
-    errorBoundary(
-      performanceTracker(
-        logger(
-          createPersistMiddleware('app-store', 1)((...a) => ({
-            ...createAuthSlice(...a),
-          })),
-          'AppStore'
-        )
-      )
-    )
-  );
-};
+// Helper function to transform service data
+function transformServiceData(service: any): Service {
+  return {
+    id: service.id,
+    business_id: service.business_id,
+    name: service.name,
+    description: service.description,
+    price: service.price,
+    duration: service.duration,
+    image_url: service.image_url,
+    is_available: service.is_available,
+    status: service.status as ServiceStatus,
+    category_id: service.category_id,
+    created_at: service.created_at,
+    updated_at: service.updated_at,
+    business: service.business ? {
+      id: service.business.id,
+      name: service.business.business_name || '',
+      description: service.business.description,
+      address: service.business.address,
+      city: service.business.city,
+      state: service.business.state,
+      phone: service.business.phone,
+      email: service.business.email,
+      logo_url: service.business.logo_url,
+    } : undefined,
+    category: service.category ? {
+      name: service.category.name,
+      icon: service.category.icon,
+    } : undefined,
+  };
+}
 
-export const useStore = createStore();
-
-// Selector hooks for better performance
-export const useAuth = () => useStore((state) => ({
-  user: state.user,
-  loading: state.loading,
-  error: state.error,
-  initialized: state.initialized,
-  login: state.login,
-  register: state.register,
-  logout: state.logout,
-  updateProfile: state.updateProfile,
-  clearError: state.clearError,
-  setUser: state.setUser,
-}));
-
-// Export types
-export type { StoreState };
-
-export const useAppStore = create<AppState>()(
+// Create the store
+export const useStore = create<StoreState>()(
   persist(
-    (set, get) => ({
-      categories: [
-        { id: '1', name: 'Beauty & Wellness', description: 'Beauty and wellness services', icon: '💆‍♀️', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: '2', name: 'Health & Fitness', description: 'Health and fitness services', icon: '💪', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: '3', name: 'Home Services', description: 'Home maintenance and repair', icon: '🏠', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: '4', name: 'Professional Services', description: 'Professional and business services', icon: '💼', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-      ],
+    (set) => ({
+      // Initial state
+      categories: [],
       businessCategories: [],
       serviceCategories: [],
       services: [],
@@ -84,45 +85,33 @@ export const useAppStore = create<AppState>()(
       isLoading: false,
       error: null,
 
-      setSelectedBusiness: (business: BusinessProfile | null) => set({ selectedBusiness: business }),
-      setSelectedService: (service: Service | null) => set({ selectedService: service }),
-      setSelectedCategory: (id: string | null) => set({ selectedCategory: id }),
-      setServices: (services: Service[]) => set({ services }),
-      
+      // Actions
+      setSelectedBusiness: (business) => set({ selectedBusiness: business }),
+      setSelectedService: (service) => set({ selectedService: service }),
+      setSelectedCategory: (id) => set({ selectedCategory: id }),
+      setServices: (services) => set({ services }),
+
       fetchAllServices: async () => {
         set({ isLoading: true, error: null });
         try {
-          const response = await fetch('/api/services');
-          if (!response.ok) throw new Error('Failed to fetch services');
-          
-          const services = await response.json();
-          
-          // Group services by category
-          const servicesByCategory = services.reduce((acc: ServiceCategory[], service: Service) => {
-            const category = get().categories.find((c: Category) => c.id === service.category_id);
-            if (!category) return acc;
-            
-            const existingCategory = acc.find(c => c.id === service.category_id);
-            if (existingCategory) {
-              existingCategory.services.push(service);
-            } else {
-              acc.push({
-                id: category.id,
-                name: category.name,
-                description: category.description ?? 'No description available',
-                icon: category.icon ?? '📋',
-                services: [service],
-              });
-            }
-            return acc;
-          }, []);
-          
-          set({ serviceCategories: servicesByCategory });
+          const services = await ServiceService.getAll();
+          const typedServices = services.map(transformServiceData);
+          set({ services: typedServices });
         } catch (error) {
           await handleClientError(error);
           set({ error: 'Failed to fetch services' });
         } finally {
           set({ isLoading: false });
+        }
+      },
+
+      fetchFeaturedServices: async () => {
+        try {
+          const services = await SearchService.getFeaturedServices();
+          const typedServices = services.map(transformServiceData);
+          set({ services: typedServices });
+        } catch (error) {
+          await handleClientError(error);
         }
       },
 
@@ -160,20 +149,11 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      fetchFeaturedServices: async () => {
-        try {
-          const services = await serviceApi.getFeaturedServices();
-          set({ services });
-        } catch (error) {
-          await handleClientError(error);
-        }
-      },
-
       addService: async (service: Service) => {
         try {
-          const newService = await serviceApi.createService(service);
+          const newService = await ServiceService.create(service);
           if (newService) {
-            set((state: AppState) => ({ services: [...state.services, newService] }));
+            set((state: StoreState) => ({ services: [...state.services, newService] }));
             return newService;
           }
           throw new Error('Failed to add service');
@@ -185,9 +165,9 @@ export const useAppStore = create<AppState>()(
 
       updateService: async (id: string, updatedService: Partial<Service>) => {
         try {
-          const updated = await serviceApi.updateService(id, updatedService);
+          const updated = await ServiceService.update(id, updatedService);
           if (updated) {
-            set((state: AppState) => ({
+            set((state: StoreState) => ({
               services: state.services.map((service: Service) =>
                 service.id === id ? updated : service
               ),
@@ -203,9 +183,9 @@ export const useAppStore = create<AppState>()(
 
       deleteService: async (id: string) => {
         try {
-          const success = await serviceApi.deleteService(id);
+          const success = await ServiceService.delete(id);
           if (success) {
-            set((state: AppState) => ({
+            set((state: StoreState) => ({
               services: state.services.filter((service: Service) => service.id !== id),
             }));
           } else {
@@ -219,7 +199,7 @@ export const useAppStore = create<AppState>()(
 
       loadServices: async (businessId: string) => {
         try {
-          const services = await serviceApi.getServicesByBusiness(businessId);
+          const services = await ServiceService.getByBusiness(businessId);
           set({ services });
           return services;
         } catch (error) {
@@ -229,7 +209,7 @@ export const useAppStore = create<AppState>()(
       },
     }),
     {
-      name: 'app-storage',
+      name: 'app-store',
       partialize: (state) => ({
         selectedBusiness: state.selectedBusiness,
         selectedService: state.selectedService,
@@ -238,3 +218,6 @@ export const useAppStore = create<AppState>()(
     }
   )
 );
+
+// Create auth store separately
+export const useAuthStore = create(authSlice);

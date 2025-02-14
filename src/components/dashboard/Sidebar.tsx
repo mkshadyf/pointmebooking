@@ -1,7 +1,7 @@
 'use client';
 
 import { getNavigation, type NavigationItem } from '@/config/navigation';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';

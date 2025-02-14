@@ -1,42 +1,23 @@
-import { SearchService, ServiceService } from '@/lib/supabase/services';
-import { NextResponse } from 'next/server';
+import { createRouteHandler } from '@/lib/api/route-handler';
+import { ServiceService } from '@/lib/supabase';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const query = searchParams.get('q') || undefined;
-    const category = searchParams.get('category') || undefined;
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
 
-    if (query) {
-      const results = await SearchService.searchServices(query, { category, page, limit });
-      return NextResponse.json(results);
-    }
+export const POST = createRouteHandler(
+  async (req: NextRequest, supabase) => {
+    const body = await req.json();
+    const { data, error } = await supabase
+      .from('services')
+      .insert(body)
+      .select()
+      .single();
 
-    if (category) {
-      const services = await ServiceService.getByCategory(category);
-      return NextResponse.json({ data: services });
-    }
+    if (error) throw error;
 
-    const services = await ServiceService.getAll();
-    return NextResponse.json({ data: services });
-  } catch (error) {
-    console.error('Error in services API:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const service = await ServiceService.create(body);
-    return NextResponse.json(service);
-  } catch (error) {
-    console.error('Error in services API:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-  }
-}
+    return Response.json(data);
+  },
+  { requireAuth: true, roles: ['business'] }
+);
 
 export async function PUT(request: Request) {
   try {

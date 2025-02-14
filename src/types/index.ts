@@ -149,3 +149,17 @@ export interface AuthContextType {
   verificationAttempts: number;
 }
 
+export interface BusinessCategory {
+  id: string;
+  name: string;
+  businesses: BusinessProfile[];
+}
+
+export interface ServiceCategory {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  services: Service[];
+}
+

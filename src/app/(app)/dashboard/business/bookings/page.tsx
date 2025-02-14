@@ -1,22 +1,22 @@
 'use client';
 
-import { useAuth } from '@/context/AuthContext';
- import { useEffect, useState } from 'react';
-import { format } from 'date-fns';
-import { toast } from 'react-hot-toast';
+import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
+import { EmailService } from '@/lib/supabase/services/email.service';
+import { Booking, BookingStatus } from '@/types/booking';
 import {
   CheckCircleIcon,
-  XCircleIcon,
   ClockIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline';
-import clsx from 'clsx';
 import { createBrowserClient } from '@supabase/ssr';
-import { Booking, BookingStatus } from '@/types/booking';
-import { EmailService } from '@/lib/services/email';
- 
+import clsx from 'clsx';
+import { format } from 'date-fns';
+import { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
+
 export default function BusinessBookings() {
   const { user } = useAuth();
-   const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState<string | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,7 +24,6 @@ export default function BusinessBookings() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
-  const emailService = EmailService.getInstance();
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -54,8 +53,6 @@ export default function BusinessBookings() {
     fetchBookings();
   }, [user?.id, supabase]);
 
- 
-
   const handleStatusChange = async (booking: Booking, newStatus: BookingStatus) => {
     setLoading(booking.id);
     try {
@@ -68,15 +65,15 @@ export default function BusinessBookings() {
 
       // Send email notification
       if (booking.customer?.email) {
-        await emailService.sendBookingStatusUpdate(
+        await EmailService.sendBookingStatusUpdate(
           booking.customer.email,
           {
             service: booking.service?.name || 'Service',
             business: user?.email || 'Business',
             date: format(new Date(booking.scheduled_at), 'MMMM d, yyyy'),
-            time: format(new Date(booking.scheduled_at), 'h:mm a'),
-            status: newStatus,
-          }
+            time: format(new Date(booking.scheduled_at), 'h:mm a')
+          },
+          newStatus
         );
       }
 

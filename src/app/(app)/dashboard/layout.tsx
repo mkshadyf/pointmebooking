@@ -2,7 +2,8 @@
 
 import { Header } from '@/components/dashboard/Header';
 import { Sidebar } from '@/components/dashboard/Sidebar';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
+ 
 import { useState } from 'react';
 
 type UserRole = 'customer' | 'business';

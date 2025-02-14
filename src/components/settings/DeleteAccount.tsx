@@ -1,12 +1,12 @@
 'use client';
 
 import { Button } from '@/components/ui/Button';
-import { useAuth } from '@/context/AuthContext';
-import { handleClientError } from '@/lib/errors/handlers';
-import { notify } from '@/lib/utils/notifications';
+import { useAuth } from '@/lib/supabase';
+import { handleClientError } from '@/lib/supabase/utils';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { toast } from 'react-hot-toast';
 
 export function DeleteAccount() {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -72,10 +72,11 @@ export function DeleteAccount() {
       // 5. Sign out
       await supabase.auth.signOut();
 
-      notify.success('Account deleted successfully');
+      toast.success('Account deleted successfully');
       router.push('/');
     } catch (error) {
       handleClientError(error);
+      toast.error('Failed to delete account');
     } finally {
       setIsDeleting(false);
     }

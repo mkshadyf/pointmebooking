@@ -1,35 +1,87 @@
 import { supabase } from '../client';
-import type { AuthProfile } from '../types';
+import { AuthProfile } from '../types/database';
+
+interface AuthCredentials {
+    email: string;
+    password: string;
+    role?: 'customer' | 'business';
+}
 
 export class AuthService {
-  static async login(credentials: { email: string; password: string }) {
-    const { data, error } = await supabase.auth.signInWithPassword(credentials);
-    if (error) throw error;
-    return data;
-  }
+    static async login({ email, password }: AuthCredentials) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
 
-  static async register(data: { email: string; password: string; role: 'customer' | 'business' }) {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        data: { role: data.role },
-      },
-    });
-    if (authError) throw authError;
-
-    if (authData.user) {
-      // Create profile
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: authData.user.id,
-        email: data.email,
-        role: data.role,
-      });
-      if (profileError) throw profileError;
+        if (error) throw error;
+        return data;
     }
 
-    return authData;
-  }
+    static async register({ email, password, role }: AuthCredentials) {
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+            email,
+            password,
+        });
+
+        if (authError) throw authError;
+
+        if (authData.user) {
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .insert({
+                    id: authData.user.id,
+                    role: role || 'customer',
+                    email,
+                });
+
+            if (profileError) throw profileError;
+        }
+
+        return authData;
+    }
+
+    static async logout() {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+    }
+
+    static async getSession() {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        return session;
+    }
+
+    static async getProfile(): Promise<AuthProfile | null> {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!session?.user) return null;
+
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+        if (error) throw error;
+        return data ? { ...data, email: session.user.email } : null;
+    }
+
+    static async updateProfile(data: Partial<AuthProfile>): Promise<AuthProfile> {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!session?.user) throw new Error('No authenticated user');
+
+        const { data: profile, error } = await supabase
+            .from('profiles')
+            .update(data)
+            .eq('id', session.user.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { ...profile, email: session.user.email };
+    }
 
   static async verifyEmail(code: string) {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -78,39 +130,5 @@ export class AuthService {
   static async updatePassword(password: string) {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) throw error;
-  }
-
-  static async logout() {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-  }
-
-  static async getProfile(): Promise<AuthProfile | null> {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) return null;
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (error) throw error;
-    return data as AuthProfile;
-  }
-
-  static async updateProfile(updates: Partial<AuthProfile>) {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) throw new Error('No user logged in');
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', user.id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data as AuthProfile;
   }
 } 

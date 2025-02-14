@@ -12,21 +12,21 @@ export function withAuth<P extends object>(
   } = {}
 ) {
   return function WithAuthWrapper(props: P) {
-    const { user, loading } = useAuth();
+    const { user,   isLoading } = useAuth();
     const router = useRouter();
     const { redirectTo = '/login', allowedRoles } = options;
 
     useEffect(() => {
-      if (!loading && !user) {
+      if (!isLoading && !user) {
         router.replace(redirectTo);
       }
 
-      if (!loading && user && allowedRoles && !allowedRoles.includes(user.role)) {
+      if (!isLoading && user && allowedRoles && !allowedRoles.includes(user.role)) {
         router.replace('/unauthorized');
       }
-    }, [user, loading, router, redirectTo, allowedRoles]);
+    }, [user, isLoading, router, redirectTo, allowedRoles]);
 
-    if (loading) {
+    if (isLoading) {
       return <div>Loading...</div>;
     }
 

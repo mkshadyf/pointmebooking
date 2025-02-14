@@ -1,6 +1,7 @@
 import { showToast } from '@/components/ToastHost';
-import { ErrorCode, ErrorMessageMap } from '@/lib/errors/types';
-
+import { ErrorCode } from '@/lib/supabase/utils/errors';
+import { ErrorMessageMap } from '../../utils';
+ 
 export const NOTIFICATION_MESSAGES = {
   // Auth & Verification
   EMAIL_VERIFICATION_SENT: 'Verification code sent to your email',

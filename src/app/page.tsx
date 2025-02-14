@@ -1,10 +1,10 @@
 'use client';
 
+import { Skeleton } from '@/components';
 import { Navigation } from '@/components/navigation';
 import { ServiceCard } from '@/components/services/ServiceCard';
 import { SearchFilter } from '@/components/ui/SearchFilter';
-import { ServiceCardSkeletonGrid } from '@/components/ui/ServiceCardSkeleton';
-import { useAppStore } from '@/lib/store';
+import { useStore } from '@/lib/supabase/store';
 import {
   ArrowRightIcon,
   CalendarIcon,
@@ -81,7 +81,7 @@ interface Service {
 }
 
 export default function Home() {
-  const { categories } = useAppStore();
+  const { categories } = useStore();
   const [featuredServices, setFeaturedServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -153,7 +153,7 @@ export default function Home() {
           {/* Search Component */}
           <div className="mx-auto mt-8 max-w-2xl">
             <SearchFilter
-              categories={categories.map(cat => cat.name)}
+              categories={categories.map((cat: { name: string }) => cat.name)}
               onSearch={handleSearch}
             />
           </div>
@@ -170,7 +170,7 @@ export default function Home() {
           
           <div className="mt-8">
             {loading ? (
-              <ServiceCardSkeletonGrid />
+              <Skeleton className="h-64 w-full" />
             ) : error ? (
               <div className="text-center py-12">
                 <h3 className="text-lg font-medium text-gray-900">Oops! Something went wrong</h3>
@@ -189,9 +189,15 @@ export default function Home() {
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {featuredServices.map((service) => (
-                  <ServiceCard key={service.id} service={service} />
-                ))}
+                {featuredServices.map((service) => {
+                  const validatedService = {
+                    ...service,
+                    status: service.status && ['active', 'inactive', 'deleted'].includes(service.status)
+                      ? service.status as 'active' | 'inactive' | 'deleted'
+                      : 'active'
+                  };
+                  return <ServiceCard key={service.id} service={validatedService} />
+                })}
               </div>
             )}
           </div>

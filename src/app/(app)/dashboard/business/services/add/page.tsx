@@ -2,7 +2,8 @@
 
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
+ 
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';

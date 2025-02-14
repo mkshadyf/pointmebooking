@@ -1,19 +1,18 @@
 'use client';
 
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { useAuth } from '@/hooks/useAuth';
-import { DashboardLayout } from '@/layouts/DashboardLayout';
+import { LoadingSpinner } from '@/components/ui/loading';
+import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
 import { ReactNode, Suspense } from 'react';
+import DashboardLayout from './dashboard/layout';
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const { profile, loading } = useAuth();
-  const role = profile?.role || 'customer';
+  const { user, isLoading } = useAuth();
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -27,7 +26,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <LoadingSpinner size="lg" />
       </div>
     }>
-      <DashboardLayout role={role}>
+      <DashboardLayout>
         {children}
       </DashboardLayout>
     </Suspense>

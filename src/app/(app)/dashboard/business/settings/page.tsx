@@ -5,17 +5,16 @@ import { useEffect, useState } from 'react';
 
 import { DeleteAccount } from '@/components/settings/DeleteAccount';
 import { ImageUpload } from '@/components/ui/ImageUpload';
-import {
-    Button,
-    FormGroup,
-    Input,
-    Label,
-    TextArea,
-} from '@/components/ui/form';
-import { useAuth } from '@/context/AuthContext';
-import { withAuth } from '@/lib/auth/withAuth';
+ 
+
+import { Button, FormGroup, TextArea } from '@/components';
+import { Input } from '@/components/ui/Input';
+import { withAuth } from '@/lib/supabase';
+import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
 import { BusinessProfile } from '@/types';
+import { Label } from 'node_modules/@headlessui/react/dist/components/label/label';
 import { toast } from 'react-hot-toast';
+ 
 
 function BusinessSettingsPage() {
   const { user } = useAuth();

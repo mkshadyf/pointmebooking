@@ -1,5 +1,5 @@
 import ToastHost from '@/components/ToastHost';
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider } from '@/lib/supabase/auth/context/AuthContext';
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";

@@ -1,16 +1,16 @@
 'use client';
 
-import { PageLoading } from '@/components/ui/Loading';
-import { useAuth } from '@/context/AuthContext';
+import { LoadingSpinner } from '@/components/ui/loading';
+import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function OnboardingPage() {
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
+    if (!isLoading) {
       if (!user) {
         router.push('/login');
       } else {
@@ -18,8 +18,8 @@ export default function OnboardingPage() {
         router.push(user.role === 'business' ? '/onboarding/business' : '/dashboard/customer');
       }
     }
-  }, [user, loading, router]);
+  }, [user, isLoading, router]);
 
-  if (loading) return <PageLoading />;
+  if (isLoading) return <LoadingSpinner />;
   return null; // Page will redirect, no need to render anything
 } 

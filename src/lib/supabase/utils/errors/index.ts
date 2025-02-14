@@ -117,9 +117,9 @@ export function handleApiError(error: any): AppError {
   return new AppError(ErrorCode.API_ERROR, error?.message);
 }
 
-export function handleError(error: any): AppError {
+export function handleClientError(error: any): AppError {
   if (error instanceof AppError) {
     return error;
   }
-  return new AppError(ErrorCode.API_ERROR, error?.message);
+  return new AppError(ErrorCode.UNKNOWN_ERROR, error?.message);
 } 

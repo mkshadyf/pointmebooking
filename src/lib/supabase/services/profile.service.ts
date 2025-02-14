@@ -127,9 +127,9 @@ export class ProfileService {
     // Mark email as verified
     return this.update(id, {
       email_verified: true,
-      verification_code: null,
+      verification_code: undefined,
       verification_attempts: 0,
-      last_verification_attempt: null,
+      last_verification_attempt: undefined,
     });
   }
 

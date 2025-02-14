@@ -2,18 +2,17 @@
 
 import { Navigation } from '@/components/navigation';
 import { Button } from '@/components/ui/Button';
-import { PageLoading } from '@/components/ui/Loading';
-import { useAuth } from '@/context/AuthContext';
-import { getService } from '@/lib/api/services';
-import { notify } from '@/lib/utils/notifications';
+import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
+import { NotificationService } from '@/lib/supabase/services/notifications';
+import { ServiceService } from '@/lib/supabase/services/service.service';
 import { Service } from '@/types';
 import {
-    CalendarIcon,
-    ClockIcon,
-    CurrencyDollarIcon,
-    MapPinIcon,
-    PhoneIcon,
-    UserIcon,
+  CalendarIcon,
+  ClockIcon,
+  CurrencyDollarIcon,
+  MapPinIcon,
+  PhoneIcon,
+  UserIcon,
 } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -39,7 +38,7 @@ export default function ServiceDetailsPage() {
       try {
         setLoading(true);
         setError(null);
-        const serviceData = await getService(params.id as string);
+        const serviceData = await ServiceService.getById(params.id as string);
         if (!serviceData) {
           throw new Error('Service not found');
         }
@@ -47,7 +46,7 @@ export default function ServiceDetailsPage() {
       } catch (err) {
         console.error('Error loading service:', err);
         setError('Failed to load service details');
-        notify.error('Failed to load service details');
+        NotificationService.error('Failed to load service details');
       } finally {
         setLoading(false);
       }
@@ -60,7 +59,9 @@ export default function ServiceDetailsPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation type="main" />
-        <PageLoading />
+        <div className="flex items-center justify-center h-screen">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900" />
+        </div>
       </div>
     );
   }

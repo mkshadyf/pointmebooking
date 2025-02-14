@@ -1,7 +1,7 @@
 'use client';
 
 import { DeleteAccount } from '@/components/settings/DeleteAccount';
-import { withAuth } from '@/lib/auth/withAuth';
+import { withAuth } from '@/lib/supabase/auth/guards/withAuth';
 
 export default withAuth(function CustomerSettingsPage() {
   return (

@@ -1,7 +1,7 @@
 import { ROUTES } from '@/config/routes';
-import { handleApiError, handleError } from '@/lib/errors/handlers';
-import { ErrorCode } from '@/lib/errors/types';
-import { EmailService } from '@/lib/services/email';
+import { EmailService } from '@/lib/supabase/services';
+import { ErrorCode, handleApiError } from '@/lib/supabase/utils/errors';
+ 
 import { UserRole } from '@/types';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
@@ -12,7 +12,7 @@ const VERIFICATION_COOLDOWN = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 function redirectWithError(requestUrl: URL, code: ErrorCode): Response {
   const redirectUrl = new URL(ROUTES.error.path, requestUrl.origin);
-  const error = handleError(code);
+  const error = handleApiError(new Error(code));
   redirectUrl.searchParams.set('code', error.code);
   redirectUrl.searchParams.set('message', error.message);
   return NextResponse.redirect(redirectUrl);
@@ -97,8 +97,12 @@ export async function GET(request: Request) {
 
       // If email is not verified, send verification email
       if (!emailVerified) {
-        const emailService = EmailService.getInstance();
-        await emailService.sendVerificationEmail(user.email!);
+        try {
+          const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+          await EmailService.sendVerificationEmail(user.email, verificationCode);
+        } catch (error) {
+          handleApiError(error);
+        }
         return NextResponse.redirect(new URL(ROUTES.verifyEmail.path, requestUrl.origin));
       }
 

@@ -12,15 +12,18 @@ export interface Database {
       profiles: {
         Row: {
           id: string
-          user_id: string
-          full_name: string
-          email: string
+          user_id?: string
+          full_name?: string
+          email?: string
           role: string
           email_verified: boolean
           verification_code?: string
+          verification_attempts: number
+          last_verification_attempt?: string
           business_name?: string
           business_type?: string
           business_category?: string
+          business_logo?: string
           description?: string
           location?: string
           contact_number?: string
@@ -36,21 +39,24 @@ export interface Database {
           cover_image_url?: string
           status: string
           onboarding_completed: boolean
+          working_hours?: Json
           created_at: string
           updated_at: string
-          working_hours?: Json
         }
         Insert: {
-          id: string
+          id?: string
           user_id?: string
           full_name?: string
-          email: string
-          role: string
+          email?: string
+          role?: string
           email_verified?: boolean
           verification_code?: string
+          verification_attempts?: number
+          last_verification_attempt?: string
           business_name?: string
           business_type?: string
           business_category?: string
+          business_logo?: string
           description?: string
           location?: string
           contact_number?: string
@@ -66,9 +72,9 @@ export interface Database {
           cover_image_url?: string
           status?: string
           onboarding_completed?: boolean
+          working_hours?: Json
           created_at?: string
           updated_at?: string
-          working_hours?: Json
         }
         Update: {
           id?: string
@@ -78,9 +84,12 @@ export interface Database {
           role?: string
           email_verified?: boolean
           verification_code?: string
+          verification_attempts?: number
+          last_verification_attempt?: string
           business_name?: string
           business_type?: string
           business_category?: string
+          business_logo?: string
           description?: string
           location?: string
           contact_number?: string
@@ -96,9 +105,9 @@ export interface Database {
           cover_image_url?: string
           status?: string
           onboarding_completed?: boolean
+          working_hours?: Json
           created_at?: string
           updated_at?: string
-          working_hours?: Json
         }
       }
       services: {

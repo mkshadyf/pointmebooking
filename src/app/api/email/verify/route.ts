@@ -1,8 +1,10 @@
-import { handleApiError } from '@/lib/errors/handlers';
-import { ErrorCode } from '@/lib/errors/types';
+ 
+import { handleApiError } from '@/lib/supabase/utils';
+import { ErrorCode } from '@/lib/supabase/utils/errors';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+ 
 
 const MAX_VERIFICATION_ATTEMPTS = 5;
 const VERIFICATION_COOLDOWN = 5 * 60 * 1000; // 5 minutes

@@ -3,8 +3,9 @@
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { useAuth } from '@/context/AuthContext';
-import { useAppStore } from '@/lib/store';
+ 
+import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
+import { useStore } from '@/lib/supabase/store';
 import { Booking } from '@/types';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -20,7 +21,7 @@ interface BookingFormProps {
 export function BookingForm({ selectedDate, booking, onSubmitAction, onCancelAction }: BookingFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
-  const { services } = useAppStore();
+  const { services } = useStore();
   const { register, handleSubmit, reset, formState: { errors } } = useForm<Partial<Booking>>({
     defaultValues: booking || {
       start_time: selectedDate?.toISOString(),

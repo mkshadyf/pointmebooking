@@ -1,131 +1,87 @@
 import { supabase } from '../client';
-import type { Category, PaginatedResponse, Profile, Service } from '../types';
+import type { DbCategory, DbProfile, DbService } from '../types';
+import { BaseSearchService } from './BaseSearchService';
 
-export class SearchService {
-  static async searchServices(query: string, options: {
-    limit?: number;
-    page?: number;
-    category?: string;
-    location?: string;
-  } = {}) {
-    const {
-      limit = 10,
-      page = 1,
-      category,
-      location,
-    } = options;
+interface SearchOptions {
+  limit?: number;
+  page?: number;
+  category?: string;
+  location?: string;
+}
 
-    const offset = (page - 1) * limit;
+type ServiceWithRelations = DbService & { business: DbProfile; category: DbCategory };
+type ProfileWithServices = DbProfile & { services: DbService[] };
+type CategoryWithCount = DbCategory & { service_count: number };
 
-    let query_builder = supabase
-      .from('services')
-      .select('*, business:profiles(*), category:categories(*)', { count: 'exact' })
-      .textSearch('name', query, {
-        type: 'websearch',
-        config: 'english',
-      })
-      .eq('status', 'active');
-
-    if (category) {
-      query_builder = query_builder.eq('category_id', category);
+export class SearchService extends BaseSearchService {
+  private static async executeSearch<T>(
+    table: string,
+    searchTerm: string,
+    options: SearchOptions,
+    config: {
+      searchField: string;
+      relations?: string;
+      categoryField?: string;
+      addressField?: string;
     }
+  ) {
+    const { limit, page, offset } = this.buildPagination(options);
 
-    if (location) {
-      query_builder = query_builder.textSearch('business.address', location, {
-        type: 'websearch',
-        config: 'english',
-      });
-    }
+    let query = supabase
+      .from(table)
+      .select(config.relations || '*', { count: 'exact' });
 
-    const { data, error, count } = await query_builder
+    query = this.buildSearchQuery(query, searchTerm, options, {
+      searchField: config.searchField,
+      categoryField: config.categoryField,
+      addressField: config.addressField
+    });
+
+    const { data, error, count } = await query
       .range(offset, offset + limit - 1)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    return {
-      data: data as (Service & { business: Profile; category: Category })[],
-      pagination: {
-        page,
-        limit,
-        total: count || 0,
-      },
-    } as PaginatedResponse<Service & { business: Profile; category: Category }>;
+    return this.formatPaginatedResponse(
+      data as T[],
+      count,
+      { page, limit }
+    );
   }
 
-  static async getFeaturedServices(limit: number = 6) {
-    const { data, error } = await supabase
-      .from('services')
-      .select('*, business:profiles(*), category:categories(*)')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (error) throw error;
-    return data as (Service & { business: Profile; category: Category })[];
+  static async searchServices(query: string, options: SearchOptions = {}) {
+    return this.executeSearch<ServiceWithRelations>(
+      'services',
+      query,
+      options,
+      {
+        searchField: 'name',
+        relations: '*, business:profiles(*), category:categories(*)',
+        categoryField: 'category_id',
+        addressField: 'business.address'
+      }
+    );
   }
 
-  static async searchBusinesses(query: string, options: {
-    limit?: number;
-    page?: number;
-    category?: string;
-    location?: string;
-  } = {}) {
-    const {
-      limit = 10,
-      page = 1,
-      category,
-      location,
-    } = options;
-
-    const offset = (page - 1) * limit;
-
-    let query_builder = supabase
-      .from('profiles')
-      .select('*, services!inner(*)', { count: 'exact' })
-      .eq('role', 'business')
-      .textSearch('business_name', query, {
-        type: 'websearch',
-        config: 'english',
-      });
-
-    if (category) {
-      query_builder = query_builder.eq('services.category_id', category);
-    }
-
-    if (location) {
-      query_builder = query_builder.textSearch('address', location, {
-        type: 'websearch',
-        config: 'english',
-      });
-    }
-
-    const { data, error, count } = await query_builder
-      .range(offset, offset + limit - 1)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    return {
-      data: data as (Profile & { services: Service[] })[],
-      pagination: {
-        page,
-        limit,
-        total: count || 0,
-      },
-    } as PaginatedResponse<Profile & { services: Service[] }>;
+  static async searchBusinesses(query: string, options: SearchOptions = {}) {
+    return this.executeSearch<ProfileWithServices>(
+      'profiles',
+      query,
+      options,
+      {
+        searchField: 'business_name',
+        relations: '*, services!inner(*)',
+        addressField: 'address'
+      }
+    );
   }
 
   static async searchCategories(query: string, options: {
     limit?: number;
     page?: number;
   } = {}) {
-    const {
-      limit = 10,
-      page = 1,
-    } = options;
-
-    const offset = (page - 1) * limit;
+    const { limit, page, offset } = this.buildPagination(options);
 
     const { data, error, count } = await supabase
       .from('categories')
@@ -139,16 +95,23 @@ export class SearchService {
 
     if (error) throw error;
 
-    return {
-      data: data.map(category => ({
-        ...category,
-        service_count: category.services?.[0]?.count ?? 0,
-      })) as (Category & { service_count: number })[],
-      pagination: {
-        page,
-        limit,
-        total: count || 0,
-      },
-    } as PaginatedResponse<Category & { service_count: number }>;
+    const formattedData = data.map(category => ({
+      ...category,
+      service_count: category.services?.[0]?.count ?? 0,
+    })) as CategoryWithCount[];
+
+    return this.formatPaginatedResponse(formattedData, count, { page, limit });
+  }
+
+  static async getFeaturedServices(limit: number = 6) {
+    const { data, error } = await supabase
+      .from('services')
+      .select('*, business:profiles(*), category:categories(*)')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return data as ServiceWithRelations[];
   }
 } 

@@ -1,17 +1,17 @@
 'use client';
 
 import BusinessOnboarding from '@/components/onboarding/BusinessOnboarding';
-import { PageLoading } from '@/components/ui/Loading';
-import { useAuth } from '@/context/AuthContext';
+import { LoadingSpinner } from '@/components/ui/loading/LoadingSpinner';
+import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function BusinessOnboardingPage() {
-  const { user, loading, profile } = useAuth();
+  const { user, isLoading, profile } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!loading) {
+  useEffect(( ) => {
+    if (!isLoading) {
       if (!user) {
         router.push('/login');
       } else if (user.role !== 'business') {
@@ -20,9 +20,9 @@ export default function BusinessOnboardingPage() {
         router.push('/dashboard/business');
       }
     }
-  }, [user, loading, profile, router]);
+  }, [user, isLoading, profile, router]);
 
-  if (loading) return <PageLoading />;
+  if (isLoading) return <LoadingSpinner />;
   if (!user || user.role !== 'business') return null;
 
   return (

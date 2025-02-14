@@ -4,7 +4,7 @@ export type { Profile as AuthProfile } from './useSupabaseAuth';
 
 // Realtime hook exports
 export { useSupabaseRealtime } from './useSupabaseRealtime';
-export type { UseSupabaseRealtimeOptions } from './useSupabaseRealtime';
+export type { RealtimeOptions } from './useSupabaseRealtime';
 
 // Storage hook exports
 export { useSupabaseStorage } from './useSupabaseStorage';

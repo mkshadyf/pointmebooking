@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
 import { Menu, Transition } from '@headlessui/react';
 import { Bars3Icon, BellIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { Fragment } from 'react';

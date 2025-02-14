@@ -92,38 +92,53 @@ export function useSupabase() {
 export * from './config';
 
 // Client exports
-export {
-    createClient,
-    createServerSupabaseClient, supabase, type SupabaseClient
-} from './client';
+export { supabase } from './client';
 
 // Auth exports
-export {
-    AuthProvider,
-    useAuth,
-    withAuth
-} from './auth';
-
-// Hook exports
-export {
-    useSupabaseAuth,
-    useSupabaseRealtime,
-    useSupabaseStorage,
-    type UseSupabaseRealtimeOptions,
-    type UseSupabaseStorageOptions,
-    type UseSupabaseStorageReturn
-} from './hooks';
+export { AuthContext, AuthProvider, useAuth } from './auth/context/AuthContext';
+export type { AuthContextType } from './auth/context/AuthContext';
+export { withAuth } from './auth/guards/withAuth';
 
 // Service exports
 export {
+    AuthService,
     BookingService,
     CategoryService,
+    EmailService,
     ProfileService,
+    SearchService,
     ServiceService
 } from './services';
 
+// Hook exports
+export {
+    useSupabaseRealtime,
+    useSupabaseStorage
+} from './hooks';
+
 // Type exports
-export * from './types';
+export type {
+    ApiResponse, AuthProfile,
+    AuthRole, BookingInsert, BookingUpdate, CategoryInsert, CategoryUpdate, DbBooking,
+    DbCategory, DbProfile,
+    DbService, PaginatedResponse, ProfileInsert, ProfileUpdate, ServiceInsert, ServiceUpdate, ServiceWithRelations, SupabaseAuthError
+} from './types';
+
+// Store exports
+export { useStore } from './store';
+export type { StoreState } from './store';
+
+// Utility exports
+export {
+    handleApiError, handleAuthError, handleClientError,
+    type AppError
+} from './utils/errors';
+
+export {
+    validateEmail,
+    validatePassword,
+    validateUrl
+} from './utils/validators';
 
 // Constants
 export const SUPABASE_CONFIG = {

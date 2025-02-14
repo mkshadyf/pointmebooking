@@ -1,6 +1,6 @@
 "use server";
 
-import { getServerSupabaseClient } from "@/lib/supabase/client";
+import { createServerSupabaseClient } from "@/lib/supabase/client";
 import { AuthError, Session, User } from "@supabase/supabase-js";
 import { cookies, headers } from "next/headers";
 
@@ -25,7 +25,7 @@ export const signUpAction = async (formData: FormData): Promise<AuthResponse> =>
     return { error: "Invalid role selected" };
   }
 
-  const supabase = getServerSupabaseClient(await cookies());
+  const supabase = createServerSupabaseClient(await cookies());
   const origin = (await headers()).get("origin");
 
   const { error: signUpError, data } = await (await supabase).auth.signUp({
@@ -83,7 +83,7 @@ export const signInAction = async (formData: FormData): Promise<AuthResponse> =>
     return { error: "Email and password are required." };
   }
   
-  const supabase = getServerSupabaseClient(await cookies());
+  const supabase = createServerSupabaseClient(await cookies());
   
   try {
     // Create a timeout promise that rejects after 15 seconds
@@ -150,7 +150,7 @@ export const signInAction = async (formData: FormData): Promise<AuthResponse> =>
 };
 
 export const signInWithGoogleAction = async (): Promise<AuthResponse> => {
-  const supabase = getServerSupabaseClient(await cookies());
+  const supabase = createServerSupabaseClient(await cookies());
   const origin = (await headers()).get("origin");
 
   const { error, data } = await (await supabase).auth.signInWithOAuth({
@@ -174,7 +174,7 @@ export const forgotPasswordAction = async (formData: FormData): Promise<AuthResp
   if (!email) {
     return { error: "Email is required" };
   }
-  const supabase = getServerSupabaseClient(await cookies());
+  const supabase = createServerSupabaseClient(await cookies());
   const origin = (await headers()).get("origin");
 
   const { error } = await (await supabase).auth.resetPasswordForEmail(email, {
@@ -196,7 +196,7 @@ export const resetPasswordAction = async (formData: FormData): Promise<AuthRespo
   if (!password) {
     return { error: "Password is required." };
   }
-  const supabase = getServerSupabaseClient(await cookies());
+  const supabase = createServerSupabaseClient(await cookies());
   const { error } = await (await supabase).auth.updateUser({ password });
   if (error) {
     return { error: "Failed to update your password. Please try again." };
@@ -205,7 +205,7 @@ export const resetPasswordAction = async (formData: FormData): Promise<AuthRespo
 };
 
 export const signOutAction = async (): Promise<AuthResponse> => {
-  const supabase = getServerSupabaseClient(await cookies());
+  const supabase = createServerSupabaseClient(await cookies());
   const { error } = await (await supabase).auth.signOut();
   if (error) {
     return { error: "Failed to sign out. Please try again." };

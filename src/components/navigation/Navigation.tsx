@@ -1,6 +1,6 @@
 import { signOutAction } from '@/app/actions';
 import { ROUTES } from '@/config/routes';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
 import { classNames } from '@/lib/utils';
 import { Disclosure, Menu, Transition } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';

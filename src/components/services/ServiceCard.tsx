@@ -14,8 +14,7 @@ interface ServiceCardProps {
   minimal?: boolean;
 }
 
-export function ServiceCard({ 
-  }: ServiceCardProps) {
+export function ServiceCard({ service, showActions, onEdit, onDelete, minimal }: ServiceCardProps) {
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
 

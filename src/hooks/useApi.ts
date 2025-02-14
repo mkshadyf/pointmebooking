@@ -17,6 +17,13 @@ interface CacheItem<T> {
 
 const cache = new Map<string, CacheItem<any>>();
 
+
+const handleError = (err: unknown): Error => {
+  if (err instanceof Error) return err;
+  if (typeof err === 'string') return new Error(err);
+  return new Error('An unknown error occurred');
+};
+
 export function useApi<T>(url: string, options: UseApiOptions<T> = {}) {
   const {
     initialData,
@@ -91,11 +98,11 @@ export function useApi<T>(url: string, options: UseApiOptions<T> = {}) {
         setCachedData(result);
         onSuccess?.(result);
       } catch (err) {
-        if (err.name === 'AbortError') return;
-        
-        const error = err instanceof Error ? err : new Error(String(err));
+        const error = handleError(err);
+        if (error.name === 'AbortError') return;
         setError(error);
         onError?.(error);
+        return { data: null, error };
       } finally {
         setIsLoading(false);
       }

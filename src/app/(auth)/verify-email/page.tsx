@@ -3,9 +3,9 @@
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ROUTES } from '@/config/routes';
-import { useAuth } from '@/context/AuthContext';
-import { EmailService } from '@/lib/services/email';
-import { notify } from '@/lib/utils/notifications';
+import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
+import { EmailService } from '@/lib/supabase/services/email.service';
+import { NotificationService } from '@/lib/supabase/services/notifications';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -39,10 +39,10 @@ export default function VerifyEmailPage() {
         throw new Error(data.error || 'Failed to verify email');
       }
 
-      notify.success('EMAIL_VERIFICATION_SUCCESS');
+      NotificationService.success('EMAIL_VERIFICATION_SUCCESS');
       router.push(ROUTES.customerDashboard.path);
     } catch (error) {
-      notify.error('EMAIL_VERIFICATION_FAILED', { error: error as Error });
+      NotificationService.error('EMAIL_VERIFICATION_FAILED', { error: error as Error });
     } finally {
       setLoading(false);
     }
@@ -53,11 +53,16 @@ export default function VerifyEmailPage() {
 
     setResending(true);
     try {
-      const emailService = EmailService.getInstance();
-      await emailService.sendVerificationEmail(user.email);
-      notify.success('EMAIL_VERIFICATION_SENT');
+      // Generate a 6-digit verification code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Store the code in session storage for verification
+      sessionStorage.setItem('emailVerificationCode', verificationCode);
+      
+      await EmailService.sendVerificationEmail(user.email, verificationCode);
+      NotificationService.success('EMAIL_VERIFICATION_SENT');
     } catch (error) {
-      notify.error('EMAIL_VERIFICATION_FAILED', { error: error as Error });
+      NotificationService.error('EMAIL_VERIFICATION_FAILED', { error: error as Error });
     } finally {
       setResending(false);
     }

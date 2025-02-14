@@ -1,138 +1,81 @@
 'use client';
 
-import { useSupabaseClient } from '@supabase/auth-helpers-react';
-import { SupabaseClient } from '@supabase/supabase-js';
-import { useCallback, useState } from 'react';
-import { validateUrl } from '../utils/validators';
+import { useState } from 'react';
+import { supabase } from '../client';
 
-interface UseSupabaseStorageProps {
-  bucket: string;
-  maxSize?: number; // in bytes
-  allowedTypes?: string[];
-}
 
-interface UploadProgress {
-  loaded: number;
-  total: number;
-}
-
-interface UseSupabaseStorageReturn {
-  uploadFile: (file: File) => Promise<string>;
-  deleteFile: (path: string) => Promise<void>;
+export interface UploadProgress {
+  progress: number;
   isUploading: boolean;
-  progress: UploadProgress | null;
-  error: Error | null;
+}
+
+export interface UseSupabaseStorageOptions {
+  bucket: string;
+  onProgress?: (progress: number) => void;
+  onError?: (error: Error) => void;
+}
+
+export interface UseSupabaseStorageReturn {
+  uploadFile: (file: File) => Promise<string | null>;
+  deleteFile: (path: string) => Promise<void>;
+  progress: UploadProgress;
 }
 
 export function useSupabaseStorage({
   bucket,
-  maxSize = 5 * 1024 * 1024, // 5MB default
-  allowedTypes = ['image/jpeg', 'image/png', 'image/webp'],
-}: UseSupabaseStorageProps): UseSupabaseStorageReturn {
-  const supabase = useSupabaseClient<SupabaseClient>();
-  const [isUploading, setIsUploading] = useState(false);
-  const [progress, setProgress] = useState<UploadProgress | null>(null);
-  const [error, setError] = useState<Error | null>(null);
+  onError
+}: UseSupabaseStorageOptions): UseSupabaseStorageReturn {
+  const [progress, setProgress] = useState<UploadProgress>({
+    progress: 0,
+    isUploading: false
+  });
 
-  const validateFile = useCallback(
-    (file: File) => {
-      if (!file) {
-        throw new Error('No file provided');
-      }
+  const client = supabase;
 
-      if (!allowedTypes.includes(file.type)) {
-        throw new Error(
-          `Invalid file type. Allowed types: ${allowedTypes.join(', ')}`
-        );
-      }
+  const uploadFile = async (file: File): Promise<string | null> => {
+    try {
+      setProgress({ progress: 0, isUploading: true });
 
-      if (file.size > maxSize) {
-        throw new Error(
-          `File size too large. Maximum size: ${Math.round(maxSize / 1024 / 1024)}MB`
-        );
-      }
-    },
-    [allowedTypes, maxSize]
-  );
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${Math.random()}.${fileExt}`;
 
-  const uploadFile = useCallback(
-    async (file: File): Promise<string> => {
-      try {
-        setError(null);
-        setIsUploading(true);
-        setProgress({ loaded: 0, total: file.size });
+      const { error: uploadError } = await client.storage
+        .from(bucket)
+        .upload(filePath, file, {
+          upsert: true,
+        });
 
-        // Validate file
-        validateFile(file);
+      if (uploadError) throw uploadError;
 
-        // Generate unique file path
-        const fileExt = file.name.split('.').pop();
-        const filePath = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const { data: { publicUrl } } = client.storage
+        .from(bucket)
+        .getPublicUrl(filePath);
 
-        // Upload file
-        const { error: uploadError, data } = await supabase.storage
-          .from(bucket)
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false,
-            onUploadProgress: (progress: { loaded: number; total: number }) => {
-              setProgress({
-                loaded: progress.loaded,
-                total: progress.total,
-              });
-            },
-          });
+      setProgress({ progress: 100, isUploading: false });
+      return publicUrl;
+    } catch (error) {
+      setProgress({ progress: 0, isUploading: false });
+      onError?.(error as Error);
+      return null;
+    }
+  };
 
-        if (uploadError) {
-          throw uploadError;
-        }
+  const deleteFile = async (path: string): Promise<void> => {
+    try {
+      const { error } = await client.storage
+        .from(bucket)
+        .remove([path]);
 
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from(bucket)
-          .getPublicUrl(data.path);
-
-        if (!validateUrl(publicUrl)) {
-          throw new Error('Invalid public URL generated');
-        }
-
-        return publicUrl;
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error('Upload failed'));
-        throw err;
-      } finally {
-        setIsUploading(false);
-        setProgress(null);
-      }
-    },
-    [bucket, validateFile, supabase.storage]
-  );
-
-  const deleteFile = useCallback(
-    async (path: string) => {
-      try {
-        setError(null);
-        const { error: deleteError } = await supabase.storage
-          .from(bucket)
-          .remove([path]);
-
-        if (deleteError) {
-          throw deleteError;
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error('Delete failed'));
-        throw err;
-      }
-    },
-    [bucket, supabase.storage]
-  );
+      if (error) throw error;
+    } catch (error) {
+      onError?.(error as Error);
+    }
+  };
 
   return {
     uploadFile,
     deleteFile,
-    isUploading,
     progress,
-    error,
   };
 }
 

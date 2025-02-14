@@ -2,8 +2,9 @@
 
 import { BookingForm } from '@/components/bookings/BookingForm';
 import { Calendar } from '@/components/calendar/Calendar';
-import { useAuth } from '@/context/AuthContext';
-import { withAuth } from '@/lib/auth/withAuth';
+import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
+import { withAuth } from '@/lib/supabase/auth/guards/withAuth';
+ 
 import { Booking } from '@/types';
 import { createBrowserClient } from '@supabase/ssr';
 import { useState } from 'react';

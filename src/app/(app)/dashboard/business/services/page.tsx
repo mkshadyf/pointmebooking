@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/Button';
 import { Column, DataTable } from '@/components/ui/DataTable';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
 import { createBrowserClient } from '@supabase/ssr';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';

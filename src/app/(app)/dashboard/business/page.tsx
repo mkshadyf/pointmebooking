@@ -1,6 +1,6 @@
 'use client';
 
-import { withAuth } from '@/lib/auth/withAuth';
+import { withAuth } from '@/lib/supabase/auth/guards/withAuth';
 
 export default withAuth(
   function BusinessDashboard() {

@@ -1,7 +1,7 @@
 'use client';
 
 import { showToast } from '@/components/ToastHost';
-import { AppError } from '@/lib/errors/handlers';
+import { AppError } from '@/lib/supabase/utils/errors';
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
@@ -31,17 +31,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
     // Show toast notification for the error
     if (error instanceof AppError) {
-      showToast({
-        type: 'error',
-        title: error.name,
-        message: error.message,
-      });
+      showToast.error(error.message);
     } else {
-      showToast({
-        type: 'error',
-        title: 'Error',
-        message: 'An unexpected error occurred. Please try again.',
-      });
+      showToast.error('An unexpected error occurred. Please try again.');
     }
   }
 

@@ -168,12 +168,19 @@ const FormMessage = React.forwardRef<
 });
 FormMessage.displayName = 'FormMessage';
 
+const FormGroup = ({ children, className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
+  return (
+    <div className={cn('space-y-2', className)} {...props}>
+      {children}
+    </div>
+  );
+};
+
 export {
   Form,
   FormControl,
   FormDescription,
-  FormField,
-  FormItem,
+  FormField, FormGroup, FormItem,
   FormLabel,
   FormMessage,
   useFormField
