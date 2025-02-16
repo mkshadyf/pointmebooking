@@ -1,4 +1,3 @@
-import { BaseEmailService } from './BaseEmailService';
 
 interface BookingDetails {
   service: string;
@@ -7,72 +6,68 @@ interface BookingDetails {
   time: string;
 }
 
-export class EmailService extends BaseEmailService {
+export class EmailService {
   static async sendVerificationEmail(email: string | undefined, code: string) {
     if (!email) {
       throw new Error('Email is required');
     }
-    const content = `
-      <p>Thank you for signing up. Please verify your email address by entering this code:</p>
-      ${this.renderCode(code)}
-      <p>If you didn't sign up for PointMe, you can safely ignore this email.</p>
-    `;
-
-    return this.sendEmail(email, 'Verify your email address', {
-      title: 'Welcome to PointMe!',
-      content,
+    
+    const response = await fetch('/api/email/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code }),
     });
+
+    if (!response.ok) {
+      throw new Error('Failed to send verification email');
+    }
   }
 
   static async sendBookingConfirmation(email: string, booking: BookingDetails) {
-    const content = `
-      <p>Your booking has been confirmed with the following details:</p>
-      ${this.renderBookingDetails(booking)}
-      <p>You can view your booking details in your dashboard.</p>
-    `;
-
-    return this.sendEmail(email, 'Booking Confirmation', {
-      title: 'Booking Confirmed!',
-      content,
+    const response = await fetch('/api/email/booking-confirmation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, booking }),
     });
+
+    if (!response.ok) {
+      throw new Error('Failed to send booking confirmation');
+    }
   }
 
   static async sendBookingReminder(email: string, booking: BookingDetails) {
-    const content = `
-      <p>This is a reminder for your upcoming booking:</p>
-      ${this.renderBookingDetails(booking)}
-      <p>Looking forward to seeing you!</p>
-    `;
-
-    return this.sendEmail(email, 'Booking Reminder', {
-      title: 'Booking Reminder',
-      content,
+    const response = await fetch('/api/email/booking-reminder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, booking }),
     });
+
+    if (!response.ok) {
+      throw new Error('Failed to send booking reminder');
+    }
   }
 
   static async sendPasswordReset(email: string, resetLink: string) {
-    const content = `
-      <p>You requested to reset your password. Click the button below to proceed:</p>
-      ${this.renderButton('Reset Password', resetLink)}
-      <p>If you didn't request this, you can safely ignore this email.</p>
-    `;
-
-    return this.sendEmail(email, 'Reset your password', {
-      title: 'Reset Your Password',
-      content,
+    const response = await fetch('/api/email/password-reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, resetLink }),
     });
+
+    if (!response.ok) {
+      throw new Error('Failed to send password reset email');
+    }
   }
 
   static async sendBookingStatusUpdate(email: string, booking: BookingDetails, status: string) {
-    const content = `
-      <p>Your booking status has been updated to: <strong>${status}</strong></p>
-      ${this.renderBookingDetails(booking)}
-      <p>You can view your booking details in your dashboard.</p>
-    `;
-
-    return this.sendEmail(email, 'Booking Status Update', {
-      title: 'Booking Status Update',
-      content,
+    const response = await fetch('/api/email/booking-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, booking, status }),
     });
+
+    if (!response.ok) {
+      throw new Error('Failed to send booking status update');
+    }
   }
 } 

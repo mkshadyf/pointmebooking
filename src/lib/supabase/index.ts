@@ -1,98 +1,18 @@
-import { createBrowserClient, createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createBrowserClient } from '@supabase/ssr';
+
+export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // Browser client
 export const createBrowserSupabaseClient = () => {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 };
 
-// Server client
-export const createServerSupabaseClient = async () => {
-  const cookieStore = await cookies();
+// Export singleton instance for browser
+export const supabase = createBrowserSupabaseClient();
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options: any) {
-          cookieStore.set(name, value, options);
-        },
-        remove(options: any) {
-          cookieStore.delete(options);
-        },
-      },
-    }
-  );
-};
-
-// User related functions
-export async function getUser() {
-  const supabase = createServerSupabaseClient();
-  try {
-    const { data: { user }, error } = await (await supabase).auth.getUser();
-    if (error) throw error;
-    return user;
-  } catch (error) {
-    console.error('Error:', error);
-    return null;
-  }
-}
-
-export async function getUserProfile() {
-  const user = await getUser();
-  if (!user) return null;
-
-  const supabase = createServerSupabaseClient();
-  try {
-    const { data, error } = await (await supabase)
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error('Error:', error);
-    return null;
-  }
-}
-
-export async function updateUserProfile(userId: string, updates: any) {
-  const supabase = createServerSupabaseClient();
-  try {
-    const { data, error } = await (await supabase)
-      .from('profiles')
-      .update(updates)
-      .eq('id', userId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error('Error:', error);
-    return null;
-  }
-}
-
-// React hook for browser client
-export function useSupabase() {
-  return createBrowserSupabaseClient();
-}
-
-// Configuration
+// Re-export common types and interfaces
 export * from './config';
-
-// Client exports
-export { supabase } from './client';
 
 // Auth exports
 export { AuthContext, AuthProvider, useAuth } from './auth/context/AuthContext';
@@ -101,27 +21,27 @@ export { withAuth } from './auth/guards/withAuth';
 
 // Service exports
 export {
-    AuthService,
-    BookingService,
-    CategoryService,
-    EmailService,
-    ProfileService,
-    SearchService,
-    ServiceService
+  AuthService,
+  BookingService,
+  CategoryService,
+  EmailService,
+  ProfileService,
+  SearchService,
+  ServiceService
 } from './services';
 
 // Hook exports
 export {
-    useSupabaseRealtime,
-    useSupabaseStorage
+  useSupabaseRealtime,
+  useSupabaseStorage
 } from './hooks';
 
 // Type exports
 export type {
-    ApiResponse, AuthProfile,
-    AuthRole, BookingInsert, BookingUpdate, CategoryInsert, CategoryUpdate, DbBooking,
-    DbCategory, DbProfile,
-    DbService, PaginatedResponse, ProfileInsert, ProfileUpdate, ServiceInsert, ServiceUpdate, ServiceWithRelations, SupabaseAuthError
+  ApiResponse, AuthProfile,
+  AuthRole, BookingInsert, BookingUpdate, CategoryInsert, CategoryUpdate, DbBooking,
+  DbCategory, DbProfile,
+  DbService, PaginatedResponse, ProfileInsert, ProfileUpdate, ServiceInsert, ServiceUpdate, ServiceWithRelations, SupabaseAuthError
 } from './types';
 
 // Store exports
@@ -130,14 +50,14 @@ export type { StoreState } from './store';
 
 // Utility exports
 export {
-    handleApiError, handleAuthError, handleClientError,
-    type AppError
+  handleApiError, handleAuthError, handleClientError,
+  type AppError
 } from './utils/errors';
 
 export {
-    validateEmail,
-    validatePassword,
-    validateUrl
+  validateEmail,
+  validatePassword,
+  validateUrl
 } from './utils/validators';
 
 // Constants

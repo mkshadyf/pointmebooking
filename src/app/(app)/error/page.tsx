@@ -8,9 +8,9 @@ import { useEffect } from 'react';
 export default function ErrorPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const errorCode = searchParams.get('code') as ErrorCode || ErrorCode.UNKNOWN_ERROR;
-  const errorMessage = searchParams.get('message') || ErrorMessageMap[errorCode];
-  const redirectTo = searchParams.get('redirectTo') || '/';
+  const errorCode = (searchParams?.get('code') as ErrorCode) || ErrorCode.UNKNOWN_ERROR;
+  const errorMessage = searchParams?.get('message') || ErrorMessageMap[errorCode];
+  const redirectTo = searchParams?.get('redirectTo') || '/';
 
   useEffect(() => {
     // Log error to monitoring service in production

@@ -104,14 +104,39 @@ export class SearchService extends BaseSearchService {
   }
 
   static async getFeaturedServices(limit: number = 6) {
-    const { data, error } = await supabase
-      .from('services')
-      .select('*, business:profiles(*), category:categories(*)')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(limit);
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select(`
+          *,
+          business:profiles!services_business_id_fkey (
+            id,
+            business_name,
+            address,
+            city,
+            state,
+            phone,
+            email,
+            logo_url
+          ),
+          category:categories (
+            name,
+            icon
+          )
+        `)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(limit);
 
-    if (error) throw error;
-    return data as ServiceWithRelations[];
+      if (error) {
+        console.error('Supabase error:', error);
+        throw new Error(error.message);
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching featured services:', error);
+      throw error;
+    }
   }
 } 

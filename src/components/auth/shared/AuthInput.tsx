@@ -3,11 +3,12 @@ import { Input } from '@/components/ui/Input';
 interface AuthInputProps {
   id: string;
   label: string;
-  type?: string;
+  type?: 'text' | 'email' | 'password' | 'tel';
   required?: boolean;
   value: string;
   onChange: (value: string) => void;
   error?: string;
+  placeholder?: string;
 }
 
 export function AuthInput({
@@ -17,7 +18,8 @@ export function AuthInput({
   required = false,
   value,
   onChange,
-  error
+  error,
+  placeholder
 }: AuthInputProps) {
   return (
     <div>
@@ -35,6 +37,7 @@ export function AuthInput({
           required={required}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
           className={error ? 'border-red-500' : ''}
         />
         {error && (

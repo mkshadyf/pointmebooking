@@ -20,5 +20,8 @@
   ],
   "[typescript]": {
     "editor.defaultFormatter": "rvest.vs-code-prettier-eslint"
-  }
+  },
+  "exportall.config.folderListener": [
+    "/src"
+  ]
 }

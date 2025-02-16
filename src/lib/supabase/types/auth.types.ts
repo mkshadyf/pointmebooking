@@ -3,7 +3,7 @@
 
 import type { Database } from './database';
 
-export type AuthRole = 'customer' | 'business';
+export type AuthRole = 'customer' | 'business' | 'admin';
 
 type DbProfile = Database['public']['Tables']['profiles']['Row'];
 

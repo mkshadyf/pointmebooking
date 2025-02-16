@@ -1,31 +1,15 @@
 import { StepButton } from '@/components/onboarding/steps/shared/StepButton';
 import { StepInput } from '@/components/onboarding/steps/shared/StepInput';
+import type { AuthFormData, AuthFormField } from '@/types/auth/index';
 import { useState } from 'react';
 
-export interface AuthFormField {
-    id: string;
-    label: string;
-    type?: string;
-    required?: boolean;
-    options?: Array<{ value: string; label: string }>;
-}
-
-export type AuthFormData = {
-    email: string;
-    password: string;
-} & {
-    [key: string]: string;
-};
-
-export interface AuthFormProps {
+export function AuthForm({ fields, onSubmit, submitText, isLoading, error }: {
     fields: AuthFormField[];
     onSubmit: (data: AuthFormData) => Promise<void>;
     submitText: string;
     isLoading?: boolean;
     error?: string;
-}
-
-export function AuthForm({ fields, onSubmit, submitText, isLoading, error }: AuthFormProps) {
+}) {
     const [formData, setFormData] = useState<AuthFormData>({
         email: '',
         password: '',
@@ -37,7 +21,7 @@ export function AuthForm({ fields, onSubmit, submitText, isLoading, error }: Aut
     };
 
     const handleChange = (id: string, value: string) => {
-        setFormData((prev) => ({ ...prev, [id]: value }));
+        setFormData((prev: AuthFormData) => ({ ...prev, [id]: value }));
     };
 
     return (
@@ -61,7 +45,7 @@ export function AuthForm({ fields, onSubmit, submitText, isLoading, error }: Aut
                                 className="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6"
                             >
                                 <option value="">Select {field.label}</option>
-                                {field.options.map((option) => (
+                                {field.options.map((option: { value: string; label: string }) => (
                                     <option key={option.value} value={option.value}>
                                         {option.label}
                                     </option>

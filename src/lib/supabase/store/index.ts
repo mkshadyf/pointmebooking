@@ -106,12 +106,20 @@ export const useStore = create<StoreState>()(
       },
 
       fetchFeaturedServices: async () => {
+        set({ isLoading: true, error: null });
         try {
           const services = await SearchService.getFeaturedServices();
+          if (!services) {
+            throw new Error('No services returned');
+          }
           const typedServices = services.map(transformServiceData);
           set({ services: typedServices });
         } catch (error) {
-          await handleClientError(error);
+          console.error('Store error fetching services:', error);
+          set({ error: error instanceof Error ? error.message : 'Failed to fetch services' });
+          throw error;
+        } finally {
+          set({ isLoading: false });
         }
       },
 

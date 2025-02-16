@@ -37,7 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
 
         initAuth();
-    }, [store]);
+    }, []);
 
     const value: AuthContextType = {
         user: store.user,
@@ -51,7 +51,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (user) {
                     const profile = await AuthService.getProfile();
                     if (profile) {
-                        store.setUser(profile);
+                        const authProfile: AuthProfile = {
+                            ...profile,
+                            verification_attempts: profile.verification_attempts || 0,
+                            role: profile.role as AuthRole
+                        };
+                        store.setUser(authProfile);
                         store.setIsAuthenticated(true);
                     }
                 }
@@ -62,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 store.setIsLoading(false);
             }
         },
-        register: async (email: string, password: string, role: 'customer' | 'business') => {
+        register: async (email: string, password: string, role: AuthRole) => {
             store.setIsLoading(true);
             try {
                 const { user } = await AuthService.register({ email, password, role });

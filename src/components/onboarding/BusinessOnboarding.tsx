@@ -2,8 +2,8 @@
 
 import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
 import { AuthProfile, AuthRole } from '@/lib/supabase/types/auth.types';
-import { BusinessDetailsStep, BusinessDetailsStepProps } from './steps/BusinessDetailsStep';
 import { useState } from 'react';
+import { BusinessDetailsStep, BusinessDetailsStepProps } from './steps/BusinessDetailsStep';
 
 interface BusinessOnboardingProps {
   onComplete?: () => void;

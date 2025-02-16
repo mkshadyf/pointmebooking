@@ -6,7 +6,22 @@ export interface Profile {
   role: 'business' | 'customer' | 'admin';
   onboarding_completed: boolean;
   business_name?: string;
-  // Add additional fields as required by your application.
+  business_description?: string;
+  business_address?: string;
+  business_city?: string;
+  business_state?: string;
+  business_zip?: string;
+  business_country?: string;
+  business_phone?: string;
+  business_email?: string;
+  business_website?: string;
+  business_logo?: string;
+  business_banner?: string;
+  verification_attempts: number;
+  email_verified: boolean;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AuthContextType {

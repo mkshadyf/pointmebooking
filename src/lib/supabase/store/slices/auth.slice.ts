@@ -1,5 +1,5 @@
 import { AuthService } from '@/lib/supabase/services/auth.service';
-import type { AuthProfile } from '@/lib/supabase/types/auth.types';
+import type { AuthProfile, AuthRole } from '@/lib/supabase/types/auth.types';
 import { StateCreator } from 'zustand';
 import { RootState } from '../store';
 
@@ -12,9 +12,10 @@ const handleAuthAction = async <T>(
   set({ isLoading: true, error: null });
   try {
     const result = await action();
-    if (result && onSuccess) {
+    if (onSuccess && result !== undefined && result !== null) {
       await onSuccess(result);
     }
+    return result;
   } catch (error) {
     set({
       error: error instanceof Error ? error.message : 'Failed to perform action',
@@ -57,7 +58,7 @@ const initialState: AuthState = {
   setIsLoading: () => {},
 };
 
-export const authSlice: StateCreator<RootState, [], [], AuthState> = (set) => ({
+export const authSlice: StateCreator<RootState, [], [], AuthSlice> = (set) => ({
   ...initialState,
 
   login: async (email: string, password: string) => {
@@ -67,7 +68,7 @@ export const authSlice: StateCreator<RootState, [], [], AuthState> = (set) => ({
       async () => {
         const profile = await AuthService.getProfile();
         if (profile) {
-          set({ user: profile, isAuthenticated: true });
+          set({ user: profile as AuthProfile, isAuthenticated: true });
         }
       }
     );
@@ -80,18 +81,17 @@ export const authSlice: StateCreator<RootState, [], [], AuthState> = (set) => ({
       async () => {
         const profile = await AuthService.getProfile();
         if (profile) {
-          set({ user: profile, isAuthenticated: true });
+          set({ user: profile as AuthProfile, isAuthenticated: true });
         }
       }
     );
   },
 
   logout: async () => {
-    await handleAuthAction(
+    await handleAuthAction<void>(
       set,
       async () => {
         await AuthService.logout();
-        return true;
       },
       async () => {
         set({ user: null, isAuthenticated: false });
@@ -102,9 +102,20 @@ export const authSlice: StateCreator<RootState, [], [], AuthState> = (set) => ({
   updateProfile: async (data: Partial<AuthProfile>) => {
     await handleAuthAction<AuthProfile>(
       set,
-      () => AuthService.updateProfile(data),
+      async () => {
+        const updatedProfile = await AuthService.updateProfile(data);
+        return {
+          ...updatedProfile,
+          verification_attempts: 0,
+          email_verified: false,
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          role: updatedProfile.role as AuthRole // Cast role to AuthRole type
+        };
+      },
       async (profile) => {
-        set({ user: profile });
+        set({ user: profile as AuthProfile });
       }
     );
   },

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '../supabase';
+ 
+import { createServerSupabaseClient } from '../supabase/server';
 import { handleApiError } from '../supabase/utils/errors';
 
 type RouteHandler = (

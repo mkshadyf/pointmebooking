@@ -16,23 +16,6 @@ export const PUBLIC_ROUTES = {
 
 // Protected Routes
 export const PROTECTED_ROUTES = {
-  DASHBOARD: {
-    ROOT: '/dashboard',
-    CUSTOMER: {
-      ROOT: '/dashboard/customer',
-      SETTINGS: '/dashboard/customer/settings',
-      BOOKINGS: '/dashboard/customer/bookings',
-      FAVORITES: '/dashboard/customer/favorites',
-    },
-    BUSINESS: {
-      ROOT: '/dashboard/business',
-      SERVICES: '/dashboard/business/services',
-      BOOKINGS: '/dashboard/business/bookings',
-      CALENDAR: '/dashboard/business/calendar',
-      SETTINGS: '/dashboard/business/settings',
-      ANALYTICS: '/dashboard/business/analytics',
-    },
-  },
   PROFILE: '/profile',
   SETTINGS: '/settings',
 } as const;
@@ -52,11 +35,6 @@ export const ROUTE_GROUPS = {
     PUBLIC_ROUTES.FORGOT_PASSWORD,
     PUBLIC_ROUTES.RESET_PASSWORD,
     PUBLIC_ROUTES.VERIFY_EMAIL,
-  ],
-  DASHBOARD: [
-    PROTECTED_ROUTES.DASHBOARD.ROOT,
-    ...Object.values(PROTECTED_ROUTES.DASHBOARD.CUSTOMER),
-    ...Object.values(PROTECTED_ROUTES.DASHBOARD.BUSINESS),
   ],
   PUBLIC: Object.values(PUBLIC_ROUTES),
 } as const;

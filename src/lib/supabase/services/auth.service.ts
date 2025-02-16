@@ -1,10 +1,12 @@
+import type { Profile } from '@/types/auth';
+import { AuthCredentials } from '@/types/auth/index';
 import { supabase } from '../client';
-import { AuthProfile } from '../types/database';
 
-interface AuthCredentials {
-    email: string;
-    password: string;
-    role?: 'customer' | 'business';
+const MAX_VERIFICATION_ATTEMPTS = 5;
+const VERIFICATION_TIMEOUT_MINUTES = 30;
+
+interface AuthError extends Error {
+    code?: string;
 }
 
 export class AuthService {
@@ -14,7 +16,11 @@ export class AuthService {
             password,
         });
 
-        if (error) throw error;
+        if (error) {
+            const authError = new Error(error.message) as AuthError;
+            authError.code = error.status?.toString();
+            throw authError;
+        }
         return data;
     }
 
@@ -24,7 +30,11 @@ export class AuthService {
             password,
         });
 
-        if (authError) throw authError;
+        if (authError) {
+            const error = new Error(authError.message) as AuthError;
+            error.code = authError.status?.toString();
+            throw error;
+        }
 
         if (authData.user) {
             const { error: profileError } = await supabase
@@ -33,6 +43,8 @@ export class AuthService {
                     id: authData.user.id,
                     role: role || 'customer',
                     email,
+                    verification_attempts: 0,
+                    email_verified: false,
                 });
 
             if (profileError) throw profileError;
@@ -52,7 +64,7 @@ export class AuthService {
         return session;
     }
 
-    static async getProfile(): Promise<AuthProfile | null> {
+    static async getProfile(): Promise<Profile | null> {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) throw sessionError;
         if (!session?.user) return null;
@@ -64,10 +76,10 @@ export class AuthService {
             .single();
 
         if (error) throw error;
-        return data ? { ...data, email: session.user.email } : null;
+        return data ? { ...data, email: session.user.email || '' } as Profile : null;
     }
 
-    static async updateProfile(data: Partial<AuthProfile>): Promise<AuthProfile> {
+    static async updateProfile(data: Partial<Profile>): Promise<Profile> {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) throw sessionError;
         if (!session?.user) throw new Error('No authenticated user');
@@ -80,55 +92,73 @@ export class AuthService {
             .single();
 
         if (error) throw error;
-        return { ...profile, email: session.user.email };
+        return { ...profile, email: session.user.email || '' } as Profile;
     }
 
-  static async verifyEmail(code: string) {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) throw userError || new Error('No user found');
+    static async verifyEmail(code: string) {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) throw userError || new Error('No user found');
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('verification_code, verification_attempts, last_verification_attempt')
-      .eq('id', user.id)
-      .single();
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('verification_code, verification_attempts, last_verification_attempt')
+            .eq('id', user.id)
+            .single();
 
-    if (error) throw error;
+        if (error) throw error;
 
-    // Check verification code
-    if (data.verification_code !== code) {
-      // Increment attempts
-      await supabase
-        .from('profiles')
-        .update({
-          verification_attempts: (data.verification_attempts || 0) + 1,
-          last_verification_attempt: new Date().toISOString(),
-        })
-        .eq('id', user.id);
-      throw new Error('Invalid verification code');
+        // Check rate limiting
+        if (data.verification_attempts >= MAX_VERIFICATION_ATTEMPTS) {
+            const lastAttempt = new Date(data.last_verification_attempt || '');
+            const timeSinceLastAttempt = (new Date().getTime() - lastAttempt.getTime()) / 1000 / 60;
+
+            if (timeSinceLastAttempt < VERIFICATION_TIMEOUT_MINUTES) {
+                throw new Error(`Too many attempts. Please try again in ${Math.ceil(VERIFICATION_TIMEOUT_MINUTES - timeSinceLastAttempt)} minutes.`);
+            }
+        }
+
+        // Check verification code
+        if (data.verification_code !== code) {
+            // Increment attempts
+            await supabase
+                .from('profiles')
+                .update({
+                    verification_attempts: (data.verification_attempts || 0) + 1,
+                    last_verification_attempt: new Date().toISOString(),
+                })
+                .eq('id', user.id);
+            throw new Error('Invalid verification code');
+        }
+
+        // Mark email as verified
+        const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+                email_verified: true,
+                verification_code: null,
+                verification_attempts: 0,
+                last_verification_attempt: null,
+            })
+            .eq('id', user.id);
+
+        if (updateError) throw updateError;
     }
 
-    // Mark email as verified
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        email_verified: true,
-        verification_code: null,
-        verification_attempts: 0,
-        last_verification_attempt: null,
-      })
-      .eq('id', user.id);
+    static async resetPassword(email: string) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        if (error) {
+            const authError = new Error(error.message) as AuthError;
+            authError.code = error.status?.toString();
+            throw authError;
+        }
+    }
 
-    if (updateError) throw updateError;
-  }
-
-  static async resetPassword(email: string) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    if (error) throw error;
-  }
-
-  static async updatePassword(password: string) {
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) throw error;
-  }
+    static async updatePassword(password: string) {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) {
+            const authError = new Error(error.message) as AuthError;
+            authError.code = error.status?.toString();
+            throw authError;
+        }
+    }
 } 

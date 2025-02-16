@@ -55,8 +55,8 @@ export default function ServicesPage() {
   const [page, setPage] = useState(1);
 
   // Get initial search query and category from URL
-  const initialQuery = searchParams.get('q') || '';
-  const initialCategory = searchParams.get('category') || null;
+  const initialQuery = searchParams?.get('q') || '';
+  const initialCategory = searchParams?.get('category') || null;
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory);
 

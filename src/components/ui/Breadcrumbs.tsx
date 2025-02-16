@@ -38,7 +38,7 @@ export function Breadcrumbs({
   const segments = React.useMemo(() => {
     if (customSegments) return customSegments;
 
-    return pathname
+    return pathname!
       .split('/')
       .filter(Boolean)
       .map((segment, index, array) => {

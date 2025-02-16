@@ -1,8 +1,9 @@
 'use client';
 
-import { Skeleton } from '@/components';
+ 
 import { Navigation } from '@/components/navigation';
 import { ServiceCard } from '@/components/services/ServiceCard';
+import { Skeleton } from '@/components/ui/loading';
 import { SearchFilter } from '@/components/ui/SearchFilter';
 import { useStore } from '@/lib/supabase/store';
 import {

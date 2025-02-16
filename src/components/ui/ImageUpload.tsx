@@ -1,8 +1,8 @@
 'use client';
 
+import Image from 'next/image';
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import Image from 'next/image';
 import { Button } from './Button';
 
 export interface ImageUploadProps {
@@ -17,7 +17,6 @@ export function ImageUpload({
   initialUrl,
   onChange,
   maxSize = 5,
-  aspectRatio,
   className = ''
 }: ImageUploadProps) {
   const [preview, setPreview] = useState<string>(initialUrl || '');
