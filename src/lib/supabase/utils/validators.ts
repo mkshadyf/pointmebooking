@@ -1,3 +1,4 @@
+import { Booking } from '@/types';
 import { z } from 'zod';
 
 // Common patterns
@@ -134,4 +135,8 @@ export type LoginRequest = z.infer<typeof loginSchema>;
 export type RegisterRequest = z.infer<typeof registerSchema>;
 export type UpdateProfileRequest = z.infer<typeof profileSchema>;
 export type UserResponse = z.infer<typeof UserResponseSchema>;
-export type ServiceResponse = z.infer<typeof ServiceResponseSchema>; 
+export type ServiceResponse = z.infer<typeof ServiceResponseSchema>;
+
+export const validateBooking = (data: unknown): asserts data is Booking => {
+  // Implement validation logic
+}; 

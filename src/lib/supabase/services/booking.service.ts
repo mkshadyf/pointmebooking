@@ -1,10 +1,11 @@
-import { BOOKING_STATUSES } from '@/types';
+import { Booking, BOOKING_STATUSES } from '@/types';
 import { supabase } from '../client';
 import type { BookingInsert, BookingUpdate, DbBooking } from '../types';
+import { BaseService } from './BaseService';
 
 type BookingStatus = typeof BOOKING_STATUSES[number];
 
-export class BookingService {
+export class BookingService extends BaseService<Booking> {
   static async getAll(filters: {
     status?: BookingStatus;
     business_id?: string;
@@ -124,5 +125,14 @@ export class BookingService {
 
     if (error) throw error;
     return data.length === 0;
+  }
+
+  async validateBookingSlot(): Promise<boolean> {
+    // Implement booking validation logic
+    return true;
+  }
+
+  async handleBookingConflicts(): Promise<void> {
+    // Implement conflict detection
   }
 } 

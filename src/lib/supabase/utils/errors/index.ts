@@ -85,24 +85,24 @@ export const ErrorMessageMap: Record<ErrorCode, string> = {
 // Base error class
 export class AppError extends Error {
   constructor(
-    public code: ErrorCode,
-    message?: string
+    public code: string,
+    message: string,
+    public status: number = 500
   ) {
-    super(message || ErrorMessageMap[code]);
-    this.name = 'AppError';
+    super(message);
   }
 }
 
 // Error handlers
 export function handleAuthError(error: any): AppError {
   if (error?.message?.includes('Invalid login credentials')) {
-    return new AppError(ErrorCode.AUTH_INVALID_CREDENTIALS);
+    return new AppError(ErrorCode.AUTH_INVALID_CREDENTIALS, error?.message);
   }
   if (error?.message?.includes('User not found')) {
-    return new AppError(ErrorCode.AUTH_USER_NOT_FOUND);
+    return new AppError(ErrorCode.AUTH_USER_NOT_FOUND, error?.message);
   }
   if (error?.message?.includes('Email already in use')) {
-    return new AppError(ErrorCode.AUTH_EMAIL_IN_USE);
+    return new AppError(ErrorCode.AUTH_EMAIL_IN_USE, error?.message);
   }
   return new AppError(ErrorCode.AUTH_ERROR, error?.message);
 }
@@ -112,7 +112,7 @@ export function handleApiError(error: any): AppError {
     return error;
   }
   if (error?.code) {
-    return new AppError(error.code as ErrorCode, error.message);
+    return new AppError(error.code as string, error.message, error.status || 500);
   }
   return new AppError(ErrorCode.API_ERROR, error?.message);
 }

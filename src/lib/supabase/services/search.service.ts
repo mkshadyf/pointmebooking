@@ -25,7 +25,7 @@ export class SearchService extends BaseSearchService {
       addressField?: string;
     }
   ) {
-    const { limit, page, offset } = this.buildPagination(options);
+    const { limit, page, offset } = SearchService.buildPagination(options);
 
     let query = supabase
       .from(table)
@@ -81,7 +81,7 @@ export class SearchService extends BaseSearchService {
     limit?: number;
     page?: number;
   } = {}) {
-    const { limit, page, offset } = this.buildPagination(options);
+    const { limit, page, offset } = SearchService.buildPagination(options);
 
     const { data, error, count } = await supabase
       .from('categories')
@@ -139,4 +139,45 @@ export class SearchService extends BaseSearchService {
       throw error;
     }
   }
+
+
+
+  async searchByLocation(query: string, options: SearchOptions = {}) {
+    const { limit, page, offset } = SearchService.buildPagination(options);
+
+    const { data, error } = await supabase
+      .from('services')
+      .select('*')
+      .eq('status', 'active')
+      .textSearch('address', query, {
+        type: 'websearch',
+        config: 'english',
+      })
+      .range(offset, offset + limit - 1)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data || [];
+  }
+
+
+    async searchByCategory(query: string, options: SearchOptions = {}) {
+    const { limit, page, offset } = SearchService.buildPagination(options);
+
+    const { data, error } = await supabase
+      .from('services')
+      .select('*')
+      .eq('status', 'active')
+      .textSearch('category', query, {
+        type: 'websearch',
+        config: 'english',
+      })
+      .range(offset, offset + limit - 1)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+  }
+
+  
 } 

@@ -1,5 +1,6 @@
 import { showToast } from '@/components/ToastHost';
 import { ErrorCode } from '@/lib/supabase/utils/errors';
+import { Booking } from '@/types';
 import { ErrorMessageMap } from '../../utils';
  
 export const NOTIFICATION_MESSAGES = {
@@ -70,4 +71,11 @@ export const NotificationService = {
     const text = NOTIFICATION_MESSAGES[message as NotificationMessage] || message;
     showToast.warning(text);
   },
-}; 
+};
+
+// Need to implement notification system
+export interface NotificationService {
+  sendBookingConfirmation(booking: Booking): Promise<void>;
+  sendReminderNotification(booking: Booking): Promise<void>;
+  sendCancellationNotification(booking: Booking): Promise<void>;
+} 

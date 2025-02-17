@@ -76,7 +76,7 @@ export function Calendar({ onDateSelect, onBookingSelect }: CalendarProps) {
     };
 
     fetchBookings();
-  }, [user?.id]);
+  }, [supabase, user?.id]);
 
   const events = bookings.map(booking => ({
     id: booking.id,

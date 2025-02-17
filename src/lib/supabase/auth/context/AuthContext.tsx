@@ -1,5 +1,7 @@
 'use client';
 
+import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect } from 'react';
 import { AuthService } from '../../services/auth.service';
 import { useStore } from '../../store/store';
@@ -11,6 +13,7 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const store = useStore();
+    const router = useRouter();
 
     useEffect(() => {
         const initAuth = async () => {
@@ -39,6 +42,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         initAuth();
     }, []);
 
+    useEffect(() => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            async (event, session) => {
+                if (event === 'SIGNED_IN' && session?.user) {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', session.user.id)
+                        .single();
+
+                    if (profile?.role === 'business') {
+                        router.push('/dashboard/business');
+                    }
+                }
+            }
+        );
+
+        return () => subscription.unsubscribe();
+    }, [router]);
+
     const value: AuthContextType = {
         user: store.user,
         profile: store.user,
@@ -54,7 +77,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         const authProfile: AuthProfile = {
                             ...profile,
                             verification_attempts: profile.verification_attempts || 0,
-                            role: profile.role as AuthRole
                         };
                         store.setUser(authProfile);
                         store.setIsAuthenticated(true);
