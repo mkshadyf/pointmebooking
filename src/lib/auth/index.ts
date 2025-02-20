@@ -1,6 +1,6 @@
 // Context and hooks
+export type { AuthContextType } from '@/types/auth';
 export { AuthContext, useAuth } from '../supabase/auth/context/AuthContext';
-export type { AuthContextType } from '../supabase/auth/context/AuthContext';
 
 // Services
 export { AuthService } from '../supabase/services/auth.service';
@@ -12,7 +12,7 @@ export {
 } from '../supabase/store/slices/auth.slice';
 
 // Types
-export type { AuthProfile } from '../supabase/types/database';
+export type { AuthProfile } from '../supabase';
 
 // Constants
 export const AUTH_ROUTES = {

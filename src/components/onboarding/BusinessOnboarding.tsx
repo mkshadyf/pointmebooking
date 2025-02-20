@@ -1,16 +1,20 @@
 'use client';
 
 import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
-import { AuthProfile, AuthRole } from '@/lib/supabase/types/auth.types';
-import { useState } from 'react';
+import { AuthProfile, AuthRole } from '@/types/database/auth';
+import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
 import { BusinessDetailsStep, BusinessDetailsStepProps } from './steps/BusinessDetailsStep';
 
 interface BusinessOnboardingProps {
-  onComplete?: () => void;
+  onboardingComplete: () => void;
 }
 
-export default function BusinessOnboarding({ onComplete }: BusinessOnboardingProps) {
-  const { profile, updateProfile } = useAuth();
+const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onboardingComplete }) => {
+  const { updateProfile, profile } = useAuth();
+  const router = useRouter();
+  const [businessName, setBusinessName] = useState(profile?.business_name || '');
+  const [businessType, setBusinessType] = useState(profile?.business_type || '');
   const [currentStep, setCurrentStep] = useState(0);
 
   const handleStepChange = (field: string, value: string) => {
@@ -25,14 +29,32 @@ export default function BusinessOnboarding({ onComplete }: BusinessOnboardingPro
   const handleNext = async () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
-    } else if (onComplete) {
-      onComplete();
+    } else if (onboardingComplete) {
+      onboardingComplete();
     }
   };
 
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const updates: Partial<AuthProfile> = {
+      onboarding_completed: true,
+      business_name: businessName,
+      business_type: businessType,
+      role: 'business',
+    };
+
+    try {
+      await updateProfile(updates);
+      onboardingComplete();
+    } catch (error) {
+      console.error('Onboarding update failed:', error);
     }
   };
 
@@ -57,4 +79,6 @@ export default function BusinessOnboarding({ onComplete }: BusinessOnboardingPro
 
   const CurrentStepComponent = steps[currentStep].component;
   return <CurrentStepComponent {...steps[currentStep].props} />;
-}
+};
+
+export default BusinessOnboarding;

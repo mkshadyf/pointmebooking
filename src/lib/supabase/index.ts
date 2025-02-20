@@ -1,47 +1,56 @@
-import { createBrowserClient } from '@supabase/ssr';
+import { Database } from '@/types/database/generated.types';
+import { createClient } from '@supabase/supabase-js';
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config';
 
-export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+export const supabase = createClient<Database>(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
 
-// Browser client
-export const createBrowserSupabaseClient = () => {
-  return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-};
+// Re-export types and interfaces
+// Use the centralized types!
+export type { AuthProfile, Booking, BusinessCategory, ServiceCategory } from '@/lib/supabase/types';
+export { AuthContext, AuthProvider, useAuth } from './auth/context/AuthContext';
 
-// Export singleton instance for browser
-export const supabase = createBrowserSupabaseClient();
+// Re-export services
+export { AuthService } from './services/auth.service';
+export { BookingService } from './services/booking.service';
+export { ProfileService } from './services/profile.service';
+export { ServiceService } from './services/service.service';
 
 // Re-export common types and interfaces
 export * from './config';
 
 // Auth exports
-export { AuthContext, AuthProvider, useAuth } from './auth/context/AuthContext';
-export type { AuthContextType } from './auth/context/AuthContext';
 export { withAuth } from './auth/guards/withAuth';
 
 // Service exports
-export {
-  AuthService,
-  BookingService,
-  CategoryService,
-  EmailService,
-  ProfileService,
-  SearchService,
-  ServiceService
-} from './services';
+export { EmailService, SearchService } from './services';
 
 // Hook exports
 export {
-  useSupabaseRealtime,
-  useSupabaseStorage
+    useSupabaseRealtime,
+    useSupabaseStorage
 } from './hooks';
 
 // Type exports
 export type {
-  ApiResponse, AuthProfile,
-  AuthRole, BookingInsert, BookingUpdate, CategoryInsert, CategoryUpdate, DbBooking,
-  DbCategory, DbProfile,
-  DbService, PaginatedResponse, ProfileInsert, ProfileUpdate, ServiceInsert, ServiceUpdate, ServiceWithRelations, SupabaseAuthError
+    ApiResponse,
+    BookingInsert,
+    BookingUpdate,
+    BusinessCategoryInsert,
+    BusinessCategoryUpdate,
+    DbBooking,
+    DbBusinessCategory,
+    DbProfile,
+    DbService,
+    PaginatedResponse,
+    ProfileInsert,
+    ProfileUpdate,
+    ServiceInsert,
+    ServiceUpdate,
+    ServiceWithRelations,
+    SupabaseAuthError
 } from './types';
 
 // Store exports
@@ -50,14 +59,14 @@ export type { StoreState } from './store';
 
 // Utility exports
 export {
-  handleApiError, handleAuthError, handleClientError,
-  type AppError
+    handleApiError, handleAuthError, handleClientError,
+    type AppError
 } from './utils/errors';
 
 export {
-  validateEmail,
-  validatePassword,
-  validateUrl
+    validateEmail,
+    validatePassword,
+    validateUrl
 } from './utils/validators';
 
 // Constants

@@ -20,6 +20,6 @@ export default function OnboardingPage() {
     }
   }, [user, isLoading, router]);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (    isLoading) return <LoadingSpinner />;
   return null; // Page will redirect, no need to render anything
 } 

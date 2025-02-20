@@ -1,5 +1,5 @@
 import { supabase } from '../client';
-import type { DbCategory, DbProfile, DbService } from '../types';
+import type { DbBusinessCategory, DbProfile, DbService } from '../types';
 import { BaseSearchService } from './BaseSearchService';
 
 interface SearchOptions {
@@ -9,9 +9,9 @@ interface SearchOptions {
   location?: string;
 }
 
-type ServiceWithRelations = DbService & { business: DbProfile; category: DbCategory };
+type ServiceWithRelations = DbService & { business: DbProfile; category: DbBusinessCategory };
 type ProfileWithServices = DbProfile & { services: DbService[] };
-type CategoryWithCount = DbCategory & { service_count: number };
+type CategoryWithCount = DbBusinessCategory & { service_count: number };
 
 export class SearchService extends BaseSearchService {
   private static async executeSearch<T>(
@@ -143,7 +143,7 @@ export class SearchService extends BaseSearchService {
 
 
   async searchByLocation(query: string, options: SearchOptions = {}) {
-    const { limit, page, offset } = SearchService.buildPagination(options);
+    const { limit, offset } = SearchService.buildPagination(options);
 
     const { data, error } = await supabase
       .from('services')
@@ -163,9 +163,9 @@ export class SearchService extends BaseSearchService {
 
 
     async searchByCategory(query: string, options: SearchOptions = {}) {
-    const { limit, page, offset } = SearchService.buildPagination(options);
+    const { limit, offset } = SearchService.buildPagination(options);
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('services')
       .select('*')
       .eq('status', 'active')

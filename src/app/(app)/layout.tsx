@@ -2,11 +2,8 @@
 
 import { LoadingSpinner } from '@/components/ui/loading';
 import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
-import { ReactNode, Suspense } from 'react';
+import { Suspense } from 'react';
  
-interface AppLayoutProps {
-  children: ReactNode;
-}
 
 export default function AppLayout() {
   const { isLoading } = useAuth();

@@ -2,10 +2,10 @@ import { Provider } from "@supabase/supabase-js";
 
 // Base types
 export * from './api';
-export * from './auth';
+// The types in ./auth are already exported via the database types.
+// Remove this line.
 export * from './booking';
-export * from './database.types';
-
+ 
 // Constants
 export const USER_ROLES = ['customer', 'business', 'admin'] as const;
 export const USER_STATUSES = ['active', 'inactive', 'suspended'] as const;

@@ -5,4 +5,5 @@ export { AuthProvider, useAuth } from './context/AuthContext';
 export { withAuth } from './guards/withAuth';
 
 // Type exports
-export type { AuthProfile } from '../types';
+export type { AuthProfile } from '@/lib/supabase/types';
+

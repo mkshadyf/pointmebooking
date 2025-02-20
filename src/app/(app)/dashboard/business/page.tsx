@@ -3,9 +3,10 @@
 import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
 import { AnalyticsSection } from './components/AnalyticsSection';
 import { OverviewSection } from './components/OverviewSection';
+ 
 import { QuickActions } from './components/QuickActions';
-import { RecentActivity } from './components/RecentActivity';
-
+import RecentActivity from './components/RecentActivity';
+ 
 export default function BusinessDashboardPage() {
   const { profile } = useAuth();
 

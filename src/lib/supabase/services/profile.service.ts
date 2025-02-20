@@ -1,13 +1,39 @@
+import { AuthProfile } from '@/types/database/auth';
 import { supabase } from '../client';
-import { Database } from '../types/database';
+import { DbProfile } from '../types';
+import { BaseService } from './BaseService';
 
-type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
-type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
+export class ProfileService extends BaseService<'profiles'> {
+  constructor() {
+    super(supabase, 'profiles');
+  }
 
-export class ProfileService {
-  static async getAll() {
-    const { data, error } = await supabase
-      .from('profiles')
+  async updateProfile(id: string, data: Partial<AuthProfile>): Promise<DbProfile> {
+    try {
+      const { data: profile, error } = await this.client
+        .from(this.table)
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return {
+        ...profile,
+        created_at: profile.created_at || new Date().toISOString(),
+        updated_at: profile.updated_at || new Date().toISOString(),
+        working_hours: profile.working_hours || {},
+        preferences: profile.preferences || {},
+        social_media: profile.social_media || {}
+      } as DbProfile;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async getAll() {
+    const { data, error } = await this.client
+      .from(this.table)
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -15,9 +41,9 @@ export class ProfileService {
     return data;
   }
 
-  static async getById(id: string) {
-    const { data, error } = await supabase
-      .from('profiles')
+  async getById(id: string) {
+    const { data, error } = await this.client
+      .from(this.table)
       .select('*')
       .eq('id', id)
       .single();
@@ -26,9 +52,9 @@ export class ProfileService {
     return data;
   }
 
-  static async getByEmail(email: string) {
-    const { data, error } = await supabase
-      .from('profiles')
+  async getByEmail(email: string) {
+    const { data, error } = await this.client
+      .from(this.table)
       .select('*')
       .eq('email', email)
       .single();
@@ -37,9 +63,9 @@ export class ProfileService {
     return data;
   }
 
-  static async create(profile: ProfileInsert) {
-    const { data, error } = await supabase
-      .from('profiles')
+  async create(profile: DbProfile) {
+    const { data, error } = await this.client
+      .from(this.table)
       .insert(profile)
       .select()
       .single();
@@ -48,28 +74,16 @@ export class ProfileService {
     return data;
   }
 
-  static async update(id: string, updates: ProfileUpdate) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  static async updateEmail(id: string, email: string) {
-    const { error } = await supabase.auth.updateUser({ email });
+  async updateEmail(id: string, email: string) {
+    const { error } = await this.client.auth.updateUser({ email });
     if (error) throw error;
 
     return this.update(id, { email });
   }
 
-  static async getBusinesses() {
-    const { data, error } = await supabase
-      .from('profiles')
+  async getBusinesses() {
+    const { data, error } = await this.client
+      .from(this.table)
       .select('*')
       .eq('role', 'business')
       .order('created_at', { ascending: false });
@@ -78,9 +92,9 @@ export class ProfileService {
     return data;
   }
 
-  static async getBusinessesByCategory(categoryId: string) {
-    const { data, error } = await supabase
-      .from('profiles')
+  async getBusinessesByCategory(categoryId: string) {
+    const { data, error } = await this.client
+      .from(this.table)
       .select('*, services!inner(*)')
       .eq('role', 'business')
       .eq('services.category_id', categoryId)
@@ -90,9 +104,9 @@ export class ProfileService {
     return data;
   }
 
-  static async searchBusinesses(query: string) {
-    const { data, error } = await supabase
-      .from('profiles')
+  async searchBusinesses(query: string) {
+    const { data, error } = await this.client
+      .from(this.table)
       .select('*')
       .eq('role', 'business')
       .textSearch('business_name', query, {
@@ -105,9 +119,9 @@ export class ProfileService {
     return data;
   }
 
-  static async verifyEmail(id: string, code: string) {
-    const { data, error } = await supabase
-      .from('profiles')
+  async verifyEmail(id: string, code: string) {
+    const { data, error } = await this.client
+      .from(this.table)
       .select('verification_code, verification_attempts, last_verification_attempt')
       .eq('id', id)
       .single();
@@ -133,17 +147,17 @@ export class ProfileService {
     });
   }
 
-  static async completeOnboarding(id: string) {
+  async completeOnboarding(id: string) {
     return this.update(id, { onboarding_completed: true });
   }
 
-  static async uploadAvatar(id: string, file: File) {
+  async uploadAvatar(id: string, file: File) {
     const fileExt = file.name.split('.').pop();
     const fileName = `${id}.${fileExt}`;
     const filePath = `avatars/${fileName}`;
 
     // Upload file
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await this.client.storage
       .from('avatars')
       .upload(filePath, file, {
         upsert: true,
@@ -152,7 +166,7 @@ export class ProfileService {
     if (uploadError) throw uploadError;
 
     // Get public URL
-    const { data } = supabase.storage
+    const { data } = this.client.storage
       .from('avatars')
       .getPublicUrl(filePath);
 
@@ -160,13 +174,13 @@ export class ProfileService {
     return this.update(id, { avatar_url: data.publicUrl });
   }
 
-  static async uploadBusinessLogo(id: string, file: File) {
+  async uploadBusinessLogo(id: string, file: File) {
     const fileExt = file.name.split('.').pop();
     const fileName = `${id}.${fileExt}`;
     const filePath = `logos/${fileName}`;
 
     // Upload file
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await this.client.storage
       .from('logos')
       .upload(filePath, file, {
         upsert: true,
@@ -175,11 +189,13 @@ export class ProfileService {
     if (uploadError) throw uploadError;
 
     // Get public URL
-    const { data } = supabase.storage
+    const { data } = this.client.storage
       .from('logos')
       .getPublicUrl(filePath);
 
-    // Update profile
-    return this.update(id, { business_logo: data.publicUrl });
+    // Update profile with logo_url instead of business_logo
+    return this.update(id, { logo_url: data.publicUrl });
   }
-} 
+}
+
+export const profileService = new ProfileService(); 

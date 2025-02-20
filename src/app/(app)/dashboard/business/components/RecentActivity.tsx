@@ -1,31 +1,46 @@
 'use client';
 
-import { Card } from '@/components/ui/card';
+import { Card } from '@/components/ui/Card';
+import { CardContent } from '@/components/ui/CardContent';
+import { CardHeader } from '@/components/ui/CardHeader';
+import { CardTitle } from '@/components/ui/CardTitle';
+import { useAuth } from '@/lib/supabase';
 import { useRecentActivity } from '@/lib/supabase/hooks/useRecentActivity';
 
-export function RecentActivity() {
-  const { data, isLoading } = useRecentActivity();
+const RecentActivity: React.FC = () => {
+  useAuth();
+
+  const { data, loading, error } = useRecentActivity();
+
+  if (loading) {
+    return <div>Loading recent activity...</div>;
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
 
   return (
-    <Card className="p-6">
-      <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-      <div className="space-y-4">
-        {isLoading ? (
-          Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />
-          ))
+    <Card>
+      <CardHeader>
+        <CardTitle>Recent Activity</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {data.length > 0 ? (
+          <ul>
+            {data.map((activity, index) => (
+              <li key={index}>
+                {/* Adjust this based on your Activity interface */}
+                {activity.timestamp} - {activity.title} - {activity.description}
+              </li>
+            ))}
+          </ul>
         ) : (
-          data?.map((activity, i) => (
-            <div key={i} className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">{activity.type}</p>
-                <p className="text-sm text-gray-500">{activity.description}</p>
-              </div>
-              <p className="text-sm text-gray-500">{activity.timestamp}</p>
-            </div>
-          ))
+          <p>No recent activity.</p>
         )}
-      </div>
+      </CardContent>
     </Card>
   );
-} 
+};
+
+export default RecentActivity; 

@@ -1,15 +1,27 @@
 import { StepButton } from '@/components/onboarding/steps/shared/StepButton';
 import { StepInput } from '@/components/onboarding/steps/shared/StepInput';
-import type { AuthFormData, AuthFormField } from '@/types/auth/index';
 import { useState } from 'react';
 
-export function AuthForm({ fields, onSubmit, submitText, isLoading, error }: {
+export interface AuthFormField {
+  name: string;
+  label: string;
+  type: string;
+  placeholder?: string;
+  required?: boolean;
+  options?: { value: string; label: string }[];
+}
+
+export type AuthFormData = Record<string, string>;
+
+interface AuthFormProps {
     fields: AuthFormField[];
     onSubmit: (data: AuthFormData) => Promise<void>;
     submitText: string;
     isLoading?: boolean;
     error?: string;
-}) {
+}
+
+export function AuthForm({ fields, onSubmit, submitText, isLoading, error }: AuthFormProps) {
     const [formData, setFormData] = useState<AuthFormData>({
         email: '',
         password: '',
@@ -29,23 +41,22 @@ export function AuthForm({ fields, onSubmit, submitText, isLoading, error }: {
             {fields.map((field) => {
                 if (field.type === 'select' && field.options) {
                     return (
-                        <div key={field.id}>
+                        <div key={field.name}>
                             <label
-                                htmlFor={field.id}
+                                htmlFor={field.name}
                                 className="block text-sm font-medium leading-6 text-gray-900"
                             >
                                 {field.label}
                             </label>
                             <select
-                                id={field.id}
-                                name={field.id}
+                                id={field.name}
+                                name={field.name}
                                 required={field.required}
-                                value={formData[field.id] || ''}
-                                onChange={(e) => handleChange(field.id, e.target.value)}
+                                value={formData[field.name] || ''}
+                                onChange={(e) => handleChange(field.name, e.target.value)}
                                 className="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6"
                             >
-                                <option value="">Select {field.label}</option>
-                                {field.options.map((option: { value: string; label: string }) => (
+                                {field.options.map((option) => (
                                     <option key={option.value} value={option.value}>
                                         {option.label}
                                     </option>
@@ -57,13 +68,13 @@ export function AuthForm({ fields, onSubmit, submitText, isLoading, error }: {
 
                 return (
                     <StepInput
-                        key={field.id}
-                        id={field.id}
+                        key={field.name}
+                        id={field.name}
                         label={field.label}
                         type={field.type || 'text'}
                         required={field.required}
-                        value={formData[field.id] || ''}
-                        onChange={(value) => handleChange(field.id, value)}
+                        value={formData[field.name] || ''}
+                        onChange={(value) => handleChange(field.name, value)}
                     />
                 );
             })}

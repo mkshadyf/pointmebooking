@@ -291,4 +291,18 @@ BEGIN
     CROSS JOIN generate_series(0, 6) i
     CROSS JOIN generate_series(0, 2) j
     ON CONFLICT DO NOTHING;
-END $$; 
+END $$;
+
+-- Insert sample business categories
+INSERT INTO public.business_categories (name, description) VALUES
+('Beauty', 'Beauty and wellness services'),
+('Fitness', 'Fitness and training services'),
+('Professional', 'Professional services'),
+('Home', 'Home services');
+
+-- Insert sample service categories
+INSERT INTO public.service_categories (business_category_id, name, description) VALUES
+((SELECT id FROM public.business_categories WHERE name = 'Beauty'), 'Hair', 'Hair styling and care services'),
+((SELECT id FROM public.business_categories WHERE name = 'Beauty'), 'Nails', 'Nail care services'),
+((SELECT id FROM public.business_categories WHERE name = 'Fitness'), 'Personal Training', 'One-on-one training sessions'),
+((SELECT id FROM public.business_categories WHERE name = 'Fitness'), 'Group Classes', 'Group fitness classes'); 

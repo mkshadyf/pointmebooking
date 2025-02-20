@@ -1,8 +1,8 @@
 'use client';
-
-import { Card } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+ 
+import { Card } from '@/components/ui/Card';
+import { Label } from '@/components/ui/Label';
+import { Switch } from '@/components/ui/Switch';
 import { useState } from 'react';
 
 export function DashboardSettings() {

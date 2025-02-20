@@ -1,19 +1,18 @@
 'use client';
 
-import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
- 
 import { Avatar, AvatarFallback, AvatarImage, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/index';
+import { useAuth } from '@/lib/supabase';
 import { DropdownMenuLabel, DropdownMenuSeparator } from '@radix-ui/react-dropdown-menu';
 
 export const UserMenu = () => {
-  const { user, signOut } = useAuth();
+  const { profile, user, signOut } = useAuth();
 
   if (!user) return null;
 
   const initials = user.email
     ?.split('@')[0]
     .split('.')
-    .map((n) => n[0])
+    .map((n: string) => n[0])
     .join('')
     .toUpperCase();
 
@@ -22,7 +21,7 @@ export const UserMenu = () => {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar>
-            <AvatarImage src={user.avatar_url || ''} alt={user.email || ''} />
+            <AvatarImage src={profile?.avatar_url || ''} alt={user?.email || ''} />
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
         </Button>

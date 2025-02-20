@@ -1,21 +1,28 @@
 'use client';
 
-import { AuthForm, AuthWrapper } from '@/components/auth/shared';
-import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
+import { AuthForm, AuthFormData, AuthWrapper } from '@/components/auth';
+import { AuthService } from '@/lib/supabase/services/auth.service';
+import { AuthRole } from '@/types/database/auth';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 export default function RegisterPage() {
-  const { register } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const router = useRouter();
 
-  const handleSubmit = async (formData: { email: string; password: string; role: string }) => {
+  const handleSubmit = async (data: AuthFormData) => {
     setIsLoading(true);
     setError('');
 
     try {
-      await register(formData.email, formData.password, formData.role as 'customer' | 'business');
+      await AuthService.register({
+        email: data.email,
+        password: data.password,
+        role: data.role as AuthRole
+      });
+      router.push('/login');
     } catch (err) {
       setError('Failed to create account');
     } finally {
@@ -29,31 +36,31 @@ export default function RegisterPage() {
       description={
         <>
           Already have an account?{' '}
-          <Link href="/login" className="font-semibold leading-6 text-primary hover:text-primary-dark">
+          <Link href="/login" className="font-semibold text-primary">
             Sign in
           </Link>
         </>
       }
     >
       <AuthForm
-        onSubmit={(data) => handleSubmit(data as { email: string; password: string; role: string })}
+        onSubmit={handleSubmit}
         isLoading={isLoading}
         error={error}
         fields={[
           {
-            id: 'email',
+            name: 'email',
             label: 'Email address',
             type: 'email',
             required: true
           },
           {
-            id: 'password',
+            name: 'password',
             label: 'Password',
             type: 'password',
             required: true
           },
           {
-            id: 'role',
+            name: 'role',
             label: 'Account Type',
             type: 'select',
             required: true,

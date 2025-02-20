@@ -1,7 +1,6 @@
+ import { Database } from '@/types/database';
 import { supabase } from '../client';
-import { Database } from '../types/database';
-
-type ServiceInsert = Database['public']['Tables']['services']['Insert'];
+ type ServiceInsert = Database['public']['Tables']['services']['Insert'];
 type ServiceUpdate = Database['public']['Tables']['services']['Update'];
 
 export class ServiceService {

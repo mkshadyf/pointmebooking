@@ -1,8 +1,7 @@
-import { BusinessMetrics } from '../types/analytics';
-import { BaseService } from './BaseService';
+import { BusinessMetrics, RecentActivity } from '../types/analytics';
 
-// Missing analytics service
-export class AnalyticsService extends BaseService<BusinessMetrics> {
+// NO EXTENSION:
+export class AnalyticsService {
   async getBusinessMetrics(): Promise<BusinessMetrics> {
     try {
       // TODO: Implement actual analytics logic
@@ -20,5 +19,21 @@ export class AnalyticsService extends BaseService<BusinessMetrics> {
     } catch (error) {
       return this.handleError(error);
     }
+  }
+
+  async getRecentActivity(): Promise<RecentActivity[]> {
+    try {
+      // TODO: Implement actual recent activity logic
+      return [];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  // Add a handleError method if you want to keep that pattern:
+  protected handleError(error: any): any {
+    // Your error handling logic
+    console.error("An error occurred:", error);
+    throw error; // Or return a specific error object
   }
 } 

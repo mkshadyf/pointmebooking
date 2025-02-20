@@ -5,18 +5,14 @@ export interface BusinessMetrics {
   completedBookings: number;
   cancelledBookings: number;
   activeServices: number;
-  topServices: Array<{
-    id: string;
-    name: string;
-    bookings: number;
-    revenue: number;
-  }>;
-  revenueByPeriod: Array<{
-    period: string;
-    revenue: number;
-  }>;
-  bookingsByStatus: Array<{
-    status: string;
-    count: number;
-  }>;
+  topServices: { name: string; count: number }[];
+  revenueByPeriod: { period: string; revenue: number }[];
+  bookingsByStatus: { status: string; count: number }[];
+}
+
+export interface RecentActivity {
+  id: string;
+  title: string;
+  description: string;
+  timestamp: string;
 } 

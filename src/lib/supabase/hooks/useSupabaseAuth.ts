@@ -3,7 +3,7 @@
 import type { AuthError, Session, User } from '@supabase/supabase-js';
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../client';
-import { Tables } from '../types/database';
+import { Tables } from '../types';
 
 export type Profile = Tables<'profiles'>;
 

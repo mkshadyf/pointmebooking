@@ -1,5 +1,5 @@
-import type { Profile } from '@/types/auth';
-import { AuthCredentials } from '@/types/auth/index';
+import type { DbProfile } from '@/lib/supabase/types';
+import { AuthRole } from '@/lib/supabase/types';
 import { supabase } from '../client';
 
 const MAX_VERIFICATION_ATTEMPTS = 5;
@@ -8,6 +8,12 @@ const VERIFICATION_TIMEOUT_MINUTES = 30;
 interface AuthError extends Error {
     code?: string;
 }
+
+export type AuthCredentials = {
+    email: string;
+    password: string;
+    role: AuthRole;
+};
 
 export class AuthService {
     static async login({ email, password }: AuthCredentials) {
@@ -43,6 +49,8 @@ export class AuthService {
                     id: authData.user.id,
                     role: role || 'customer',
                     email,
+                    is_verified: false,
+                    is_email_verified: false,
                     verification_attempts: 0,
                     email_verified: false,
                 });
@@ -64,7 +72,7 @@ export class AuthService {
         return session;
     }
 
-    static async getProfile(): Promise<Profile | null> {
+    static async getProfile(): Promise<DbProfile | null> {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) throw sessionError;
         if (!session?.user) return null;
@@ -76,10 +84,10 @@ export class AuthService {
             .single();
 
         if (error) throw error;
-        return data ? { ...data, email: session.user.email || '' } as Profile : null;
+        return data ? { ...data, email: session.user.email || '' } as DbProfile : null;
     }
 
-    static async updateProfile(data: Partial<Profile>): Promise<Profile> {
+    static async updateProfile(data: Partial<DbProfile>): Promise<DbProfile> {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) throw sessionError;
         if (!session?.user) throw new Error('No authenticated user');
@@ -92,7 +100,7 @@ export class AuthService {
             .single();
 
         if (error) throw error;
-        return { ...profile, email: session.user.email || '' } as Profile;
+        return { ...profile, email: session.user.email || '' } as DbProfile;
     }
 
     static async verifyEmail(code: string) {

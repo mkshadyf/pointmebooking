@@ -1,8 +1,18 @@
 import { create } from 'zustand';
-import { AuthState, authSlice } from './slices/auth.slice';
+import { devtools } from 'zustand/middleware';
+import { AuthSlice, authSlice } from './slices/auth.slice';
+// Import other slices if you have them
 
-export interface RootState extends AuthState {}
+// Combine all slices into a single RootState
+export type RootState = AuthSlice // & OtherSlice & AnotherSlice;
 
-export const useStore = create<RootState>()((...a) => ({
-    ...authSlice(...a)
-})); 
+// Create the store with all slices and middleware
+export const useStore = create<RootState>()(
+    devtools(
+        (...a) => ({
+            ...authSlice(...a),
+            // ...otherSlice(...a),
+        }),
+        { name: 'YourAppName' } // Optional: Give your store a name for Redux DevTools
+    )
+); 

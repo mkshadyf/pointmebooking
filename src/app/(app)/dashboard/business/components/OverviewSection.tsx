@@ -1,10 +1,22 @@
 'use client';
 
-import { Card } from '@/components/ui/card';
+import { Card } from '@/components/ui/Card';
+import { supabase, useAuth } from '@/lib/supabase';
 import { useBusinessMetrics } from '@/lib/supabase/hooks/useBusinessMetrics';
 
 export function OverviewSection() {
-  const { data, isLoading } = useBusinessMetrics();
+  const { profile } = useAuth();
+  const businessId = profile?.id;
+
+  const { data, isLoading, error } = useBusinessMetrics(businessId, supabase);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error || !businessId) {
+    return <div>Error: {error?.message || "Could not load business ID"}</div>;
+  }
 
   return (
     <Card className="p-6">

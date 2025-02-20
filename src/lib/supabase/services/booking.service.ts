@@ -1,17 +1,24 @@
-import { Booking, BOOKING_STATUSES } from '@/types';
+import { Database } from '@/lib/supabase/types/database.types';
+import { BOOKING_STATUSES } from '@/types';
 import { supabase } from '../client';
-import type { BookingInsert, BookingUpdate, DbBooking } from '../types';
+import type { BookingInsert, BookingUpdate } from '../types';
 import { BaseService } from './BaseService';
 
 type BookingStatus = typeof BOOKING_STATUSES[number];
 
-export class BookingService extends BaseService<Booking> {
-  static async getAll(filters: {
-    status?: BookingStatus;
-    business_id?: string;
-    customer_id?: string;
-  } = {}) {
-    let query = supabase.from('bookings').select('*');
+type BookingFilters = {
+  status?: Database['public']['Enums']['booking_status'];
+  business_id?: string;
+  customer_id?: string;
+};
+
+export class BookingService extends BaseService<'bookings'> {
+  constructor() {
+    super(supabase, 'bookings');
+  }
+
+  async getBookings(filters: BookingFilters = {}) {
+    let query = this.client.from('bookings').select('*');
 
     if (filters.status) {
       query = query.eq('status', filters.status);
@@ -25,7 +32,7 @@ export class BookingService extends BaseService<Booking> {
 
     const { data, error } = await query;
     if (error) throw error;
-    return data as DbBooking[];
+    return data;
   }
 
   static async getById(id: string) {

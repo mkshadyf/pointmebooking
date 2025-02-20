@@ -10,7 +10,7 @@ export default function BusinessOnboardingPage() {
   const { user, isLoading, profile } = useAuth();
   const router = useRouter();
 
-  useEffect(( ) => {
+  useEffect(() => {
     if (!isLoading) {
       if (!user) {
         router.push('/login');
@@ -26,8 +26,8 @@ export default function BusinessOnboardingPage() {
   if (!user || user.role !== 'business') return null;
 
   return (
-    <BusinessOnboarding 
-      onComplete={() => router.push('/dashboard/business')}
+    <BusinessOnboarding
+      onboardingComplete={() => router.push('/dashboard/business')}
     />
   );
 } 
