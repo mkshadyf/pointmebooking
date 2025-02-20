@@ -8,12 +8,12 @@ import { SupabaseStore } from '../store.types';
 
 async function handleAuthAction<T = void>(
   set: (partial: Partial<AuthState> | ((state: AuthState) => Partial<AuthState>)) => void,
-  action: () => Promise<T>,
+  authServiceMethod: () => Promise<T>,
   onSuccess?: (result: T) => Promise<void>
 ): Promise<void> {
   set({ isLoading: true, error: null });
   try {
-    const result = await action();
+    const result = await authServiceMethod();
     if (onSuccess) await onSuccess(result);
   } catch (error) {
     set({ error: error instanceof Error ? error.message : 'Unknown error' });
@@ -154,6 +154,6 @@ export const selectIsAuthenticated = (state: RootState) => state.isAuthenticated
 export const selectIsLoading = (state: RootState) => state.isLoading;
 
 // Store hook
-export const useAuthStore = (selector: (state: AuthState) => any) => {
+export const useAuthStore = (selector: (state: AuthState) => unknown) => {
   return selector;
 }; 

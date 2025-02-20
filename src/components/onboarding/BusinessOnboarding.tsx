@@ -12,7 +12,6 @@ interface BusinessOnboardingProps {
 
 const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onboardingComplete }) => {
   const { updateProfile, profile } = useAuth();
-  const router = useRouter();
   const [businessName, setBusinessName] = useState(profile?.business_name || '');
   const [businessType, setBusinessType] = useState(profile?.business_type || '');
   const [currentStep, setCurrentStep] = useState(0);
@@ -40,23 +39,6 @@ const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onboardingCompl
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const updates: Partial<AuthProfile> = {
-      onboarding_completed: true,
-      business_name: businessName,
-      business_type: businessType,
-      role: 'business',
-    };
-
-    try {
-      await updateProfile(updates);
-      onboardingComplete();
-    } catch (error) {
-      console.error('Onboarding update failed:', error);
-    }
-  };
 
   const businessDetailsProps: BusinessDetailsStepProps = {
     data: {

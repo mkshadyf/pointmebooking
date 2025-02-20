@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import { BusinessProfile } from '@/types';
+import { useState } from 'react';
+import { FormStep } from './shared/FormStep';
 
 export interface ContactInfoStepProps {
   initialData: BusinessProfile | null;
@@ -31,7 +32,11 @@ export function ContactInfoStep({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <FormStep
+      title="Contact Information"
+      description="Provide your business contact details"
+      onSubmit={handleSubmit}
+    >
       <div>
         <label
           htmlFor="contact_number"
@@ -203,13 +208,7 @@ export function ContactInfoStep({
             Back
           </button>
         )}
-        <button
-          type="submit"
-          className="ml-auto inline-flex justify-center rounded-md border border-transparent bg-primary py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-        >
-          Next
-        </button>
       </div>
-    </form>
+    </FormStep>
   );
 }

@@ -55,6 +55,7 @@ export type AuthProfile = DbProfile & {
 	last_verification_attempt?: string | null;
 	avatar_url?: string | null;
 	business_logo?: string | null;
+	logo_url?: string | null;
 	working_hours?: Record<string, any>;
 	preferences?: Record<string, any>;
 	social_media?: Record<string, any>;

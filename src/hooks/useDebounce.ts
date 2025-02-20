@@ -2,11 +2,22 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+interface DebounceOptions {
+  delay?: number;
+  immediate?: boolean;
+}
+
 // Debounce a value
-export function useDebounce<T>(value: T, delay: number = 500): T {
+export function useDebounce<T>(value: T, options: DebounceOptions = {}) {
+  const { delay = 500, immediate = false } = options;
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
   useEffect(() => {
+    if (immediate && value !== debouncedValue) {
+      setDebouncedValue(value);
+      return;
+    }
+
     const timer = setTimeout(() => {
       setDebouncedValue(value);
     }, delay);
@@ -14,7 +25,7 @@ export function useDebounce<T>(value: T, delay: number = 500): T {
     return () => {
       clearTimeout(timer);
     };
-  }, [value, delay]);
+  }, [value, delay, immediate, debouncedValue]);
 
   return debouncedValue;
 }
@@ -23,7 +34,7 @@ export function useDebounce<T>(value: T, delay: number = 500): T {
 export function useDebouncedCallback<T extends (...args: any[]) => any>(
   callback: T,
   delay: number = 500,
-  deps: any[] = []
+  _deps: any[] = []
 ) {
   const timeoutRef = useRef<NodeJS.Timeout>();
 
@@ -83,4 +94,6 @@ export function useDebouncedFn<T extends (...args: any[]) => any>(
       leadingRef.current = true;
     }, delay);
   }).current;
-} 
+}
+
+export default useDebounce; 
