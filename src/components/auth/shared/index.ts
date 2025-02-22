@@ -3,5 +3,6 @@ export { AuthForm } from './AuthForm';
 export { AuthInput } from './AuthInput';
 export { AuthWrapper } from './AuthWrapper';
 
-// Also export the types
+// Export types (still need named export for types)
 export type { AuthFormData, AuthFormField } from './AuthForm';
+

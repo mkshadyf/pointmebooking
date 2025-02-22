@@ -1,0 +1,15 @@
+---
+description: Implementation of the pointme project and debugging
+globs: 
+---
+
+# Your rule content
+
+- use a strict DRY aproach by carefully checking if the file you judge to create, is not existent maybe in different directory or with different name...
+- always try understanding filetree to have an outer overview as well
+- enforce the use of supabase. latest usage of @supabase/ssr instead of @supabase/auth-helpers 
+- always give me a gps of our development to understand what we've done so far and what is to be done
+- always propose me latest top dev tools and hacks to help me save time and effort
+- use best code organization and centralization practices
+- Pointme is meant to be more mobile so ensure mobile features are respected to the full
+- always pick shortcuts rather than long development efforts

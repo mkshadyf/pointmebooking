@@ -1,6 +1,7 @@
-import { StepButton } from '@/components/onboarding/steps/shared/StepButton';
-import { StepInput } from '@/components/onboarding/steps/shared/StepInput';
-import { useState } from 'react';
+'use client';
+
+import React, { useState } from 'react';
+import { StepButton, StepInput } from '../../onboarding/steps/shared';
 
 export interface AuthFormField {
   name: string;
@@ -67,7 +68,7 @@ export function AuthForm({ fields, onSubmit, submitText, isLoading, error }: Aut
                 }
 
                 return (
-                    <StepInput
+                    < StepInput
                         key={field.name}
                         id={field.name}
                         label={field.label}
