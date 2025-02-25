@@ -1,172 +1,293 @@
-import type { DbProfile } from '@/lib/supabase/types';
-import { AuthRole } from '@/lib/supabase/types';
+import { AppError, ErrorHandler, ErrorType } from '@/lib/error-handling';
+import { AuthError, AuthProfile, AuthResponse, AuthResult, AuthRole, DbProfile, LoginCredentials } from '@/types/database/auth';
+import { Database } from '@generated.types';
+import { PostgrestError, Session, User } from '@supabase/supabase-js';
 import { supabase } from '../client';
+import { BaseServiceUtils } from './BaseService';
 
-const MAX_VERIFICATION_ATTEMPTS = 5;
-const VERIFICATION_TIMEOUT_MINUTES = 30;
+// Define the type for inserting a new profile based on the generated types
+export type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
 
-interface AuthError extends Error {
-    code?: string;
+export interface AuthLoginResponse {
+    user: User;
+    session: Session | null;
 }
 
-export type AuthCredentials = {
-    email: string;
-    password: string;
-    role: AuthRole;
-};
+// Convert PostgrestError to AuthError
+const toAuthError = (error: PostgrestError): AuthError => ({
+    name: error.code,
+    message: error.message,
+    code: error.code,
+    status: Number(error.code) || 500,
+    details: { hint: error.hint, details: error.details }
+});
 
-export class AuthService {
-    static async login({ email, password }: AuthCredentials) {
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
+export class AuthService extends BaseServiceUtils {
+    static async login(credentials: LoginCredentials): Promise<AuthResponse<AuthResult>> {
+        try {
+            // Use retry mechanism for network operations
+            const authData = await this.withRetry(
+                async () => {
+                    const { data, error } = await supabase.auth.signInWithPassword(credentials);
+                    if (error) throw error;
+                    return data;
+                },
+                { context: 'AuthService.login' }
+            );
+            
+            const profile = await this.withRetry(
+                async () => {
+                    const { data, error } = await this.getProfile();
+                    if (error) throw error;
+                    return data;
+                },
+                { context: 'AuthService.login.getProfile' }
+            );
 
-        if (error) {
-            const authError = new Error(error.message) as AuthError;
-            authError.code = error.status?.toString();
-            throw authError;
+            return {
+                data: {
+                    user: profile as AuthProfile,
+                    session: authData.session,
+                    supabaseUser: authData.user
+                },
+                error: null
+            };
+        } catch (error) {
+            const appError = ErrorHandler.convertToAppError(error, 'auth.login');
+            return { data: null, error: appError as AuthError };
         }
-        return data;
     }
 
-    static async register({ email, password, role }: AuthCredentials) {
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-            email,
-            password,
-        });
+    static async register(email: string, password: string, role: AuthRole): Promise<AuthResponse<AuthResult>> {
+        try {
+            // Use retry mechanism for network operations
+            const authData = await this.withRetry(
+                async () => {
+                    const { data, error } = await supabase.auth.signUp({
+                        email,
+                        password,
+                        options: {
+                            data: { role }
+                        }
+                    });
+                    if (error) throw error;
+                    return data;
+                },
+                { context: 'AuthService.register' }
+            );
 
-        if (authError) {
-            const error = new Error(authError.message) as AuthError;
-            error.code = authError.status?.toString();
-            throw error;
-        }
-
-        if (authData.user) {
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .insert({
-                    id: authData.user.id,
-                    role: role || 'customer',
-                    email,
-                    is_verified: false,
-                    is_email_verified: false,
-                    verification_attempts: 0,
-                    email_verified: false,
-                });
-
-            if (profileError) throw profileError;
-        }
-
-        return authData;
-    }
-
-    static async logout() {
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-    }
-
-    static async getSession() {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        return session;
-    }
-
-    static async getProfile(): Promise<DbProfile | null> {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-        if (!session?.user) return null;
-
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-
-        if (error) throw error;
-        return data ? { ...data, email: session.user.email || '' } as DbProfile : null;
-    }
-
-    static async updateProfile(data: Partial<DbProfile>): Promise<DbProfile> {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-        if (!session?.user) throw new Error('No authenticated user');
-
-        const { data: profile, error } = await supabase
-            .from('profiles')
-            .update(data)
-            .eq('id', session.user.id)
-            .select()
-            .single();
-
-        if (error) throw error;
-        return { ...profile, email: session.user.email || '' } as DbProfile;
-    }
-
-    static async verifyEmail(code: string) {
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError || !user) throw userError || new Error('No user found');
-
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('verification_code, verification_attempts, last_verification_attempt')
-            .eq('id', user.id)
-            .single();
-
-        if (error) throw error;
-
-        // Check rate limiting
-        if (data.verification_attempts >= MAX_VERIFICATION_ATTEMPTS) {
-            const lastAttempt = new Date(data.last_verification_attempt || '');
-            const timeSinceLastAttempt = (new Date().getTime() - lastAttempt.getTime()) / 1000 / 60;
-
-            if (timeSinceLastAttempt < VERIFICATION_TIMEOUT_MINUTES) {
-                throw new Error(`Too many attempts. Please try again in ${Math.ceil(VERIFICATION_TIMEOUT_MINUTES - timeSinceLastAttempt)} minutes.`);
+            // Check if user is null
+            if (!authData.user) {
+                const error = new AppError(
+                    'Failed to create user',
+                    ErrorType.AUTHENTICATION,
+                    null,
+                    500
+                );
+                return { data: null, error: error as AuthError };
             }
-        }
 
-        // Check verification code
-        if (data.verification_code !== code) {
-            // Increment attempts
-            await supabase
+            // Create profile with retry
+            const profile = await this.withRetry(
+                async () => {
+                    const { data, error } = await supabase
+                        .from('profiles')
+                        .insert([
+                            {
+                                user_id: authData.user!.id,
+                                email,
+                                role,
+                                status: 'active'
+                            }
+                        ])
+                        .select()
+                        .single();
+                    
+                    if (error) throw error;
+                    return data;
+                },
+                { context: 'AuthService.register.createProfile' }
+            );
+
+            return {
+                data: {
+                    user: profile as AuthProfile,
+                    session: authData.session,
+                    supabaseUser: authData.user
+                },
+                error: null
+            };
+        } catch (error) {
+            const appError = ErrorHandler.convertToAppError(error, 'auth.register');
+            return { data: null, error: appError as AuthError };
+        }
+    }
+
+    static async logout(): Promise<AuthResponse<boolean>> {
+        try {
+            const { error } = await supabase.auth.signOut();
+            
+            if (error) {
+                return { data: false, error };
+            }
+            
+            return { data: true, error: null };
+        } catch (error) {
+            const appError = ErrorHandler.convertToAppError(error, 'auth.logout');
+            return { data: false, error: appError as AuthError };
+        }
+    }
+
+    static async getUser(): Promise<AuthResponse<User | null>> {
+        try {
+            const { data, error } = await supabase.auth.getUser();
+            
+            if (error) {
+                return { data: null, error };
+            }
+            
+            return { data: data.user, error: null };
+        } catch (error) {
+            const appError = ErrorHandler.convertToAppError(error, 'auth.getUser');
+            return { data: null, error: appError as AuthError };
+        }
+    }
+
+    static async getProfile(): Promise<AuthResponse<AuthProfile | null>> {
+        try {
+            const { data: userData, error: userError } = await supabase.auth.getUser();
+            
+            if (userError) {
+                return { data: null, error: userError };
+            }
+            
+            if (!userData.user) {
+                return { data: null, error: null };
+            }
+            
+            const { data: profile, error: profileError } = await supabase
                 .from('profiles')
-                .update({
-                    verification_attempts: (data.verification_attempts || 0) + 1,
-                    last_verification_attempt: new Date().toISOString(),
-                })
-                .eq('id', user.id);
-            throw new Error('Invalid verification code');
-        }
-
-        // Mark email as verified
-        const { error: updateError } = await supabase
-            .from('profiles')
-            .update({
-                email_verified: true,
-                verification_code: null,
-                verification_attempts: 0,
-                last_verification_attempt: null,
-            })
-            .eq('id', user.id);
-
-        if (updateError) throw updateError;
-    }
-
-    static async resetPassword(email: string) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
-        if (error) {
-            const authError = new Error(error.message) as AuthError;
-            authError.code = error.status?.toString();
-            throw authError;
+                .select('*')
+                .eq('user_id', userData.user.id)
+                .single();
+                
+            if (profileError) {
+                return { data: null, error: toAuthError(profileError) };
+            }
+            
+            return { data: profile as AuthProfile, error: null };
+        } catch (error) {
+            const appError = ErrorHandler.convertToAppError(error, 'auth.getProfile');
+            return { data: null, error: appError as AuthError };
         }
     }
 
-    static async updatePassword(password: string) {
-        const { error } = await supabase.auth.updateUser({ password });
-        if (error) {
-            const authError = new Error(error.message) as AuthError;
-            authError.code = error.status?.toString();
-            throw authError;
+    static async getSession(): Promise<AuthResponse<Session>> {
+        try {
+            const { data, error } = await supabase.auth.getSession();
+            return { data: data.session, error };
+        } catch (error) {
+            const appError = ErrorHandler.convertToAppError(error, 'auth.getSession');
+            return { data: null, error: appError as AuthError };
+        }
+    }
+
+    static async refreshSession(): Promise<AuthResponse<Session>> {
+        try {
+            const { data, error } = await supabase.auth.refreshSession();
+            return { data: data.session, error };
+        } catch (error) {
+            const appError = ErrorHandler.convertToAppError(error, 'auth.refreshSession');
+            return { data: null, error: appError as AuthError };
+        }
+    }
+
+    static async updateProfile(data: Partial<AuthProfile>): Promise<AuthResponse<DbProfile>> {
+        try {
+            const { data: session } = await supabase.auth.getSession();
+            
+            if (!session.session?.user) {
+                const error = new AppError(
+                    'No authenticated user found',
+                    ErrorType.AUTHENTICATION,
+                    null,
+                    401
+                );
+                return { data: null, error: error as AuthError };
+            }
+            
+            const { data: updatedProfile, error } = await supabase
+                .from('profiles')
+                .update(data)
+                .eq('user_id', session.session.user.id)
+                .select()
+                .single();
+                
+            return { data: updatedProfile, error: error ? toAuthError(error) : null };
+        } catch (error) {
+            const appError = ErrorHandler.convertToAppError(error, 'auth.updateProfile');
+            return { data: null, error: appError as AuthError };
+        }
+    }
+
+    static async verifyEmail(email: string, token: string): Promise<AuthResponse<void>> {
+        try {
+            const { error } = await supabase.auth.verifyOtp({
+                email,
+                token,
+                type: 'email'
+            });
+            
+            return { data: null, error };
+        } catch (error) {
+            const appError = ErrorHandler.convertToAppError(error, 'auth.verifyEmail');
+            return { data: null, error: appError as AuthError };
+        }
+    }
+
+    static async resetPassword(email: string): Promise<AuthResponse<void>> {
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email);
+            return { data: null, error };
+        } catch (error) {
+            const appError = ErrorHandler.convertToAppError(error, 'auth.resetPassword');
+            return { data: null, error: appError as AuthError };
+        }
+    }
+
+    static async updatePassword(newPassword: string): Promise<AuthResponse<void>> {
+        try {
+            const { error } = await supabase.auth.updateUser({ password: newPassword });
+            return { data: null, error };
+        } catch (error) {
+            const appError = ErrorHandler.convertToAppError(error, 'auth.updatePassword');
+            return { data: null, error: appError as AuthError };
+        }
+    }
+
+    static async resendVerificationEmail(): Promise<AuthResponse<void>> {
+        try {
+            const { data: session } = await supabase.auth.getSession();
+            
+            if (!session.session?.user?.email) {
+                const error = new AppError(
+                    'No authenticated user found or email missing',
+                    ErrorType.AUTHENTICATION,
+                    null,
+                    401
+                );
+                return { data: null, error: error as AuthError };
+            }
+            
+            const { error } = await supabase.auth.resend({
+                type: 'signup',
+                email: session.session.user.email
+            });
+            
+            return { data: null, error };
+        } catch (error) {
+            const appError = ErrorHandler.convertToAppError(error, 'auth.resendVerificationEmail');
+            return { data: null, error: appError as AuthError };
         }
     }
 } 

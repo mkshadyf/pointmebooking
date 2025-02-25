@@ -1,85 +1,161 @@
- import { Database } from '@/types/database';
+import { mediumCache } from '@/lib/cache';
+import { Database } from '@generated.types';
 import { supabase } from '../client';
- type ServiceInsert = Database['public']['Tables']['services']['Insert'];
-type ServiceUpdate = Database['public']['Tables']['services']['Update'];
+import { BaseServiceUtils } from './BaseService';
 
-export class ServiceService {
-  static async getAll() {
-    const { data, error } = await supabase
-      .from('services')
-      .select('*, business:profiles(*), category:categories(*)')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false });
+// Define proper types from the generated database types
+export type DbService = Database['public']['Tables']['services']['Row'];
+export type ServiceInsert = Database['public']['Tables']['services']['Insert'];
+export type ServiceUpdate = Database['public']['Tables']['services']['Update'];
 
-    if (error) throw error;
-    return data;
+export class ServiceService extends BaseServiceUtils {
+  private static getCacheKey(method: string, params?: string): string {
+    return `service:${method}${params ? `:${params}` : ''}`;
   }
 
-  static async getById(id: string) {
-    const { data, error } = await supabase
-      .from('services')
-      .select('*, business:profiles(*), category:categories(*)')
-      .eq('id', id)
-      .single();
+  static async getAll(): Promise<DbService[]> {
+    const cacheKey = this.getCacheKey('getAll');
+    
+    return mediumCache.getOrSet(cacheKey, async () => {
+      return await this.withRetry(async () => {
+        const { data, error } = await supabase
+          .from('services')
+          .select('*');
 
-    if (error) throw error;
-    return data;
+        if (error) throw error;
+        return data || [];
+      }, { context: 'ServiceService.getAll' });
+    });
   }
 
-  static async getByBusiness(businessId: string) {
-    const { data, error } = await supabase
-      .from('services')
-      .select('*, category:categories(*)')
-      .eq('business_id', businessId)
-      .order('created_at', { ascending: false });
+  static async getById(id: string): Promise<DbService | null> {
+    const cacheKey = this.getCacheKey('getById', id);
+    
+    return mediumCache.getOrSet(cacheKey, async () => {
+      return await this.withRetry(async () => {
+        const { data, error } = await supabase
+          .from('services')
+          .select('*')
+          .eq('id', id)
+          .single();
 
-    if (error) throw error;
-    return data;
+        if (error) {
+          // If not found, don't throw but return null
+          if (error.code === 'PGRST116') {
+            return null;
+          }
+          throw error;
+        }
+        return data;
+      }, { context: 'ServiceService.getById' });
+    });
   }
 
-  static async getByCategory(categoryId: string) {
-    const { data, error } = await supabase
-      .from('services')
-      .select('*, business:profiles(*)')
-      .eq('category_id', categoryId)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false });
+  static async getByBusiness(businessId: string): Promise<DbService[]> {
+    const cacheKey = this.getCacheKey('getByBusiness', businessId);
+    
+    return mediumCache.getOrSet(cacheKey, async () => {
+      return await this.withRetry(async () => {
+        const { data, error } = await supabase
+          .from('services')
+          .select('*')
+          .eq('business_id', businessId);
 
-    if (error) throw error;
-    return data;
+        if (error) throw error;
+        return data || [];
+      }, { context: 'ServiceService.getByBusiness' });
+    });
   }
 
-  static async create(service: ServiceInsert) {
-    const { data, error } = await supabase
-      .from('services')
-      .insert(service)
-      .select('*, business:profiles(*), category:categories(*)')
-      .single();
+  static async create(service: ServiceInsert): Promise<DbService> {
+    // Don't cache mutations
+    return await this.withRetry(async () => {
+      const { data, error } = await supabase
+        .from('services')
+        .insert([service])
+        .select()
+        .single();
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      
+      // Invalidate relevant caches
+      mediumCache.delete(this.getCacheKey('getAll'));
+      if (service.business_id) {
+        mediumCache.delete(this.getCacheKey('getByBusiness', service.business_id));
+      }
+      if (service.category_id) {
+        mediumCache.delete(this.getCacheKey('getByCategory', service.category_id));
+      }
+      
+      return data;
+    }, { context: 'ServiceService.create' });
   }
 
-  static async update(id: string, updates: ServiceUpdate) {
-    const { data, error } = await supabase
-      .from('services')
-      .update(updates)
-      .eq('id', id)
-      .select('*, business:profiles(*), category:categories(*)')
-      .single();
+  static async update(id: string, service: ServiceUpdate): Promise<DbService> {
+    // Don't cache mutations
+    return await this.withRetry(async () => {
+      const { data, error } = await supabase
+        .from('services')
+        .update(service)
+        .eq('id', id)
+        .select()
+        .single();
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      
+      // Invalidate relevant caches
+      mediumCache.delete(this.getCacheKey('getAll'));
+      mediumCache.delete(this.getCacheKey('getById', id));
+      if (service.business_id) {
+        mediumCache.delete(this.getCacheKey('getByBusiness', service.business_id));
+      }
+      if (service.category_id) {
+        mediumCache.delete(this.getCacheKey('getByCategory', service.category_id));
+      }
+      
+      return data;
+    }, { context: 'ServiceService.update' });
   }
 
-  static async delete(id: string) {
-    // Soft delete by updating status
-    const { error } = await supabase
-      .from('services')
-      .update({ status: 'deleted' })
-      .eq('id', id);
+  static async delete(id: string): Promise<boolean> {
+    // Get the service first to know which caches to invalidate
+    const service = await this.getById(id);
+    
+    return await this.withRetry(async () => {
+      const { error } = await supabase
+        .from('services')
+        .delete()
+        .eq('id', id);
 
-    if (error) throw error;
-    return true;
+      if (error) throw error;
+      
+      // Invalidate relevant caches
+      mediumCache.delete(this.getCacheKey('getAll'));
+      mediumCache.delete(this.getCacheKey('getById', id));
+      if (service?.business_id) {
+        mediumCache.delete(this.getCacheKey('getByBusiness', service.business_id));
+      }
+      if (service?.category_id) {
+        mediumCache.delete(this.getCacheKey('getByCategory', service.category_id));
+      }
+      
+      return true;
+    }, { context: 'ServiceService.delete' });
+  }
+
+  static async getByCategory(categoryId: string): Promise<DbService[]> {
+    const cacheKey = this.getCacheKey('getByCategory', categoryId);
+    
+    return mediumCache.getOrSet(cacheKey, async () => {
+      return await this.withRetry(async () => {
+        const { data, error } = await supabase
+          .from('services')
+          .select('*')
+          .eq('category_id', categoryId);
+
+        if (error) throw error;
+        return data || [];
+      }, { context: 'ServiceService.getByCategory' });
+    });
   }
 } 

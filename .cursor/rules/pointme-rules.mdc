@@ -4,7 +4,8 @@ globs:
 ---
 
 # Your rule content
-
+- i'm not an experienced devleloper so you are my full developer assistant. run implementations and maintenances in YOLO mode.
+- try end-to-end assessment while working on tasks that involve entire codebase or system.
 - use a strict DRY aproach by carefully checking if the file you judge to create, is not existent maybe in different directory or with different name...
 - always try understanding filetree to have an outer overview as well
 - enforce the use of supabase. latest usage of @supabase/ssr instead of @supabase/auth-helpers 
@@ -13,3 +14,7 @@ globs:
 - use best code organization and centralization practices
 - Pointme is meant to be more mobile so ensure mobile features are respected to the full
 - always pick shortcuts rather than long development efforts
+- BARREL exports must be a norm
+- document each module or major feature folder with README with clear details of what's up
+- leverage Single Source of Truth principles more often
+- after a major change, update documentation of the project

@@ -1,105 +1,127 @@
+import { ErrorHandler } from '@/lib/error-handling';
 import { AuthService } from '@/lib/supabase/services/auth.service';
-import { AuthProfile, AuthRole } from '@/types/database/auth';
+import { AuthError, AuthProfile, AuthResponse, AuthRole, DbProfile } from '@/types/database/auth';
 import { User } from '@supabase/supabase-js';
 import { StateCreator } from 'zustand';
-import { DbProfile } from '../../types';
 import { RootState } from '../store';
 import { SupabaseStore } from '../store.types';
 
+// Helper function to create an AuthProfile from a DbProfile
+const createAuthProfile = (profile: DbProfile): AuthProfile => ({
+  ...profile,
+  // Additional auth-specific fields
+  is_verified: profile.email_verified ?? false,
+  is_email_verified: profile.email_verified ?? false,
+  last_login: null,
+  login_count: 0,
+  failed_login_attempts: 0,
+  last_failed_login: null,
+  password_reset_token: null,
+  password_reset_expires: null
+});
+
+// Helper function to handle auth actions with consistent error handling
 async function handleAuthAction<T = void>(
   set: (partial: Partial<AuthState> | ((state: AuthState) => Partial<AuthState>)) => void,
-  authServiceMethod: () => Promise<T>,
-  onSuccess?: (result: T) => Promise<void>
+  authServiceMethod: () => Promise<AuthResponse<T>>,
+  onSuccess?: (result: T) => Promise<void>,
+  context?: string
 ): Promise<void> {
   set({ isLoading: true, error: null });
   try {
     const result = await authServiceMethod();
-    if (onSuccess) await onSuccess(result);
+    if (result.error) {
+      throw result.error;
+    }
+    if (result.data && onSuccess) {
+      await onSuccess(result.data);
+    }
   } catch (error) {
-    set({ error: error instanceof Error ? error.message : 'Unknown error' });
-    throw error;
+    const appError = ErrorHandler.convertToAppError(error, context);
+    set({ error: appError as AuthError });
+    throw appError;
   } finally {
     set({ isLoading: false });
   }
 }
 
-export interface AuthState {
+// Auth slice interface
+export interface AuthSlice {
   user: User | null;
   profile: AuthProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  error: string | null;
-}
-
-export interface AuthActions {
-  login: (email: string, password: string) => Promise<void>;
+  error: AuthError | null;
+  initialized: boolean;
+  
+  login: (credentials: { email: string; password: string }) => Promise<void>;
   register: (email: string, password: string, role: AuthRole) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<AuthProfile>) => Promise<void>;
+  
   clearError: () => void;
   setUser: (user: User | null) => void;
   setIsAuthenticated: (isAuthenticated: boolean) => void;
   setIsLoading: (isLoading: boolean) => void;
   setProfile: (profile: AuthProfile | null) => void;
+  setError: (error: AuthError | null) => void;
 }
 
-export interface AuthSlice extends AuthState, AuthActions {}
+// Auth state interface
+export interface AuthState {
+  user: User | null;
+  profile: AuthProfile | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: AuthError | null;
+  initialized: boolean;
+}
 
+// Initial auth state
 const initialState: AuthState = {
   user: null,
   profile: null,
   isAuthenticated: false,
   isLoading: false,
   error: null,
+  initialized: false
 };
 
-const createAuthProfile = (profile: DbProfile): AuthProfile => ({
-  ...profile,
-  verification_attempts: profile.verification_attempts || 0,
-  role: profile.role as AuthRole,
-  is_verified: profile.email_verified ?? false,
-  is_email_verified: profile.email_verified ?? false,
-  email: profile.email || '',
-  onboarding_completed: profile.onboarding_completed ?? false,
-  working_hours: profile.working_hours || {},
-  preferences: profile.preferences || {},
-  social_media: profile.social_media || {},
-  created_at: profile.created_at || new Date().toISOString(),
-  updated_at: profile.updated_at || new Date().toISOString()
-});
-
+// Auth slice implementation
 export const authSlice: StateCreator<SupabaseStore, [], [], AuthSlice> = (set) => ({
   ...initialState,
 
-  login: async (email: string, password: string) => {
+  login: async (credentials) => {
     await handleAuthAction(
       set,
-      () => AuthService.login({ email, password, role: 'customer' as AuthRole }),
-      async (session) => {
-        if (session.user) {
-          set({ user: session.user, isAuthenticated: true });
-          const profile = await AuthService.getProfile();
-          if (profile) {
-            set({ profile: createAuthProfile(profile) });
+      () => AuthService.login(credentials),
+      async (data) => {
+        if (data?.supabaseUser) {
+          set({ user: data.supabaseUser, isAuthenticated: true });
+          const profileResult = await AuthService.getProfile();
+          if (profileResult.data) {
+            set({ profile: createAuthProfile(profileResult.data) });
           }
         }
-      }
+      },
+      'auth.login'
     );
   },
 
-  register: async (email: string, password: string, role: AuthRole) => {
+  register: async (email, password, role) => {
     await handleAuthAction(
       set,
-      () => AuthService.register({ email, password, role }),
-      async (session) => {
-        if (session.user) {
-          set({ user: session.user, isAuthenticated: true });
-          const profile = await AuthService.getProfile();
-          if (profile) {
-            set({ profile: createAuthProfile(profile) });
+      () => AuthService.register(email, password, role),
+      async (data) => {
+        if (data.supabaseUser) {
+          set({ user: data.supabaseUser, isAuthenticated: true });
+          const profileResult = await AuthService.getProfile();
+          if (profileResult.data) {
+            set({ profile: createAuthProfile(profileResult.data) });
           }
         }
-      }
+      },
+      'auth.register'
     );
   },
 
@@ -109,21 +131,23 @@ export const authSlice: StateCreator<SupabaseStore, [], [], AuthSlice> = (set) =
       () => AuthService.logout(),
       async () => {
         set({ user: null, profile: null, isAuthenticated: false });
-      }
+      },
+      'auth.logout'
     );
   },
 
-  updateProfile: async (data: Partial<AuthProfile>) => {
+  updateProfile: async (data) => {
     await handleAuthAction(
       set,
       () => AuthService.updateProfile(data),
       async (updatedProfile) => {
         if (updatedProfile) {
           set((state) => ({
-            profile: state.profile ? createAuthProfile({ ...state.profile, ...updatedProfile }) : null
+            profile: state.profile ? { ...state.profile, ...updatedProfile } : null
           }));
         }
-      }
+      },
+      'auth.updateProfile'
     );
   },
 
@@ -146,6 +170,10 @@ export const authSlice: StateCreator<SupabaseStore, [], [], AuthSlice> = (set) =
   setProfile: (profile: AuthProfile | null) => {
     set({ profile });
   },
+
+  setError: (error: AuthError | null) => {
+    set({ error });
+  }
 });
 
 // Selectors

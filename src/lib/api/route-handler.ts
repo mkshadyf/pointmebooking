@@ -14,6 +14,15 @@ interface RouteConfig {
   roles?: string[];
 }
 
+// Simplified handler for routes that don't need the full supabase client
+interface SimpleRouteConfig {
+  handler: (req: NextRequest) => Promise<Response>;
+}
+
+export const routeHandler = (config: SimpleRouteConfig) => {
+  return config.handler;
+};
+
 export const createRouteHandler = (handler: RouteHandler, config: RouteConfig = {}) => {
   return async (req: NextRequest, { params }: { params?: { [key: string]: string } } = {}) => {
     try {

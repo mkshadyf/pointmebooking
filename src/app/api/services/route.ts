@@ -1,23 +1,24 @@
-import { createRouteHandler } from '@/lib/api/route-handler';
-import { ServiceService } from '@/lib/supabase';
-import { NextRequest, NextResponse } from 'next/server';
+import { ServiceService } from '@/lib/supabase/services/service.service';
+import { NextResponse } from 'next/server';
 
+export async function GET() {
+  try {
+    const services = await ServiceService.getAll();
+    return NextResponse.json({ services });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Failed to fetch services.' }, { status: 500 });
+  }
+}
 
-export const POST = createRouteHandler(
-  async (req: NextRequest, supabase) => {
-    const body = await req.json();
-    const { data, error } = await supabase
-      .from('services')
-      .insert(body)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return Response.json(data);
-  },
-  { requireAuth: true, roles: ['business'] }
-);
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const newService = await ServiceService.create(body);
+    return NextResponse.json({ service: newService });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Failed to create service.' }, { status: 500 });
+  }
+}
 
 export async function PUT(request: Request) {
   try {

@@ -1,30 +1,67 @@
-import { DbProfile } from '@/lib/supabase/types';
-import { User } from '@supabase/supabase-js';
+import { Database } from '@generated.types';
+import { Session, User } from '@supabase/supabase-js';
 
 // Base profile type from database
-// export type DbProfile = Database['public']['Tables']['profiles']['Row']; // No longer needed, use the imported one
+export type DbProfile = Database['public']['Tables']['profiles']['Row'];
 
 // Auth role type
-export type AuthRole = 'admin' | 'business' | 'customer';
+export type AuthRole = Database['public']['Enums']['user_role'];
+export type UserStatus = Database['public']['Enums']['user_status'];
 
-// Enhanced profile interface with all properties
-export interface AuthProfile extends Omit<DbProfile, 'email'> {
-    id: string;
+// Auth error types
+export interface AuthError extends Error {
+    code?: string;
+    status?: number;
+    details?: Record<string, unknown>;
+}
+
+// Email template types
+export interface EmailTemplate {
+    subject: string;
+    body: string;
+    data: Record<string, unknown>;
+}
+
+// Enhanced profile interface with all properties from database
+export interface AuthProfile extends DbProfile {
+    // Additional auth-specific fields not in database
+    is_verified?: boolean;
+    is_email_verified?: boolean;
+    last_login?: string | null;
+    login_count?: number;
+    failed_login_attempts?: number;
+    last_failed_login?: string | null;
+    password_reset_token?: string | null;
+    password_reset_expires?: string | null;
+}
+
+// Login credentials interface
+export interface LoginCredentials {
     email: string;
-    role: AuthRole;
-    full_name: string | null;
-    avatar_url: string | null;
-    is_verified: boolean;
-    is_email_verified: boolean;
-    email_verified: boolean | null;
-    verification_attempts: number;
-    verification_code: string | null;
-    onboarding_completed: boolean;
-    working_hours: Record<string, any>;
-    preferences: Record<string, any>;
-    social_media: Record<string, any>;
-    created_at: string;
-    updated_at: string;
+    password: string;
+}
+
+// Auth result interface
+export interface AuthResult {
+    user: AuthProfile;
+    session: Session | null;
+    supabaseUser: User;
+}
+
+// Auth response type
+export interface AuthResponse<T> {
+    data: T | null;
+    error: AuthError | null;
+}
+
+// Auth state interface
+export interface AuthState {
+    user: User | null;
+    profile: AuthProfile | null;
+    isAuthenticated: boolean;
+    isLoading: boolean;
+    error: AuthError | null;
+    initialized: boolean;
 }
 
 // Auth context interface
@@ -33,20 +70,23 @@ export interface AuthContextType {
     profile: AuthProfile | null;
     isLoading: boolean;
     isAuthenticated: boolean;
+    error: AuthError | null;
     login: (email: string, password: string) => Promise<void>;
     register: (email: string, password: string, role: AuthRole) => Promise<void>;
     signOut: () => Promise<void>;
     updateProfile: (data: Partial<AuthProfile>) => Promise<void>;
+    verifyEmail: (code: string) => Promise<void>;
+    resendVerification: () => Promise<void>;
+    resetPassword: (email: string) => Promise<void>;
+    updatePassword: (newPassword: string) => Promise<void>;
+    refreshSession: () => Promise<void>;
 }
 
-// Auth state interface
-export interface AuthState {
-    user: AuthProfile | null;
-    isAuthenticated: boolean;
-    isLoading: boolean;
-    error: string | null;
-    initialized: boolean;
-    setUser: (user: AuthProfile | null) => void;
-    setIsAuthenticated: (isAuthenticated: boolean) => void;
-    setIsLoading: (isLoading: boolean) => void;
-} 
+// Auth verification constants
+export const AUTH_CONSTANTS = {
+    MAX_VERIFICATION_ATTEMPTS: 5,
+    VERIFICATION_TIMEOUT_MINUTES: 30,
+    PASSWORD_RESET_EXPIRY_HOURS: 24,
+    MIN_PASSWORD_LENGTH: 8,
+    SESSION_EXPIRY_DAYS: 7,
+} as const; 

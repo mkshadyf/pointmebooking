@@ -9,7 +9,7 @@ import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'rec
 export function AnalyticsSection() {
   const { user } = useAuth();
   const userId = user?.id;
-  const { data, isLoading, error } = useBusinessMetrics(userId || '', supabase);
+  useBusinessMetrics(userId || '', supabase);
 
   if (!userId) return null;
 

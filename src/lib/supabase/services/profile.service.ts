@@ -122,7 +122,7 @@ export class ProfileService extends BaseService<'profiles'> {
   async verifyEmail(id: string, code: string) {
     const { data, error } = await this.client
       .from(this.table)
-      .select('verification_code, verification_attempts, last_verification_attempt')
+      .select('verification_code, verification_attempts')
       .eq('id', id)
       .single();
 
@@ -133,7 +133,6 @@ export class ProfileService extends BaseService<'profiles'> {
       // Increment attempts
       await this.update(id, {
         verification_attempts: (data.verification_attempts || 0) + 1,
-        last_verification_attempt: new Date().toISOString(),
       });
       throw new Error('Invalid verification code');
     }
@@ -143,7 +142,6 @@ export class ProfileService extends BaseService<'profiles'> {
       email_verified: true,
       verification_code: undefined,
       verification_attempts: 0,
-      last_verification_attempt: undefined,
     });
   }
 

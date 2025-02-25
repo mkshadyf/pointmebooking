@@ -5,8 +5,9 @@ import * as ToastPrimitiveBase from '@radix-ui/react-toast';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { X } from 'lucide-react';
 import * as React from 'react';
+import { toast, ToastContainer, ToastContent, ToastOptions as ToastifyOptions } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-const ToastProvider = ToastPrimitiveBase.Provider;
 const ToastViewport = React.forwardRef<
   React.ElementRef<typeof ToastPrimitiveBase.Viewport>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitiveBase.Viewport>
@@ -113,12 +114,165 @@ const ToastDescription = React.forwardRef<
 ));
 ToastDescription.displayName = ToastPrimitiveBase.Description.displayName;
 
-export {
-    Toast,
-    ToastAction,
-    ToastClose,
-    ToastDescription,
-    ToastProvider,
-    ToastTitle,
-    ToastViewport
+export type ToastType = 'success' | 'error' | 'info' | 'warning' | 'loading';
+
+export interface ToastOptions {
+    type: ToastType;
+    title?: string;
+    message: string;
+    duration?: number;
+    position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'top-center' | 'bottom-center';
+    dismissible?: boolean;
+    action?: {
+        label: string;
+        onClick: () => void;
+    };
+    icon?: React.ReactNode;
+    className?: string;
+    progressClassName?: string;
+    bodyClassName?: string;
+    style?: React.CSSProperties;
+    update?: boolean;
+    toastId?: string;
+}
+
+const toastClassNames = {
+    success: 'bg-green-50 border-green-200 text-green-900',
+    error: 'bg-red-50 border-red-200 text-red-900',
+    info: 'bg-blue-50 border-blue-200 text-blue-900',
+    warning: 'bg-yellow-50 border-yellow-200 text-yellow-900',
+    loading: 'bg-gray-50 border-gray-200 text-gray-900'
 };
+
+const toastIcons = {
+    success: '✓',
+    error: '✕',
+    info: 'ℹ',
+    warning: '⚠',
+    loading: '↻'
+};
+
+export const showToast = ({
+    type,
+    title,
+    message,
+    duration = 3000,
+    position = 'top-right',
+    dismissible = true,
+    action,
+    icon,
+    className,
+    progressClassName,
+    bodyClassName,
+    style,
+    update,
+    toastId
+}: ToastOptions) => {
+    const toastMessage: ToastContent = (
+        <div className={cn('flex items-start space-x-3', bodyClassName)}>
+            {(icon || toastIcons[type]) && (
+                <div className="flex-shrink-0 w-5 h-5 mt-1">
+                    {icon || (
+                        <span className={cn(
+                            'inline-flex items-center justify-center w-5 h-5 rounded-full',
+                            type === 'success' && 'bg-green-100 text-green-600',
+                            type === 'error' && 'bg-red-100 text-red-600',
+                            type === 'info' && 'bg-blue-100 text-blue-600',
+                            type === 'warning' && 'bg-yellow-100 text-yellow-600',
+                            type === 'loading' && 'bg-gray-100 text-gray-600 animate-spin'
+                        )}>
+                            {toastIcons[type]}
+                        </span>
+                    )}
+                </div>
+            )}
+            <div className="flex-1 pt-0.5">
+                {title && <h6 className="font-semibold text-sm mb-1">{title}</h6>}
+                <p className="text-sm opacity-90">{message}</p>
+                {action && (
+                    <button
+                        onClick={action.onClick}
+                        className={cn(
+                            'mt-2 text-sm font-medium',
+                            type === 'success' && 'text-green-600 hover:text-green-700',
+                            type === 'error' && 'text-red-600 hover:text-red-700',
+                            type === 'info' && 'text-blue-600 hover:text-blue-700',
+                            type === 'warning' && 'text-yellow-600 hover:text-yellow-700',
+                            type === 'loading' && 'text-gray-600 hover:text-gray-700'
+                        )}
+                    >
+                        {action.label}
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+
+    const toastOptions: ToastifyOptions = {
+        position,
+        autoClose: duration,
+        hideProgressBar: false,
+        closeOnClick: dismissible,
+        pauseOnHover: true,
+        draggable: dismissible,
+        progress: undefined,
+        className: cn(
+            'border rounded-lg shadow-lg',
+            toastClassNames[type],
+            className
+        ),
+        progressClassName: cn(
+            type === 'success' && 'bg-green-400',
+            type === 'error' && 'bg-red-400',
+            type === 'info' && 'bg-blue-400',
+            type === 'warning' && 'bg-yellow-400',
+            type === 'loading' && 'bg-gray-400',
+            progressClassName
+        ),
+        style,
+        toastId,
+        updateId: update ? toastId : undefined
+    };
+
+    if (update && toastId) {
+        toast.update(toastId, {
+            render: toastMessage,
+            ...toastOptions
+        });
+    } else {
+        toast[type === 'loading' ? 'info' : type](toastMessage, toastOptions);
+    }
+
+    return toastId;
+};
+
+export const updateToast = (
+    toastId: string,
+    options: Partial<ToastOptions>
+) => {
+    showToast({ ...options, update: true, toastId } as ToastOptions);
+};
+
+export const dismissToast = (toastId: string) => {
+    toast.dismiss(toastId);
+};
+
+export const ToastContainerComponent: React.FC = () => {
+    return (
+        <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="light"
+            className="toast-container"
+        />
+    );
+};
+
+export default ToastContainerComponent;

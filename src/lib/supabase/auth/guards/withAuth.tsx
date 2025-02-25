@@ -1,10 +1,11 @@
 'use client';
 
 import { useAuth } from '@/lib/supabase';
+import { Database } from '@generated.types';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
-type Role = 'business' | 'admin' | 'customer'; // Define the Role type
+type Role = Database['public']['Enums']['user_role']; // Use the enum from our database types
 
 export function withAuth<P extends object>(
   WrappedComponent: React.ComponentType<P>,
@@ -27,7 +28,7 @@ export function withAuth<P extends object>(
         router.replace(redirectTo);
       }
 
-      if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
+      if (allowedRoles && profile && !allowedRoles.includes(profile.role as Role)) {
         router.replace('/unauthorized');
       }
     }, [user, isLoading, router, redirectTo, allowedRoles, profile]);

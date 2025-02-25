@@ -1,4 +1,4 @@
-import { Database } from "@/types/database/generated.types";
+import { Database } from "@generated.types";
 
 // Base Types
 export type DbBusinessCategory = Database['public']['Tables']['business_categories']['Row'];

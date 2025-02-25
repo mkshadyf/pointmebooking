@@ -1,45 +1,107 @@
-import { Database } from '@/lib/supabase/types/database.types';
-import { BOOKING_STATUSES } from '@/types';
+import { Database } from '@generated.types';
 import { supabase } from '../client';
-import type { BookingInsert, BookingUpdate } from '../types';
 import { BaseService } from './BaseService';
 
-type BookingStatus = typeof BOOKING_STATUSES[number];
-
-type BookingFilters = {
-  status?: Database['public']['Enums']['booking_status'];
-  business_id?: string;
-  customer_id?: string;
-};
+// Define types from database schema
+export type DbBooking = Database['public']['Tables']['bookings']['Row'];
+export type BookingInsert = Database['public']['Tables']['bookings']['Insert'];
+export type BookingUpdate = Database['public']['Tables']['bookings']['Update'];
+export type BookingStatus = Database['public']['Enums']['booking_status'];
 
 export class BookingService extends BaseService<'bookings'> {
   constructor() {
     super(supabase, 'bookings');
   }
 
-  async getBookings(filters: BookingFilters = {}) {
+  async getAll(filters: Partial<DbBooking> = {}): Promise<DbBooking[]> {
     let query = this.client.from('bookings').select('*');
 
-    if (filters.status) {
-      query = query.eq('status', filters.status);
-    }
-    if (filters.business_id) {
-      query = query.eq('business_id', filters.business_id);
-    }
-    if (filters.customer_id) {
-      query = query.eq('customer_id', filters.customer_id);
-    }
+    // Apply filters dynamically
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        query = query.eq(key, value);
+      }
+    });
 
     const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
+
+  async getById(id: string): Promise<DbBooking> {
+    try {
+      const { data, error } = await this.client
+        .from('bookings')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      if (!data) throw new Error(`Booking with id ${id} not found`);
+      return data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async getByCustomer(customerId: string): Promise<DbBooking[]> {
+    const { data, error } = await this.client
+      .from('bookings')
+      .select('*')
+      .eq('customer_id', customerId);
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async getByBusiness(businessId: string): Promise<DbBooking[]> {
+    const { data, error } = await this.client
+      .from('bookings')
+      .select('*')
+      .eq('business_id', businessId);
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async create(booking: BookingInsert): Promise<DbBooking> {
+    const { data, error } = await this.client
+      .from('bookings')
+      .insert([booking])
+      .select()
+      .single();
+
     if (error) throw error;
     return data;
   }
 
-  static async getById(id: string) {
-    const { data, error } = await supabase
+  async update(id: string, updates: BookingUpdate): Promise<DbBooking> {
+    const { data, error } = await this.client
       .from('bookings')
-      .select('*, customer:profiles!customer_id(*), service:services(*), business:profiles!business_id(*)')
+      .update(updates)
       .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const { error } = await this.client
+      .from('bookings')
+      .delete()
+      .eq('id', id);
+
+    return !error;
+  }
+
+  async updateStatus(id: string, status: BookingStatus): Promise<DbBooking> {
+    const { data, error } = await this.client
+      .from('bookings')
+      .update({ status })
+      .eq('id', id)
+      .select()
       .single();
 
     if (error) throw error;
@@ -142,4 +204,7 @@ export class BookingService extends BaseService<'bookings'> {
   async handleBookingConflicts(): Promise<void> {
     // Implement conflict detection
   }
-} 
+}
+
+// Create a singleton instance
+export const bookingService = new BookingService(); 

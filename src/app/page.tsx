@@ -7,13 +7,13 @@ import { Skeleton } from '@/components/ui/loading';
 import { SearchFilter } from '@/components/ui/SearchFilter';
 import { useStore } from '@/lib/supabase/store';
 import {
-  ArrowRightIcon,
-  CalendarIcon,
-  ChartBarIcon,
-  ClockIcon,
-  MapPinIcon,
-  ShieldCheckIcon,
-  UserGroupIcon
+    ArrowRightIcon,
+    CalendarIcon,
+    ChartBarIcon,
+    ClockIcon,
+    MapPinIcon,
+    ShieldCheckIcon,
+    UserGroupIcon
 } from '@heroicons/react/24/outline';
 import { createBrowserClient } from '@supabase/ssr';
 import Link from 'next/link';
@@ -76,6 +76,7 @@ interface Service {
     logo_url: string;
   };
   category?: {
+    id: string;
     name: string;
     icon: string;
   };
@@ -195,7 +196,19 @@ export default function Home() {
                     ...service,
                     status: service.status && ['active', 'inactive', 'deleted'].includes(service.status)
                       ? service.status as 'active' | 'inactive' | 'deleted'
-                      : 'active'
+                      : 'active',
+                    created_by_id: null,
+                    approved_by_id: null,
+                    approved_at: null,
+                    featured: true,
+                    featured_order: null,
+                    approval_status: 'approved' as 'approved' | 'pending' | 'rejected',
+                    admin_notes: null,
+                    category: service.category ? {
+                      id: service.category.id || '',
+                      name: service.category.name,
+                      icon: service.category.icon
+                    } : undefined
                   };
                   return <ServiceCard key={service.id} service={validatedService} />
                 })}

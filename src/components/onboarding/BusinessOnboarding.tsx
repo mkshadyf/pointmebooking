@@ -2,9 +2,8 @@
 
 import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
 import { AuthProfile, AuthRole } from '@/types/database/auth';
-import { useRouter } from 'next/navigation';
-import React, { useState } from 'react';
 import { BusinessDetailsStep, BusinessDetailsStepProps } from './steps/BusinessDetailsStep';
+import { useState } from 'react';
 
 interface BusinessOnboardingProps {
   onboardingComplete: () => void;
@@ -12,8 +11,6 @@ interface BusinessOnboardingProps {
 
 const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onboardingComplete }) => {
   const { updateProfile, profile } = useAuth();
-  const [businessName, setBusinessName] = useState(profile?.business_name || '');
-  const [businessType, setBusinessType] = useState(profile?.business_type || '');
   const [currentStep, setCurrentStep] = useState(0);
 
   const handleStepChange = (field: string, value: string) => {

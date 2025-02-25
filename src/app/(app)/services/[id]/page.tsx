@@ -2,9 +2,12 @@
 
 import { Navigation } from '@/components/navigation';
 import { Button } from '@/components/ui/Button';
-import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
-import { NotificationService } from '@/lib/supabase/services/notifications';
-import { ServiceService } from '@/lib/supabase/services/service.service';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import { useAuthSync } from '@/hooks/useAuthSync';
+import { useToast } from '@/hooks/useToast';
+import { ErrorHandler, ErrorType } from '@/lib/error-handling';
+import { supabase } from '@/lib/supabase';
+import { transformJoinedServiceData } from '@/lib/supabase/utils/transformers';
 import { Service } from '@/types';
 import {
   CalendarIcon,
@@ -19,43 +22,111 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-export default function ServiceDetailsPage() {
+// Separate the service details component from the error boundary wrapper
+function ServiceDetails() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuthSync({ 
+    redirectToLogin: false,
+    requireAuth: false
+  });
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
-    const loadService = async () => {
-      if (!params?.id) {
-        setError('Service ID is required');
+    const fetchService = async () => {
+      if (!params.id || typeof params.id !== 'string') {
+        setError('Invalid service ID');
         setLoading(false);
         return;
       }
       
       try {
         setLoading(true);
-        setError(null);
-        const serviceData = await ServiceService.getById(params.id as string);
-        if (!serviceData) {
-          throw new Error('Service not found');
+        // Fetch service with business and category in a single query
+        const { data: serviceData, error: serviceError } = await supabase
+          .from('services')
+          .select(`
+            *,
+            business:profiles(*),
+            category:service_categories(*)
+          `)
+          .eq('id', params.id)
+          .single();
+
+        if (serviceError) {
+          // Use our error handler to get a consistent error
+          const appError = ErrorHandler.convertToAppError(serviceError);
+          
+          // Set appropriate error message based on error type
+          if (appError.type === ErrorType.NOT_FOUND) {
+            setError('Service not found');
+          } else {
+            setError(ErrorHandler.getUserFriendlyMessage(appError));
+          }
+          
+          setLoading(false);
+          return;
         }
-        setService(serviceData);
+
+        if (!serviceData) {
+          setError('Service not found');
+          setLoading(false);
+          return;
+        }
+
+        // Use the transformer to get a properly typed Service object
+        const completeServiceData = transformJoinedServiceData(serviceData);
+        
+        if (!completeServiceData) {
+          setError('Failed to process service data');
+          setLoading(false);
+          return;
+        }
+
+        setService(completeServiceData);
       } catch (err) {
-        console.error('Error loading service:', err);
-        setError('Failed to load service details');
-        NotificationService.error('Failed to load service details');
+        // Handle unexpected errors
+        const appError = ErrorHandler.convertToAppError(err);
+        
+        setError(ErrorHandler.getUserFriendlyMessage(appError));
+        showToast({ 
+          type: 'error', 
+          message: ErrorHandler.getUserFriendlyMessage(appError)
+        });
       } finally {
         setLoading(false);
       }
     };
 
-    loadService();
-  }, [params?.id]);
+    fetchService();
+  }, [params.id, showToast]);
 
-  if (loading) {
+  // Handle booking action with feedback
+  const handleBooking = () => {
+    if (!isAuthenticated) {
+      showToast({ 
+        type: 'info', 
+        message: 'Please sign in to book this service' 
+      });
+      router.push(`/login?redirect=/services/${service?.id}/book`);
+      return;
+    }
+    
+    if (!service?.is_available) {
+      showToast({ 
+        type: 'warning', 
+        message: 'This service is currently not available for booking' 
+      });
+      return;
+    }
+    
+    router.push(`/services/${service.id}/book`);
+  };
+
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation type="main" />
@@ -92,6 +163,8 @@ export default function ServiceDetailsPage() {
             alt={service.name}
             fill
             className="object-cover opacity-60"
+            sizes="100vw"
+            priority
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-r from-purple-700 via-violet-600 to-indigo-700 opacity-75" />
@@ -203,16 +276,16 @@ export default function ServiceDetailsPage() {
             {/* Booking Button */}
             <div className="bg-white rounded-2xl shadow-sm p-6">
               <Button
-                onClick={() => router.push(`/services/${service.id}/book`)}
+                onClick={handleBooking}
                 className="w-full flex items-center justify-center gap-2"
                 disabled={!service.is_available}
               >
                 <CalendarIcon className="h-5 w-5" />
                 {service.is_available ? 'Book Now' : 'Not Available'}
               </Button>
-              {!user && service.is_available && (
+              {!isAuthenticated && service.is_available && (
                 <p className="mt-3 text-sm text-center text-gray-500">
-                  <Link href="/login" className="text-purple-600 hover:text-purple-700">
+                  <Link href={`/login?redirect=/services/${service.id}/book`} className="text-purple-600 hover:text-purple-700">
                     Sign in
                   </Link>{' '}
                   to book this service
@@ -230,3 +303,25 @@ export default function ServiceDetailsPage() {
     </div>
   );
 }
+
+// Wrap the component with ErrorBoundary
+export default function ServiceDetailsPage() {
+  const { showToast } = useToast();
+  
+  const handleError = (error: Error) => {
+    // Use our error handler to get a consistent error
+    const appError = ErrorHandler.convertToAppError(error);
+    ErrorHandler.logError(ErrorHandler.convertToAppError(appError, 'ServiceDetailsPage'));
+    
+    showToast({
+      type: 'error',
+      message: ErrorHandler.getUserFriendlyMessage(appError)
+    });
+  };
+  
+  return (
+    <ErrorBoundary onError={handleError}>
+      <ServiceDetails />
+    </ErrorBoundary>
+  );
+} 

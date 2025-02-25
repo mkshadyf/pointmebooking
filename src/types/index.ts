@@ -2,21 +2,23 @@ import { Provider } from "@supabase/supabase-js";
 
 // Base types
 export * from './api';
-// The types in ./auth are already exported via the database types.
-// Remove this line.
 export * from './booking';
+export * from './database/auth';
+export * from './database/models';
  
 // Constants
 export const USER_ROLES = ['customer', 'business', 'admin'] as const;
 export const USER_STATUSES = ['active', 'inactive', 'suspended'] as const;
 export const BOOKING_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed'] as const;
 export const SERVICE_STATUSES = ['active', 'inactive', 'deleted'] as const;
+export const APPROVAL_STATUSES = ['pending', 'approved', 'rejected'] as const;
 
 // Derived types
 export type UserRole = typeof USER_ROLES[number];
 export type UserStatus = typeof USER_STATUSES[number];
 export type BookingStatus = typeof BOOKING_STATUSES[number];
 export type ServiceStatus = typeof SERVICE_STATUSES[number];
+export type ApprovalStatus = typeof APPROVAL_STATUSES[number];
 
 // Base interfaces
 export interface UserProfile {
@@ -84,11 +86,18 @@ export interface Service {
   price: number;
   duration: number;
   image_url: string | null;
-  is_available: boolean;
-  created_at: string;
-  updated_at: string;
+  is_available: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
   status: ServiceStatus;
-  category_id: string;
+  category_id: string | null;
+  created_by_id: string | null;
+  approved_by_id: string | null;
+  approved_at: string | null;
+  featured: boolean;
+  featured_order: number | null;
+  approval_status: ApprovalStatus;
+  admin_notes: string | null;
   business?: {
     id: string;
     name: string;
@@ -101,6 +110,7 @@ export interface Service {
     logo_url?: string;
   };
   category?: {
+    id: string;
     name: string;
     icon?: string;
   };
@@ -124,13 +134,14 @@ export interface Category {
   name: string;
   description?: string;
   icon?: string;
-  created_at: string;
-  updated_at: string;
+  created_at?: string | null;
+  updated_at?: string | null;
   businesses?: BusinessProfile[];
   services?: Service[];
   service_count?: number;
 }
 
+// Auth context type for the frontend
 export interface AuthContextType {
   user: UserProfile | null;
   profile: BusinessProfile | null;
@@ -161,5 +172,25 @@ export interface ServiceCategory {
   description: string;
   icon: string;
   services: Service[];
+}
+
+// Add the Business type
+export interface Business {
+  id: string;
+  name: string;
+  description?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  phone?: string;
+  email?: string;
+  logo_url?: string;
+}
+
+// Add the Category type
+export interface Category {
+  id: string;
+  name: string;
+  icon?: string;
 }
 

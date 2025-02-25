@@ -1,6 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-type ToastType = 'default' | 'success' | 'error' | 'warning' | 'info';
+type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+interface ToastOptions {
+  type: ToastType;
+  message: string;
+  duration?: number;
+}
 
 interface Toast {
   id: string;
@@ -24,6 +30,9 @@ function emitChange() {
   listeners.forEach((listener) => listener(toasts));
 }
 
+/**
+ * Hook for displaying toast notifications
+ */
 export function useToast() {
   const [currentToasts, setCurrentToasts] = useState<Toast[]>(toasts);
 
@@ -68,9 +77,28 @@ export function useToast() {
     dismiss: dismissToast,
   };
 
+  /**
+   * Show a toast notification
+   */
+  const showToast = useCallback(({ type, message, duration = 5000 }: ToastOptions) => {
+    switch (type) {
+      case 'success':
+        return toast.success(message, { duration });
+      case 'error':
+        return toast.error(message, { duration });
+      case 'warning':
+        return toast.warning(message, { duration });
+      case 'info':
+        return toast.info(message, { duration });
+      default:
+        return toast.info(message, { duration });
+    }
+  }, []);
+
   return {
     toast,
     toasts: currentToasts,
     dismiss: dismissToast,
+    showToast
   };
 } 

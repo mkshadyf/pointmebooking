@@ -11,13 +11,13 @@ export interface Column<T> {
   type?: 'text' | 'number' | 'boolean' | 'select' | 'currency';
   options?: { value: string; label: string }[];
   width?: string;
-  render?: (value: any, item: T) => React.ReactNode;
+  render?: (value: unknown, item: T) => React.ReactNode;
 }
 
 interface DataTableProps<T> {
   data: T[];
   columns: Column<T>[];
-  onEdit?: (item: T, field: keyof T, value: any) => void;
+  onEdit?: (item: T, field: keyof T, value: unknown) => void;
   onDelete?: (item: T) => void;
   isLoading?: boolean;
   searchable?: boolean;
@@ -48,7 +48,7 @@ export function DataTable<T extends { id: string }>({
       )
     : data;
 
-  const handleEdit = (item: T, field: keyof T, value: any) => {
+  const handleEdit = (item: T, field: keyof T, value: unknown) => {
     onEdit?.(item, field, value);
     setEditingCell(null);
   };

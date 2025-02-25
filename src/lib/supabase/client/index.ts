@@ -1,5 +1,5 @@
 import { SUPABASE_CONFIG } from '@/config/supabase';
-import { Database } from '@/types/database/generated.types';
+import { Database } from '@generated.types';
 import { createClient } from '@supabase/supabase-js';
 
 // Browser client exports
@@ -12,5 +12,5 @@ export const supabase = createClient<Database>(
 );
 
 // Type exports
-export type { Database } from '@/types/database/generated.types';
+export type { Database } from '@generated.types';
 export type SupabaseClient = ReturnType<typeof createClient>; 

@@ -14,14 +14,21 @@ const defaultService: Service = {
   name: '',
   description: '',
   price: 0,
-  duration: 0,
+  duration: 30,
   category_id: '',
   is_available: true,
   business_id: '',
-  created_at: '',
-  updated_at: '',
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
   status: 'active',
-  image_url: null
+  image_url: null,
+  created_by_id: null,
+  approved_by_id: null,
+  approved_at: null,
+  featured: false,
+  featured_order: null,
+  approval_status: 'pending',
+  admin_notes: null
 };
 
 export function ServicesStep({ initialData, onNextAction, onBackAction }: StepProps) {
@@ -142,7 +149,7 @@ export function ServicesStep({ initialData, onNextAction, onBackAction }: StepPr
               type="text"
               id={`service-category-${index}`}
               required
-              value={service.category_id}
+              value={service.category_id || ''}
               onChange={(e) => updateService(index, { category_id: e.target.value })}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
             />
@@ -152,9 +159,9 @@ export function ServicesStep({ initialData, onNextAction, onBackAction }: StepPr
             <input
               type="checkbox"
               id={`service-available-${index}`}
-              checked={service.is_available}
+              checked={service.is_available === true}
               onChange={(e) => updateService(index, { is_available: e.target.checked })}
-              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
             />
             <label htmlFor={`service-available-${index}`} className="ml-2 block text-sm text-gray-900">
               Available

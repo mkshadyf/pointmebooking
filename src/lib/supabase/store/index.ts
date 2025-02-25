@@ -2,9 +2,15 @@ import { SearchService } from '@/lib/supabase/services/search.service';
 import { ServiceService } from '@/lib/supabase/services/service.service';
 import { handleClientError } from '@/lib/supabase/utils/errors';
 import { BusinessCategory, BusinessProfile, Category, Service, ServiceCategory, ServiceStatus } from '@/types';
+import { Database } from '@generated.types';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authSlice } from './slices/auth.slice';
+
+// Type definitions from database
+type DbService = Database['public']['Tables']['services']['Row'];
+type DbServiceStatus = Database['public']['Enums']['service_status'];
+type DbApprovalStatus = 'pending' | 'approved' | 'rejected';
 
 // Base state without actions
 interface BaseState {
@@ -39,7 +45,8 @@ export type StoreState = BaseState & Actions;
 
 // Helper function to transform service data
 function transformServiceData(service: any): Service {
-  return {
+  // Handle database service fields with type safety
+  const dbService: Partial<DbService> = {
     id: service.id,
     business_id: service.business_id,
     name: service.name,
@@ -48,25 +55,57 @@ function transformServiceData(service: any): Service {
     duration: service.duration,
     image_url: service.image_url,
     is_available: service.is_available,
-    status: service.status as ServiceStatus,
+    status: service.status as DbServiceStatus,
     category_id: service.category_id,
     created_at: service.created_at,
     updated_at: service.updated_at,
-    business: service.business ? {
-      id: service.business.id,
-      name: service.business.business_name || '',
-      description: service.business.description,
-      address: service.business.address,
-      city: service.business.city,
-      state: service.business.state,
-      phone: service.business.phone,
-      email: service.business.email,
-      logo_url: service.business.logo_url,
-    } : undefined,
-    category: service.category ? {
-      name: service.category.name,
-      icon: service.category.icon,
-    } : undefined,
+  };
+
+  // Business details with type safety
+  const business = service.business ? {
+    id: service.business.id || '',
+    name: service.business.business_name || '',
+    description: service.business.description,
+    address: service.business.address,
+    city: service.business.city,
+    state: service.business.state,
+    phone: service.business.phone,
+    email: service.business.email,
+    logo_url: service.business.logo_url,
+  } : undefined;
+
+  // Category with type safety
+  const category = service.category ? {
+    id: service.category.id || '',
+    name: service.category.name,
+    icon: service.category.icon,
+  } : undefined;
+
+  // Return complete Service object with all required fields
+  return {
+    ...dbService,
+    id: dbService.id || '',
+    business_id: dbService.business_id || '',
+    name: dbService.name || '',
+    description: dbService.description || null,
+    price: dbService.price || 0,
+    duration: dbService.duration || 0,
+    image_url: dbService.image_url || null,
+    is_available: dbService.is_available || null,
+    status: dbService.status as ServiceStatus || 'active',
+    category_id: dbService.category_id || null,
+    created_at: dbService.created_at || null,
+    updated_at: dbService.updated_at || null,
+    // Additional fields required by Service type
+    created_by_id: service.created_by_id || null,
+    approved_by_id: service.approved_by_id || null,
+    approved_at: service.approved_at || null,
+    featured: service.featured || false,
+    featured_order: service.featured_order || null,
+    approval_status: (service.approval_status as DbApprovalStatus) || 'pending',
+    admin_notes: service.admin_notes || null,
+    business,
+    category,
   };
 }
 
@@ -159,32 +198,61 @@ export const useStore = create<StoreState>()(
 
       addService: async (service: Service) => {
         try {
-          const newService = await ServiceService.create(service);
+          // Convert the Service type to ServiceInsert type
+          const serviceInsert = {
+            name: service.name,
+            description: service.description,
+            price: service.price,
+            duration: service.duration,
+            business_id: service.business_id,
+            category_id: service.category_id,
+            image_url: service.image_url,
+            status: service.status,
+            is_available: service.is_available
+          };
+          
+          const newService = await ServiceService.create(serviceInsert);
           if (newService) {
-            set((state: StoreState) => ({ services: [...state.services, newService] }));
-            return newService;
+            const transformedService = transformServiceData(newService);
+            set((state: StoreState) => ({ services: [...state.services, transformedService] }));
+            return transformedService;
           }
           throw new Error('Failed to add service');
         } catch (error) {
           await handleClientError(error);
+          set({ error: 'Failed to add service' });
           throw error;
         }
       },
 
       updateService: async (id: string, updatedService: Partial<Service>) => {
         try {
-          const updated = await ServiceService.update(id, updatedService);
+          // Convert the Partial<Service> type to ServiceUpdate type
+          const serviceUpdate = {
+            name: updatedService.name,
+            description: updatedService.description,
+            price: updatedService.price,
+            duration: updatedService.duration,
+            category_id: updatedService.category_id,
+            image_url: updatedService.image_url,
+            status: updatedService.status,
+            is_available: updatedService.is_available
+          };
+          
+          const updated = await ServiceService.update(id, serviceUpdate);
           if (updated) {
+            const transformedService = transformServiceData(updated);
             set((state: StoreState) => ({
               services: state.services.map((service: Service) =>
-                service.id === id ? updated : service
+                service.id === id ? transformedService : service
               ),
             }));
-            return updated;
+            return transformedService;
           }
           throw new Error('Failed to update service');
         } catch (error) {
           await handleClientError(error);
+          set({ error: 'Failed to update service' });
           throw error;
         }
       },
@@ -208,10 +276,12 @@ export const useStore = create<StoreState>()(
       loadServices: async (businessId: string) => {
         try {
           const services = await ServiceService.getByBusiness(businessId);
-          set({ services });
-          return services;
+          const transformedServices = services.map(transformServiceData);
+          set({ services: transformedServices });
+          return transformedServices;
         } catch (error) {
           await handleClientError(error);
+          set({ error: 'Failed to load services' });
           throw error;
         }
       },

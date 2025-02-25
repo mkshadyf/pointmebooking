@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase/client';
 import { BusinessCategory } from '@/lib/supabase/types';
-import type { Database } from '@/types/database/generated.types';
+import type { Database } from '@generated.types';
 import { BaseService } from '../BaseService';
 
 type Tables = Database['public']['Tables'];
@@ -51,7 +51,16 @@ export class BusinessCategoryService extends BaseService<'business_categories'> 
         .single();
 
       if (error) throw error;
-      return data;
+      
+      // Handle potential error in the relationship
+      const serviceCategories = Array.isArray(data.service_categories) 
+        ? data.service_categories 
+        : [];
+        
+      return {
+        ...data,
+        service_categories: serviceCategories
+      };
     } catch (error) {
       return this.handleError(error);
     }
