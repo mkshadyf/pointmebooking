@@ -1,5 +1,48 @@
 // Error handling
-export * from './errors';
+// The errors directory has been consolidated into the error module
+// export * from './errors';
+
+// Import and re-export ErrorMessageMap from the error module
+import { ErrorCode } from '@/lib/error';
+
+// Define ErrorMessageMap for backward compatibility
+export const ErrorMessageMap: Record<ErrorCode, string> = {
+  [ErrorCode.AUTH_INVALID_CREDENTIALS]: 'Invalid email or password',
+  [ErrorCode.AUTH_EMAIL_IN_USE]: 'Email is already in use',
+  [ErrorCode.AUTH_WEAK_PASSWORD]: 'Password is too weak',
+  [ErrorCode.AUTH_INVALID_EMAIL]: 'Invalid email format',
+  [ErrorCode.AUTH_USER_NOT_FOUND]: 'User not found',
+  [ErrorCode.AUTH_UNAUTHORIZED]: 'You are not authorized to perform this action',
+  [ErrorCode.AUTH_ERROR]: 'Authentication error',
+  [ErrorCode.AUTH_INVALID_TOKEN]: 'Invalid or expired token',
+  [ErrorCode.AUTH_OAUTH_ERROR]: 'OAuth authentication error',
+  [ErrorCode.AUTH_SESSION_EXPIRED]: 'Your session has expired, please sign in again',
+  [ErrorCode.AUTH_EMAIL_NOT_VERIFIED]: 'Please verify your email address',
+
+  [ErrorCode.PROFILE_NOT_FOUND]: 'Profile not found',
+  [ErrorCode.PROFILE_UPDATE_FAILED]: 'Failed to update profile',
+  [ErrorCode.PROFILE_ERROR]: 'Profile error',
+  [ErrorCode.PROFILE_CREATION_FAILED]: 'Failed to create profile',
+
+  [ErrorCode.SERVICE_NOT_FOUND]: 'Service not found',
+  [ErrorCode.SERVICE_CREATE_FAILED]: 'Failed to create service',
+  [ErrorCode.SERVICE_UPDATE_FAILED]: 'Failed to update service',
+  [ErrorCode.SERVICE_ERROR]: 'Service error',
+
+  [ErrorCode.BOOKING_NOT_FOUND]: 'Booking not found',
+  [ErrorCode.BOOKING_CREATE_FAILED]: 'Failed to create booking',
+  [ErrorCode.BOOKING_SLOT_UNAVAILABLE]: 'This time slot is no longer available',
+  [ErrorCode.BOOKING_ERROR]: 'Booking error',
+
+  [ErrorCode.API_ERROR]: 'API error',
+  [ErrorCode.API_TIMEOUT]: 'Request timed out',
+  [ErrorCode.API_RATE_LIMIT]: 'Too many requests, please try again later',
+  [ErrorCode.API_BAD_REQUEST]: 'Bad request',
+  [ErrorCode.VALIDATION_REQUIRED]: 'Required field missing',
+  [ErrorCode.VALIDATION_ERROR]: 'Validation error',
+
+  [ErrorCode.UNKNOWN_ERROR]: 'An unknown error occurred'
+};
 
 // Validation
 export * from './validators';

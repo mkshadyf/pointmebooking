@@ -1,13 +1,12 @@
+import { CookieContainer, supabaseClientService } from '@/lib/supabase/services/core/supabase-client.service';
+import { Database } from '@/types/database/generated.types';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
- 
-import { createServerSupabaseClient } from '../supabase/server';
-import { handleApiError } from '../supabase/utils/errors';
+import { handleApiError } from '../error';
 
-type RouteHandler = (
-  req: NextRequest,
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
-  params?: { [key: string]: string }
-) => Promise<Response>;
+// Define the typed Supabase client
+type TypedSupabaseClient = SupabaseClient<Database>;
 
 interface RouteConfig {
   requireAuth?: boolean;
@@ -19,14 +18,25 @@ interface SimpleRouteConfig {
   handler: (req: NextRequest) => Promise<Response>;
 }
 
+// Define the handler type
+type RouteHandlerFunction = (
+  req: NextRequest, 
+  supabase: TypedSupabaseClient, 
+  params: Record<string, string>
+) => Promise<Response>;
+
 export const routeHandler = (config: SimpleRouteConfig) => {
   return config.handler;
 };
 
-export const createRouteHandler = (handler: RouteHandler, config: RouteConfig = {}) => {
-  return async (req: NextRequest, { params }: { params?: { [key: string]: string } } = {}) => {
+export const createRouteHandler = (handler: RouteHandlerFunction, config: RouteConfig = {}) => {
+  return async (req: NextRequest, { params }: { params: Record<string, string> }) => {
     try {
-      const supabase = await createServerSupabaseClient();
+      // Get cookies from request and ensure it's the right type
+      const cookieStore = cookies() as unknown as CookieContainer;
+      
+      // Create a Supabase client using the SupabaseClientService
+      const supabase = await supabaseClientService.getServerClient(cookieStore);
 
       if (config.requireAuth) {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -53,6 +63,7 @@ export const createRouteHandler = (handler: RouteHandler, config: RouteConfig = 
         }
       }
 
+      // Call the handler with the request, supabase client, and params
       return handler(req, supabase, params);
     } catch (error) {
       const apiError = handleApiError(error);

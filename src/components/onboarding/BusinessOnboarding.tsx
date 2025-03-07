@@ -1,9 +1,9 @@
 'use client';
 
-import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { AuthProfile, AuthRole } from '@/types/database/auth';
-import { BusinessDetailsStep, BusinessDetailsStepProps } from './steps/BusinessDetailsStep';
 import { useState } from 'react';
+import { BusinessDetailsStep, BusinessDetailsStepProps } from './steps/BusinessDetailsStep';
 
 interface BusinessOnboardingProps {
   onboardingComplete: () => void;
@@ -36,13 +36,15 @@ const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onboardingCompl
     }
   };
 
+  // Use type assertion for the profile object
+  const formattedProfile = {
+    businessName: (profile as any)?.business_name || '',
+    businessType: (profile as any)?.business_type || '',
+    description: (profile as any)?.description || ''
+  };
 
   const businessDetailsProps: BusinessDetailsStepProps = {
-    data: {
-      businessName: profile?.business_name || '',
-      businessType: profile?.business_type || '',
-      description: profile?.description || ''
-    },
+    data: formattedProfile,
     onChange: handleStepChange,
     onNext: handleNext,
     onBack: handleBack

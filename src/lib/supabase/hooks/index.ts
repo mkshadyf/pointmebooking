@@ -1,6 +1,6 @@
 // Auth hook exports
-export { useSupabaseAuth } from './useSupabaseAuth';
-export type { Profile as AuthProfile } from './useSupabaseAuth';
+export { useAuth, useSupabaseAuth } from './useAuth';
+export type { AuthProfile } from './useAuth';
 
 // Realtime hook exports
 export { useSupabaseRealtime } from './useSupabaseRealtime';

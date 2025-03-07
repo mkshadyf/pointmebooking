@@ -1,24 +1,37 @@
+'use client';
+
+import { Button } from '@/components/ui/Button';
+import React from 'react';
+
 interface AuthButtonProps {
   type?: 'submit' | 'button';
   isLoading?: boolean;
   onClick?: () => void;
   children: React.ReactNode;
+  variant?: 'default' | 'outline';
+  fullWidth?: boolean;
+  className?: string;
 }
 
 export function AuthButton({
   type = 'submit',
   isLoading = false,
   onClick,
-  children
+  children,
+  variant = 'default',
+  fullWidth = true,
+  className = ''
 }: AuthButtonProps) {
   return (
-    <button
+    <Button
       type={type}
       onClick={onClick}
       disabled={isLoading}
-      className="flex w-full justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-primary-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50 disabled:cursor-not-allowed"
+      loading={isLoading}
+      variant={variant}
+      className={`${fullWidth ? 'w-full' : ''} py-3 text-base font-semibold ${className}`}
     >
-      {isLoading ? 'Loading...' : children}
-    </button>
+      {children}
+    </Button>
   );
 } 

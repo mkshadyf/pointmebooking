@@ -1,7 +1,7 @@
-import { Service } from '@/types';
+import { UIService } from '@/types';
 
 interface ServiceDetailsProps {
-  service: Service;
+  service: UIService;
 }
 
 export function ServiceDetails({ service }: ServiceDetailsProps) {

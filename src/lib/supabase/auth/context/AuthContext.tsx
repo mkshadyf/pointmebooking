@@ -1,288 +1,365 @@
 'use client';
 
-import { ErrorHandler } from '@/lib/error-handling';
-import { supabase } from '@/lib/supabase/client';
-import { AuthError, AuthProfile, AuthRole, DbProfile } from '@/types/database/auth';
-import { User } from '@supabase/supabase-js';
-import { useRouter } from 'next/navigation';
-import { createContext, useContext, useEffect } from 'react';
-import { AuthService } from '../../services/auth.service';
-import { useStore } from '../../store/store';
+import { AuthContextType, AuthError, AuthProfile } from '@/types/database/auth';
+import { Session, User } from '@supabase/supabase-js';
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { AuthService } from '../../services/auth/auth.service';
 
-export interface AuthContextType {
-    user: User | null;
-    profile: AuthProfile | null;
-    isLoading: boolean;
-    isAuthenticated: boolean;
-    error: AuthError | null;
-    login: (email: string, password: string) => Promise<void>;
-    register: (email: string, password: string, role: AuthRole) => Promise<void>;
-    signOut: () => Promise<void>;
-    updateProfile: (data: Partial<AuthProfile>) => Promise<void>;
-    verifyEmail: (code: string) => Promise<void>;
-    resendVerification: () => Promise<void>;
-    resetPassword: (email: string) => Promise<void>;
-    updatePassword: (newPassword: string) => Promise<void>;
-    refreshSession: () => Promise<void>;
-}
-
-const createAuthProfile = (profile: DbProfile): AuthProfile => ({
-    ...profile,
-    // Additional auth-specific fields
-    is_verified: profile.email_verified ?? false,
-    is_email_verified: profile.email_verified ?? false,
-    last_login: null,
-    login_count: 0,
-    failed_login_attempts: 0,
-    last_failed_login: null,
-    password_reset_token: null,
-    password_reset_expires: null
+// Create the auth context with default values
+export const AuthContext = createContext<AuthContextType>({
+    // User data
+    user: null,
+    profile: null,
+    session: null,
+    
+    // Auth state
+    isLoading: true,
+    isAuthenticated: false,
+    error: null,
+    
+    // Auth actions - these will be implemented in the provider
+    login: async () => {},
+    register: async () => {},
+    signOut: async () => {},
+    updateProfile: async () => {},
+    verifyEmail: async () => {},
+    resendVerification: async () => {},
+    resetPassword: async () => {},
+    updatePassword: async () => {},
+    refreshSession: async () => {},
 });
 
-export const AuthContext = createContext<AuthContextType | null>(null);
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const store = useStore();
-    const router = useRouter();
-
+/**
+ * Authentication provider component
+ * Manages authentication state and provides auth methods to children
+ */
+export function AuthProvider({ children }: { children: ReactNode }) {
+    // Authentication state
+    const [user, setUser] = useState<User | null>(null);
+    const [profile, setProfile] = useState<AuthProfile | null>(null);
+    const [session, setSession] = useState<Session | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [authError, setAuthError] = useState<AuthError | null>(null);
+    const [, setInitialized] = useState(false);
+    
+    // Initialize auth state
     useEffect(() => {
         const initAuth = async () => {
-            store.setIsLoading(true);
             try {
-                const session = await AuthService.getSession();
-                if (session.data?.user) {
-                    store.setUser(session.data.user);
-                    const profile = await AuthService.getProfile();
-                    if (profile.data) {
-                        store.setProfile(createAuthProfile(profile.data));
+                // Get auth service instance
+                const authService = AuthService.getInstance();
+            
+            // Get current session
+                const { data: sessionData, error: sessionError } = await authService.getSession();
+                
+                if (sessionError) {
+                    throw sessionError;
+                }
+                
+                if (sessionData) {
+                    setSession(sessionData);
+                    setUser(sessionData.user);
+                    setIsAuthenticated(true);
+                    
+                    // Get profile data
+                    const { data: profileData, error: profileError } = await authService.getProfile();
+                    
+                    if (profileError) {
+                        throw profileError;
+                    }
+                    
+                    if (profileData) {
+                        setProfile(profileData);
                     }
                 }
-            } catch (error) {
-                const appError = ErrorHandler.convertToAppError(error, 'auth.init');
-                console.error('Authentication initialization failed:', appError);
-                store.setError(appError as AuthError);
+            } catch (err: any) {
+                console.error('Auth initialization error:', err);
+                setAuthError({
+                    name: 'AuthInitError',
+                    message: err.message || 'Failed to initialize authentication',
+                    __isAuthError: true
+                });
             } finally {
-                store.setIsLoading(false);
+                setIsLoading(false);
+                setInitialized(true);
             }
         };
-
+        
         initAuth();
-
-        const { data: authListener } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
-                console.log(`Supabase auth event: ${event}`);
-
-                if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-                    if (session?.user) {
-                        store.setUser(session.user);
-                        store.setIsAuthenticated(true);
-
-                        const profile = await AuthService.getProfile();
-                        if (profile.data) {
-                            store.setProfile(createAuthProfile(profile.data));
-                        }
-                    }
-                } else if (event === 'SIGNED_OUT') {
-                    store.setUser(null);
-                    store.setIsAuthenticated(false);
-                    store.setProfile(null);
-                    router.push('/login');
+    }, []);
+    
+    // Login method
+    const login = async (email: string, password: string) => {
+        setIsLoading(true);
+        try {
+            const authService = AuthService.getInstance();
+            const { data, error } = await authService.login({ email, password });
+            
+            if (error) {
+                throw error;
+            }
+            
+            if (data) {
+                setSession(data);
+                setUser(data.user);
+                setIsAuthenticated(true);
+                
+                // Get profile after login
+                const { data: profileData } = await authService.getProfile();
+                if (profileData) {
+                    setProfile(profileData);
                 }
             }
-        );
-
-        return () => {
-            authListener?.subscription.unsubscribe();
-        };
-    }, [router, store]);
-
-    const value: AuthContextType = {
-        user: store.user,
-        profile: store.profile,
-        isLoading: store.isLoading,
-        isAuthenticated: store.isAuthenticated,
-        error: store.error,
-        login: async (email: string, password: string) => {
-            store.setIsLoading(true);
-            try {
-                const result = await AuthService.login({ email, password });
-                if (result.error) {
-                    throw result.error;
-                }
-                if (result.data) {
-                    store.setUser(result.data.supabaseUser);
-                    store.setProfile(result.data.user);
-                }
-            } catch (error) {
-                const appError = ErrorHandler.convertToAppError(error, 'auth.login');
-                console.error('Login failed:', appError);
-                store.setError(appError as AuthError);
-                throw appError;
+        } catch (err: any) {
+            setAuthError({
+                name: 'LoginError',
+                message: err.message || 'Failed to login',
+                __isAuthError: true
+            });
+                throw err;
             } finally {
-                store.setIsLoading(false);
+                setIsLoading(false);
             }
-        },
-        register: async (email: string, password: string, role: AuthRole) => {
-            store.setIsLoading(true);
-            try {
-                const result = await AuthService.register(email, password, role);
-                if (result.error) {
-                    throw result.error;
+    };
+        
+    // Register method
+    const register = async (email: string, password: string, role: string) => {
+            setIsLoading(true);
+        try {
+            const authService = AuthService.getInstance();
+            const { data, error } = await authService.register({ email, password, role });
+            
+            if (error) {
+                throw error;
+            }
+            
+            if (data) {
+                setSession(data);
+                setUser(data.user);
+                setIsAuthenticated(true);
+                
+                // Get profile after registration
+                const { data: profileData } = await authService.getProfile();
+                if (profileData) {
+                    setProfile(profileData);
                 }
-                if (result.data) {
-                    store.setUser(result.data.supabaseUser);
-                    store.setProfile(result.data.user);
-                }
-            } catch (error) {
-                const appError = ErrorHandler.convertToAppError(error, 'auth.register');
-                console.error('Register failed:', appError);
-                store.setError(appError as AuthError);
-                throw appError;
+            }
+        } catch (err: any) {
+            setAuthError({
+                name: 'RegisterError',
+                message: err.message || 'Failed to register',
+                __isAuthError: true
+            });
+                throw err;
             } finally {
-                store.setIsLoading(false);
+                setIsLoading(false);
             }
-        },
-        signOut: async () => {
-            store.setIsLoading(true);
+    };
+        
+    // Sign out method
+    const signOut = async () => {
+            setIsLoading(true);
             try {
-                const result = await AuthService.logout();
-                if (result.error) {
-                    throw result.error;
-                }
-                store.setUser(null);
-                store.setProfile(null);
-                store.setIsAuthenticated(false);
-            } catch (error) {
-                const appError = ErrorHandler.convertToAppError(error, 'auth.signOut');
-                console.error('Sign out failed:', appError);
-                store.setError(appError as AuthError);
-                throw appError;
-            } finally {
-                store.setIsLoading(false);
+            const authService = AuthService.getInstance();
+            const { error } = await authService.logout();
+            
+            if (error) {
+                throw error;
             }
-        },
-        updateProfile: async (data) => {
-            store.setIsLoading(true);
+            
+            setSession(null);
+                setUser(null);
+                setProfile(null);
+                setIsAuthenticated(false);
+        } catch (err: any) {
+            setAuthError({
+                name: 'SignOutError',
+                message: err.message || 'Failed to sign out',
+                __isAuthError: true
+            });
+                throw err;
+            } finally {
+                setIsLoading(false);
+            }
+    };
+        
+    // Update profile method
+    const updateProfile = async (data: Partial<AuthProfile>) => {
+            setIsLoading(true);
             try {
-                const result = await AuthService.updateProfile(data);
-                if (result.error) {
-                    throw result.error;
-                }
-                if (result.data) {
-                    store.setProfile(createAuthProfile(result.data));
-                }
-            } catch (error) {
-                const appError = ErrorHandler.convertToAppError(error, 'auth.updateProfile');
-                console.error('Update profile failed:', appError);
-                store.setError(appError as AuthError);
-                throw appError;
-            } finally {
-                store.setIsLoading(false);
+            if (!user) {
+                throw new Error('No user logged in');
             }
-        },
-        verifyEmail: async (code) => {
-            store.setIsLoading(true);
+            
+            const authService = AuthService.getInstance();
+            const { data: updatedProfile, error } = await authService.updateProfile(data);
+            
+            if (error) {
+                throw error;
+            }
+            
+            if (updatedProfile) {
+                setProfile(updatedProfile);
+            }
+        } catch (err: any) {
+            setAuthError({
+                name: 'UpdateProfileError',
+                message: err.message || 'Failed to update profile',
+                __isAuthError: true
+            });
+                throw err;
+            } finally {
+                setIsLoading(false);
+            }
+    };
+        
+    // Verify email method
+    const verifyEmail = async (code: string) => {
+            setIsLoading(true);
             try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user?.email) {
-                    throw new Error('No email found for current user');
-                }
-                const result = await AuthService.verifyEmail(user.email, code);
-                if (result.error) {
-                    throw result.error;
-                }
-            } catch (error) {
-                const appError = ErrorHandler.convertToAppError(error, 'auth.verifyEmail');
-                console.error('Email verification failed:', appError);
-                store.setError(appError as AuthError);
-                throw appError;
-            } finally {
-                store.setIsLoading(false);
+            const authService = AuthService.getInstance();
+            const { error } = await authService.verifyEmail(code);
+            
+            if (error) {
+                throw error;
             }
-        },
-        resendVerification: async () => {
-            store.setIsLoading(true);
+        } catch (err: any) {
+            setAuthError({
+                name: 'VerifyEmailError',
+                message: err.message || 'Failed to verify email',
+                __isAuthError: true
+            });
+                throw err;
+            } finally {
+                setIsLoading(false);
+            }
+    };
+        
+    // Resend verification method
+    const resendVerification = async () => {
+            setIsLoading(true);
             try {
-                const result = await AuthService.resendVerificationEmail();
-                if (result.error) {
-                    throw result.error;
-                }
-            } catch (error) {
-                const appError = ErrorHandler.convertToAppError(error, 'auth.resendVerification');
-                console.error('Resend verification failed:', appError);
-                store.setError(appError as AuthError);
-                throw appError;
-            } finally {
-                store.setIsLoading(false);
+            const authService = AuthService.getInstance();
+            const { error } = await authService.resendVerification();
+            
+            if (error) {
+                throw error;
             }
-        },
-        resetPassword: async (email) => {
-            store.setIsLoading(true);
+        } catch (err: any) {
+            setAuthError({
+                name: 'ResendVerificationError',
+                message: err.message || 'Failed to resend verification',
+                __isAuthError: true
+            });
+                throw err;
+            } finally {
+                setIsLoading(false);
+            }
+    };
+        
+    // Reset password method
+    const resetPassword = async (email: string) => {
+            setIsLoading(true);
             try {
-                const result = await AuthService.resetPassword(email);
-                if (result.error) {
-                    throw result.error;
-                }
-            } catch (error) {
-                const appError = ErrorHandler.convertToAppError(error, 'auth.resetPassword');
-                console.error('Reset password failed:', appError);
-                store.setError(appError as AuthError);
-                throw appError;
-            } finally {
-                store.setIsLoading(false);
+            const authService = AuthService.getInstance();
+            const { error } = await authService.resetPassword(email);
+            
+            if (error) {
+                throw error;
             }
-        },
-        updatePassword: async (newPassword) => {
-            store.setIsLoading(true);
+        } catch (err: any) {
+            setAuthError({
+                name: 'ResetPasswordError',
+                message: err.message || 'Failed to reset password',
+                __isAuthError: true
+            });
+                throw err;
+            } finally {
+                setIsLoading(false);
+            }
+    };
+        
+    // Update password method
+    const updatePassword = async (newPassword: string) => {
+            setIsLoading(true);
             try {
-                const result = await AuthService.updatePassword(newPassword);
-                if (result.error) {
-                    throw result.error;
-                }
-            } catch (error) {
-                const appError = ErrorHandler.convertToAppError(error, 'auth.updatePassword');
-                console.error('Update password failed:', appError);
-                store.setError(appError as AuthError);
-                throw appError;
-            } finally {
-                store.setIsLoading(false);
+            const authService = AuthService.getInstance();
+            const { error } = await authService.updatePassword(newPassword);
+            
+            if (error) {
+                throw error;
             }
-        },
-        refreshSession: async () => {
-            store.setIsLoading(true);
+        } catch (err: any) {
+            setAuthError({
+                name: 'UpdatePasswordError',
+                message: err.message || 'Failed to update password',
+                __isAuthError: true
+            });
+                throw err;
+            } finally {
+                setIsLoading(false);
+            }
+    };
+        
+    // Refresh session method
+    const refreshSession = async () => {
+            setIsLoading(true);
             try {
-                const result = await AuthService.refreshSession();
-                if (result.error) {
-                    throw result.error;
-                }
-                if (result.data) {
-                    const user = result.data.user;
-                    if (user) {
-                        store.setUser(user);
-                        const profile = await AuthService.getProfile();
-                        if (profile.data) {
-                            store.setProfile(createAuthProfile(profile.data));
-                        }
-                    }
-                }
-            } catch (error) {
-                const appError = ErrorHandler.convertToAppError(error, 'auth.refreshSession');
-                console.error('Session refresh failed:', appError);
-                store.setError(appError as AuthError);
-                throw appError;
-            } finally {
-                store.setIsLoading(false);
+            const authService = AuthService.getInstance();
+            const { data, error } = await authService.refreshSession();
+            
+            if (error) {
+                throw error;
             }
+            
+            if (data) {
+                setSession(data);
+                setUser(data.user);
+                setIsAuthenticated(Boolean(data));
+            }
+        } catch (err: any) {
+            setAuthError({
+                name: 'RefreshSessionError',
+                message: err.message || 'Failed to refresh session',
+                __isAuthError: true
+            });
+                throw err;
+            } finally {
+                setIsLoading(false);
         }
     };
-
+    
+    // Return the auth context provider with all values and methods
     return (
-        <AuthContext.Provider value={value}>
+        <AuthContext.Provider
+            value={{
+                // State
+                user,
+                profile,
+                session,
+                isLoading,
+                isAuthenticated,
+                error: authError,
+                
+                // Methods
+                login,
+                register,
+                signOut,
+                updateProfile,
+                verifyEmail,
+                resendVerification,
+                resetPassword,
+                updatePassword,
+                refreshSession,
+            }}
+        >
             {children}
         </AuthContext.Provider>
     );
-};
+}
 
+// Export the useAuth hook from this file for backward compatibility
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {

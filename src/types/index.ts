@@ -1,34 +1,160 @@
-import { Provider } from "@supabase/supabase-js";
+import {
+    APPROVAL_STATUSES,
+    BOOKING_STATUSES,
+    SERVICE_STATUSES,
+    USER_ROLES,
+    USER_STATUSES
+} from '@/constants/entities';
+import { Json } from './database/generated.types';
 
-// Base types
-export * from './api';
-export * from './booking';
-export * from './database/auth';
-export * from './database/models';
- 
-// Constants
-export const USER_ROLES = ['customer', 'business', 'admin'] as const;
-export const USER_STATUSES = ['active', 'inactive', 'suspended'] as const;
-export const BOOKING_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed'] as const;
-export const SERVICE_STATUSES = ['active', 'inactive', 'deleted'] as const;
-export const APPROVAL_STATUSES = ['pending', 'approved', 'rejected'] as const;
+// Import entity types
+import type {
+    ApprovalStatus,
+    BookingStatus,
+    ServiceStatus,
+    UserRole,
+    UserStatus
+} from '@/constants/entities';
 
-// Derived types
-export type UserRole = typeof USER_ROLES[number];
-export type UserStatus = typeof USER_STATUSES[number];
-export type BookingStatus = typeof BOOKING_STATUSES[number];
-export type ServiceStatus = typeof SERVICE_STATUSES[number];
-export type ApprovalStatus = typeof APPROVAL_STATUSES[number];
+// Re-export entity constants
+export {
+    APPROVAL_STATUSES,
+    BOOKING_STATUSES,
+    SERVICE_STATUSES,
+    USER_ROLES,
+    USER_STATUSES
+};
 
-// Base interfaces
+// Re-export entity types
+    export type {
+        ApprovalStatus, BookingStatus,
+        ServiceStatus, UserRole,
+        UserStatus
+    };
+
+// Import from auth types
+    import { AUTH_CONSTANTS } from './auth';
+export { AUTH_CONSTANTS };
+
+// Import types from auth module
+    import type {
+        AuthContextType,
+        AuthError,
+        AuthProfile,
+        AuthResponse,
+        AuthResult,
+        DbProfile,
+        LoginCredentials
+    } from './auth';
+
+// Re-export auth types
+export type {
+    AuthContextType,
+    AuthError,
+    AuthProfile,
+    AuthResponse,
+    AuthResult,
+    DbProfile,
+    LoginCredentials
+};
+
+// Import database types
+    import type {
+        Database,
+        Tables
+    } from './database/generated.types';
+
+// Re-export database types
+export type {
+    Database,
+    Tables
+};
+
+// Import booking types
+    import type {
+        Booking,
+        BookingFilters,
+        BookingStats,
+        BookingStatus as BookingStatusType,
+        PopularService
+    } from './booking';
+
+// Re-export booking types 
+export type {
+    Booking,
+    BookingFilters,
+    BookingStats,
+    // Use BookingStatusType as the type from the booking module
+    BookingStatusType,
+    PopularService
+};
+
+// Standard type exports
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: JsonValue }
+  | JsonValue[];
+
+// Generic response type for API endpoints
+export interface ApiResponse<T = any> {
+  data: T | null;
+  error: string | null;
+  status: number;
+}
+
+// Common status type
+export type Status = 'active' | 'inactive' | 'pending' | 'deleted';
+
+// Date format types
+export type DateString = string; // ISO format YYYY-MM-DD
+export type DateTimeString = string; // ISO format YYYY-MM-DDTHH:mm:ss.sssZ
+
+// Pagination types
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+// Search query type
+export interface SearchQuery {
+  query?: string; 
+  filters?: Record<string, any>;
+}
+
+// Validation result type
+export interface ValidationResult {
+  valid: boolean;
+  errors?: Record<string, string[]>;
+}
+
+// User and Profile interfaces
 export interface UserProfile {
   id: string;
   user_id: string;
   full_name: string;
+  first_name?: string | null | undefined;
+  last_name?: string | null | undefined;
   email: string;
   role: UserRole;
   email_verified: boolean;
   verification_code?: string;
+  preferences?: Json | null;
+  working_hours?: WorkingHours | null;
+  social_media?: Json | null;
+  verification_attempts?: number | null;
   business_name?: string;
   business_type?: string;
   business_category?: string;
@@ -51,6 +177,7 @@ export interface UserProfile {
   updated_at: string;
 }
 
+// Business and Service interfaces
 export interface DayHours {
   start: string;
   end: string;
@@ -58,13 +185,11 @@ export interface DayHours {
 }
 
 export interface WorkingHours {
-  monday: DayHours;
-  tuesday: DayHours;
-  wednesday: DayHours;
-  thursday: DayHours;
-  friday: DayHours;
-  saturday: DayHours;
-  sunday: DayHours;
+  [key: string]: {
+    start: string;
+    end: string;
+    is_closed?: boolean;
+  } | undefined;
 }
 
 export interface BusinessProfile extends UserProfile {
@@ -75,10 +200,11 @@ export interface BusinessProfile extends UserProfile {
   location: string;
   contact_number: string;
   working_hours: WorkingHours;
-  services: Service[];
+  services: UIService[];
 }
 
-export interface Service {
+// Service interface for UI components
+export interface UIService {
   id: string;
   business_id: string;
   name: string;
@@ -87,10 +213,12 @@ export interface Service {
   duration: number;
   image_url: string | null;
   is_available: boolean | null;
-  created_at: string | null;
-  updated_at: string | null;
+  created_at: string;
+  updated_at: string;
   status: ServiceStatus;
   category_id: string | null;
+  max_capacity: number | null;
+  location: string | null;
   created_by_id: string | null;
   approved_by_id: string | null;
   approved_at: string | null;
@@ -116,19 +244,7 @@ export interface Service {
   };
 }
 
-export interface Booking {
-  id: string;
-  service_id: string;
-  customer_id: string;
-  business_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  status: BookingStatus;
-  notes?: string;
-  created_at: string;
-}
-
+// Category interfaces
 export interface Category {
   id: string;
   name: string;
@@ -137,27 +253,8 @@ export interface Category {
   created_at?: string | null;
   updated_at?: string | null;
   businesses?: BusinessProfile[];
-  services?: Service[];
+  services?: UIService[];
   service_count?: number;
-}
-
-// Auth context type for the frontend
-export interface AuthContextType {
-  user: UserProfile | null;
-  profile: BusinessProfile | null;
-  loading: boolean;
-  authError: string | null;
-  signIn: (email: string) => Promise<{ success: boolean; error?: string }>;
-  signInWithProvider: (provider: Provider) => Promise<{ success: boolean; error?: string }>;
-  verifyCode: (code: string) => Promise<{ success: boolean; error?: string }>;
-  signOut: () => Promise<{ success: boolean; error?: string }>;
-  updateProfile: (data: Partial<UserProfile>) => Promise<{ success: boolean; error?: string }>;
-  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
-  updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
-  signUp: (email: string, role: UserRole) => Promise<{ success: boolean; error?: string }>;
-  verifyEmail: (token: string) => Promise<{ success: boolean; error?: string }>;
-  resendVerificationEmail: () => Promise<{ success: boolean; error?: string }>;
-  verificationAttempts: number;
 }
 
 export interface BusinessCategory {
@@ -171,10 +268,10 @@ export interface ServiceCategory {
   name: string;
   description: string;
   icon: string;
-  services: Service[];
+  services: UIService[];
 }
 
-// Add the Business type
+// Business interface
 export interface Business {
   id: string;
   name: string;
@@ -185,12 +282,5 @@ export interface Business {
   phone?: string;
   email?: string;
   logo_url?: string;
-}
-
-// Add the Category type
-export interface Category {
-  id: string;
-  name: string;
-  icon?: string;
 }
 

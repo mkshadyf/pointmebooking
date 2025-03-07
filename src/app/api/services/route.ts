@@ -1,4 +1,4 @@
-import { ServiceService } from '@/lib/supabase/services/service.service';
+import { ServiceServiceStatic as ServiceService } from '@/lib/supabase/services/service/service.service';
 import { NextResponse } from 'next/server';
 
 export async function GET() {

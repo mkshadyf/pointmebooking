@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/lib/auth';
 import React, { useState } from 'react';
 
 export interface AuthFormField {
@@ -16,7 +16,7 @@ export type AuthFormData = Record<string, string>;
 
 
 export const AuthForm = () => {
-  const { login, register, error, loading } = useAuth();
+  const { login, register, error, isLoading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,7 +26,7 @@ export const AuthForm = () => {
     if (isLogin) {
       await login(email, password);
     } else {
-      await register(email, password);
+      await register(email, password, 'customer');
     }
   };
 
@@ -44,7 +44,7 @@ export const AuthForm = () => {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
-      <button type="submit" disabled={loading}>
+      <button type="submit" disabled={isLoading}>
         {isLogin ? 'Login' : 'Register'}
       </button>
       {error && <p>{error.message}</p>}

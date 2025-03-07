@@ -1,14 +1,15 @@
 'use client';
 
 import { Navigation } from '@/components/navigation';
+import { ErrorBoundary } from '@/components/ui';
 import { Button } from '@/components/ui/Button';
-import ErrorBoundary from '@/components/ui/ErrorBoundary';
-import { useAuthSync } from '@/hooks/useAuthSync';
 import { useToast } from '@/hooks/useToast';
-import { ErrorHandler, ErrorType } from '@/lib/error-handling';
+import { useAuth } from '@/lib/auth';
+import { ErrorHandler, convertToAppError } from '@/lib/error';
+import { ErrorCategory } from '@/lib/error/error-handler';
 import { supabase } from '@/lib/supabase';
 import { transformJoinedServiceData } from '@/lib/supabase/utils/transformers';
-import { Service } from '@/types';
+import { UIService } from '@/types';
 import {
   CalendarIcon,
   ClockIcon,
@@ -26,18 +27,15 @@ import { useEffect, useState } from 'react';
 function ServiceDetails() {
   const params = useParams();
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuthSync({ 
-    redirectToLogin: false,
-    requireAuth: false
-  });
-  const [service, setService] = useState<Service | null>(null);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [service, setService] = useState<UIService | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { showToast } = useToast();
 
   useEffect(() => {
     const fetchService = async () => {
-      if (!params.id || typeof params.id !== 'string') {
+      if (!params || !params.id || typeof params.id !== 'string') {
         setError('Invalid service ID');
         setLoading(false);
         return;
@@ -58,10 +56,10 @@ function ServiceDetails() {
 
         if (serviceError) {
           // Use our error handler to get a consistent error
-          const appError = ErrorHandler.convertToAppError(serviceError);
+          const appError = convertToAppError(serviceError);
           
           // Set appropriate error message based on error type
-          if (appError.type === ErrorType.NOT_FOUND) {
+          if (appError.category === ErrorCategory.NOT_FOUND) {
             setError('Service not found');
           } else {
             setError(ErrorHandler.getUserFriendlyMessage(appError));
@@ -89,7 +87,7 @@ function ServiceDetails() {
         setService(completeServiceData);
       } catch (err) {
         // Handle unexpected errors
-        const appError = ErrorHandler.convertToAppError(err);
+        const appError = convertToAppError(err);
         
         setError(ErrorHandler.getUserFriendlyMessage(appError));
         showToast({ 
@@ -102,7 +100,7 @@ function ServiceDetails() {
     };
 
     fetchService();
-  }, [params.id, showToast]);
+  }, [params?.id, showToast]);
 
   // Handle booking action with feedback
   const handleBooking = () => {
@@ -310,7 +308,7 @@ export default function ServiceDetailsPage() {
   
   const handleError = (error: Error) => {
     // Use our error handler to get a consistent error
-    const appError = ErrorHandler.convertToAppError(error);
+    const appError = convertToAppError(error);
     ErrorHandler.logError(ErrorHandler.convertToAppError(appError, 'ServiceDetailsPage'));
     
     showToast({

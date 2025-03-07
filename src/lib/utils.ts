@@ -7,16 +7,21 @@ export const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/
 export const PHONE_PATTERN = /^\+?[\d\s-]{10,}$/;
 export const URL_PATTERN = /^https?:\/\/[\w-]+(\.[\w-]+)+[/#?]?.*$/i;
 
-export function cn(...inputs: ClassValue[]) {
+/**
+ * Combines multiple class values into a single string.
+ * Uses clsx for conditional classes and twMerge to handle Tailwind CSS conflicts.
+ */
+export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }
 
 // Date and time formatting
 export function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString('en-US', {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return dateObj.toLocaleDateString('en-US', {
+    year: 'numeric',
     month: 'long',
     day: 'numeric',
-    year: 'numeric',
   });
 }
 
@@ -29,31 +34,17 @@ export function formatTime(date: Date | string): string {
 }
 
 // Currency formatting
-export function formatCurrency(amount: number, options: {
-  currency?: string;
-  locale?: string;
-  minimumFractionDigits?: number;
-  maximumFractionDigits?: number;
-} = {}): string {
-  const {
-    currency = 'USD',
-    locale = 'en-US',
-    minimumFractionDigits = 2,
-    maximumFractionDigits = 2,
-  } = options;
-
-  return new Intl.NumberFormat(locale, {
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency,
-    minimumFractionDigits,
-    maximumFractionDigits,
+    currency: 'USD',
   }).format(amount);
 }
 
 // Text manipulation
-export function truncateText(text: string, length: number): string {
-  if (text.length <= length) return text;
-  return `${text.slice(0, length)}...`;
+export function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength)}...`;
 }
 
 // Validation helpers
@@ -130,5 +121,5 @@ export function getInitials(name: string): string {
 }
 
 export function classNames(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(' ');
+  return classes.filter((cls): cls is string => Boolean(cls)).join(' ');
 }

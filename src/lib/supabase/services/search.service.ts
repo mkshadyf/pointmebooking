@@ -1,183 +1,133 @@
-import { supabase } from '../client';
-import type { DbBusinessCategory, DbProfile, DbService } from '../types';
-import { BaseSearchService } from './BaseSearchService';
+import { Database } from '@/types/database/generated.types';
+import { BaseService } from './BaseService';
+import { supabaseClientService } from './core/supabase-client.service';
+import { ServiceServiceStatic as ServiceService } from './service/service.service';
 
-interface SearchOptions {
-  limit?: number;
-  page?: number;
-  category?: string;
-  location?: string;
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
-type ServiceWithRelations = DbService & { business: DbProfile; category: DbBusinessCategory };
-type ProfileWithServices = DbProfile & { services: DbService[] };
-type CategoryWithCount = DbBusinessCategory & { service_count: number };
+export type ServiceWithRelations = Database['public']['Tables']['services']['Row'] & {
+  business: Database['public']['Tables']['businesses']['Row'] | null;
+  category: Database['public']['Tables']['service_categories']['Row'] | null;
+};
 
-export class SearchService extends BaseSearchService {
-  private static async executeSearch<T>(
-    table: string,
-    searchTerm: string,
-    options: SearchOptions,
-    config: {
-      searchField: string;
-      relations?: string;
-      categoryField?: string;
-      addressField?: string;
+export class SearchService extends BaseService<'services'> {
+  private static instance: SearchService;
+
+  private constructor() {
+    // Initialize with the browser client, but methods will use getClient() for proper context
+    const client = supabaseClientService.getBrowserClient();
+    super(client, 'services');
+  }
+
+  public static getInstance(): SearchService {
+    if (!SearchService.instance) {
+      SearchService.instance = new SearchService();
     }
-  ) {
-    const { limit, page, offset } = SearchService.buildPagination(options);
-
-    let query = supabase
-      .from(table)
-      .select(config.relations || '*', { count: 'exact' });
-
-    query = this.buildSearchQuery(query, searchTerm, options, {
-      searchField: config.searchField,
-      categoryField: config.categoryField,
-      addressField: config.addressField
-    });
-
-    const { data, error, count } = await query
-      .range(offset, offset + limit - 1)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    return this.formatPaginatedResponse(
-      data as T[],
-      count,
-      { page, limit }
-    );
+    return SearchService.instance;
   }
 
-  static async searchServices(query: string, options: SearchOptions = {}) {
-    return this.executeSearch<ServiceWithRelations>(
-      'services',
-      query,
-      options,
-      {
-        searchField: 'name',
-        relations: '*, business:profiles(*), category:categories(*)',
-        categoryField: 'category_id',
-        addressField: 'business.address'
-      }
-    );
-  }
-
-  static async searchBusinesses(query: string, options: SearchOptions = {}) {
-    return this.executeSearch<ProfileWithServices>(
-      'profiles',
-      query,
-      options,
-      {
-        searchField: 'business_name',
-        relations: '*, services!inner(*)',
-        addressField: 'address'
-      }
-    );
-  }
-
-  static async searchCategories(query: string, options: {
-    limit?: number;
-    page?: number;
-  } = {}) {
-    const { limit, page, offset } = SearchService.buildPagination(options);
-
-    const { data, error, count } = await supabase
-      .from('categories')
-      .select('*, services:services(count)', { count: 'exact' })
-      .textSearch('name', query, {
-        type: 'websearch',
-        config: 'english',
-      })
-      .range(offset, offset + limit - 1)
-      .order('name', { ascending: true });
-
-    if (error) throw error;
-
-    const formattedData = data.map(category => ({
-      ...category,
-      service_count: category.services?.[0]?.count ?? 0,
-    })) as CategoryWithCount[];
-
-    return this.formatPaginatedResponse(formattedData, count, { page, limit });
-  }
-
-  static async getFeaturedServices(limit: number = 6) {
+  /**
+   * Search for services based on query and category
+   */
+  public static async searchServices(
+    query?: string,
+    categoryId?: string,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<PaginatedResponse<ServiceWithRelations>> {
+    
     try {
-      const { data, error } = await supabase
-        .from('services')
-        .select(`
-          *,
-          business:profiles!services_business_id_fkey (
-            id,
-            business_name,
-            address,
-            city,
-            state,
-            phone,
-            email,
-            logo_url
-          ),
-          category:categories (
-            name,
-            icon
-          )
-        `)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (error) {
-        console.error('Supabase error:', error);
-        throw new Error(error.message);
+      // Get all services first
+      const allServices = await ServiceService.getAll();
+      
+      // Filter by query and category
+      let filteredServices = allServices;
+      
+      if (query) {
+        const lowerQuery = query.toLowerCase();
+        filteredServices = filteredServices.filter(service => 
+          service.name.toLowerCase().includes(lowerQuery) || 
+          (service.description && service.description.toLowerCase().includes(lowerQuery))
+        );
       }
-
-      return data || [];
+      
+      if (categoryId) {
+        filteredServices = filteredServices.filter(service => 
+          service.category_id === categoryId
+        );
+      }
+      
+      // Calculate pagination
+      const total = filteredServices.length;
+      const totalPages = Math.ceil(total / limit);
+      const offset = (page - 1) * limit;
+      const paginatedServices = filteredServices.slice(offset, offset + limit);
+      
+      // Add relations (simplified for now)
+      const servicesWithRelations = paginatedServices.map(service => ({
+        ...service,
+        business: null,
+        category: null
+      }));
+      
+      return {
+        data: servicesWithRelations,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages
+        }
+      };
     } catch (error) {
-      console.error('Error fetching featured services:', error);
-      throw error;
+      console.error('Error searching services:', error);
+      return {
+        data: [],
+        pagination: {
+          total: 0,
+          page,
+          limit,
+          totalPages: 0
+        }
+      };
     }
   }
 
-
-
-  async searchByLocation(query: string, options: SearchOptions = {}) {
-    const { limit, offset } = SearchService.buildPagination(options);
-
-    const { data, error } = await supabase
-      .from('services')
-      .select('*')
-      .eq('status', 'active')
-      .textSearch('address', query, {
-        type: 'websearch',
-        config: 'english',
-      })
-      .range(offset, offset + limit - 1)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    return data || [];
+  /**
+   * Get featured services
+   */
+  public static async getFeaturedServices(): Promise<ServiceWithRelations[]> {
+    
+    try {
+      // Get all services first
+      const allServices = await ServiceService.getAll();
+      
+      // Filter for featured services
+      const featuredServices = allServices.filter(service => 
+        service.featured === true
+      );
+      
+      // Add relations (simplified for now)
+      const servicesWithRelations = featuredServices.map(service => ({
+        ...service,
+        business: null,
+        category: null
+      }));
+      
+      return servicesWithRelations;
+    } catch (error) {
+      console.error('Error getting featured services:', error);
+      return [];
+    }
   }
+}
 
-
-    async searchByCategory(query: string, options: SearchOptions = {}) {
-    const { limit, offset } = SearchService.buildPagination(options);
-
-    const { error } = await supabase
-      .from('services')
-      .select('*')
-      .eq('status', 'active')
-      .textSearch('category', query, {
-        type: 'websearch',
-        config: 'english',
-      })
-      .range(offset, offset + limit - 1)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-  }
-
-  
-} 
+export const searchService = SearchService.getInstance(); 

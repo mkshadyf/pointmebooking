@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '../client';
-
+import { supabaseClientService } from '../services/core/supabase-client.service';
 
 export interface UploadProgress {
   progress: number;
@@ -30,11 +29,12 @@ export function useSupabaseStorage({
     isUploading: false
   });
 
-  const client = supabase;
-
   const uploadFile = async (file: File): Promise<string | null> => {
     try {
       setProgress({ progress: 0, isUploading: true });
+
+      // Get the client
+      const client = await supabaseClientService.getBrowserClient();
 
       const fileExt = file.name.split('.').pop();
       const filePath = `${Math.random()}.${fileExt}`;
@@ -47,7 +47,7 @@ export function useSupabaseStorage({
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = client.storage
+      const { data: { publicUrl } } = await client.storage
         .from(bucket)
         .getPublicUrl(filePath);
 
@@ -62,6 +62,9 @@ export function useSupabaseStorage({
 
   const deleteFile = async (path: string): Promise<void> => {
     try {
+      // Get the client
+      const client = await supabaseClientService.getBrowserClient();
+      
       const { error } = await client.storage
         .from(bucket)
         .remove([path]);
@@ -81,10 +84,9 @@ export function useSupabaseStorage({
 
 // Example usage:
 // const MyComponent = () => {
-//   const { uploadFile, uploading, progress } = useSupabaseStorage({
+//   const { uploadFile, deleteFile, progress } = useSupabaseStorage({
 //     bucket: 'avatars',
-//     maxSize: 2 * 1024 * 1024, // 2MB
-//     allowedFileTypes: ['image/jpeg', 'image/png'],
+//     onError: (error) => console.error('Storage error:', error),
 //   });
 //
 //   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,7 +104,7 @@ export function useSupabaseStorage({
 //   return (
 //     <div>
 //       <input type="file" onChange={handleFileChange} />
-//       {uploading && <progress value={progress?.progress} max="100" />}
+//       {progress.isUploading && <progress value={progress.progress} max="100" />}
 //     </div>
 //   );
 // }; 

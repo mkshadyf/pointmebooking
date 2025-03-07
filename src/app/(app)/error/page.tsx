@@ -1,7 +1,7 @@
 'use client';
 
- 
-import { ErrorCode, ErrorMessageMap } from '@/lib/supabase/utils/errors';
+import { ErrorCode } from '@/lib/error';
+import { ErrorMessageMap } from '@/lib/supabase/utils';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 

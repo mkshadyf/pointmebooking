@@ -1,214 +1,381 @@
 "use server";
 
 import { createServerSupabaseClient } from "@/lib/supabase/client";
-import { AuthError, Session, User } from "@supabase/supabase-js";
+import { authService } from "@/lib/supabase/services/auth/auth.service";
+import { supabaseClientService } from "@/lib/supabase/services/core/supabase-client.service";
 import { cookies, headers } from "next/headers";
 
-export type AuthResponse = {
-  data?: {
-    user: User | null;
-    session: Session | null;
-  };
-  error?: AuthError | string | null;
+// Define the AuthResponse type that was missing
+interface AuthResponse {
+  data?: any;
+  error?: string | Error | null;
+  user?: any;
   success?: string;
   redirectTo?: string;
-};
+}
 
+/**
+ * Creates a user and a profile
+ */
 export const signUpAction = async (formData: FormData): Promise<AuthResponse> => {
   const email = formData.get("email")?.toString();
   const password = formData.get("password")?.toString();
   const role = formData.get("role")?.toString();
+
   if (!email || !password || !role) {
-    return { error: "Email, password and role are required" };
+    return { error: "Email, password, and role are required" };
   }
   if (!["business", "customer"].includes(role)) {
     return { error: "Invalid role selected" };
   }
 
-  const supabase = createServerSupabaseClient(await cookies());
-  const origin = (await headers()).get("origin");
-
-  const { error: signUpError, data } = await (await supabase).auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${origin}/auth/callback`,
-      data: { role },
-    },
-  });
-
-  if (signUpError) {
-    const lowerMsg = signUpError.message.toLowerCase();
-    if (lowerMsg.includes("already registered") || lowerMsg.includes("duplicate")) {
-      return { error: "This email is already registered. Please sign in instead." };
-    }
-    if (lowerMsg.includes("weak")) {
-      return { error: "Your password is too weak. Please use a stronger password." };
-    }
-    console.error("Sign up error:", signUpError);
-    return { error: signUpError.message };
-  }
-
-  const { error: profileError } = await (await supabase)
-    .from("profiles")
-    .insert({
-      id: data.user?.id,
-      email: email,
-      role,
-      email_verified: false,
-      onboarding_completed: false,
-    });
-
-  if (profileError) {
-    console.error("Profile creation failed:", profileError);
-    const { error: deleteError } = await (await supabase).auth.admin.deleteUser(data.user?.id!);
-    if (deleteError) {
-      console.error("Rollback delete error:", deleteError);
-    }
-    return { error: "Failed to create profile. Please try again later." };
-  }
-
-  return { success: "Check your email for the confirmation link" };
-};
-
-type SignInResult = { 
-  data: { user: User | null; session: Session | null }; 
-  error: AuthError | null;
-};
-
-export const signInAction = async (formData: FormData): Promise<AuthResponse> => {
-  const email = formData.get("email")?.toString();
-  const password = formData.get("password")?.toString();
-  if (!email || !password) {
-    return { error: "Email and password are required." };
-  }
+  // Use the authService instance for registration
+  const authResult = await authService.register({ email, password, role });
   
-  const supabase = createServerSupabaseClient(await cookies());
-  
-  try {
-    // Create a timeout promise that rejects after 15 seconds
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('The server is taking too long to respond. Please ensure the server is running and check your connection.')), 15000)
-    );
-
-    // Race between the signInWithPassword call and the timeout
-    const result = await Promise.race<SignInResult>([
-      (await supabase).auth.signInWithPassword({ email, password }),
-      timeoutPromise
-    ]);
-
-    const { error, data } = result;
-
-    if (error) {
-      const lowerMsg = error.message.toLowerCase();
-      if (lowerMsg.includes("invalid") || lowerMsg.includes("credentials")) {
-        return { error: "Invalid email or password. Please try again." };
-      }
-      if (lowerMsg.includes("not verified")) {
-        return { error: "Your email is not verified. Please verify your email first." };
-      }
-      return { error: error.message };
-    }
-
-    if (!data.user) {
-      return { error: "No user data returned" };
-    }
-
-    // Get user profile
-    const { data: profile, error: profileError } = await (await supabase)
-      .from("profiles")
-      .select("role, onboarding_completed, email_verified")
-      .eq("id", data.user.id)
-      .single();
-
-    if (profileError || !profile) {
-      console.error("Profile fetch error:", profileError);
-      return { error: "Failed to fetch user profile" };
-    }
-
-    // Check email verification
-    if (!profile.email_verified) {
-      return { redirectTo: "/auth/verify-email" };
-    }
-
-    // Check onboarding status for business users
-    if (profile.role === "business" && !profile.onboarding_completed) {
-      return { redirectTo: "/onboarding/business" };
-    }
-
-    // Redirect based on role
-    const redirectTo = profile.role === "business" 
-      ? "/dashboard/business"
-      : "/dashboard/customer";
-
-    return { redirectTo };
-
-  } catch (e) {
-    console.error("Sign in error:", e);
-    return { error: e instanceof Error ? e.message : "Failed to sign in" };
-  }
-};
-
-export const signInWithGoogleAction = async (): Promise<AuthResponse> => {
-  const supabase = createServerSupabaseClient(await cookies());
-  const origin = (await headers()).get("origin");
-
-  const { error, data } = await (await supabase).auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: `${origin}/auth/callback`,
-    },
-  });
-
-  if (error) {
-    return { error: error.message };
+  if (authResult.error) {
+    const errorMessage = authResult.error.message || "Registration failed";
+    return { error: errorMessage };
   }
 
   return {
-    redirectTo: data.url,
+    data: {
+      user: authResult.data?.user || null,
+      session: authResult.data || null,
+      profile: authResult.data?.user || null
+    },
+    success: "Account created successfully! Please check your email to verify your account."
   };
 };
 
+/**
+ * Sign in action for existing users
+ */
+export const signInAction = async (formData: FormData): Promise<AuthResponse> => {
+  const email = formData.get("email")?.toString();
+  const password = formData.get("password")?.toString();
+  
+
+  if (!email || !password) {
+    return { error: "Email and password are required" };
+  }
+
+  // Use the authService instance for login
+  const authResult = await authService.login({ email, password });
+  
+  if (authResult.error) {
+    const errorMessage = authResult.error.message || "Authentication failed";
+    return { error: errorMessage };
+  }
+
+  return {
+    data: {
+      user: authResult.data?.user || null,
+      session: authResult.data || null,
+      profile: authResult.data?.user || null
+    }
+  };
+};
+
+/**
+ * Google authentication action
+ */
+export const signInWithGoogleAction = async (): Promise<AuthResponse> => {
+  try {
+    // Get the cookie store
+    const cookieStore = await cookies();
+    // Create the server client
+    const supabase = await createServerSupabaseClient(cookieStore);
+    
+    // Get the referer header for origin
+    const headersList = await headers();
+    const referer = headersList.get("referer");
+    const origin = referer ? new URL(referer).origin : "http://localhost:3000";
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    return {
+      data: { session: null, user: null },
+      redirectTo: data.url,
+    };
+  } catch (error) {
+    return { 
+      error: error instanceof Error ? error.message : "Failed to sign in with Google"
+    };
+  }
+};
+
+/**
+ * Forgot password action
+ */
 export const forgotPasswordAction = async (formData: FormData): Promise<AuthResponse> => {
   const email = formData.get("email")?.toString();
   if (!email) {
     return { error: "Email is required" };
   }
-  const supabase = createServerSupabaseClient(await cookies());
-  const origin = (await headers()).get("origin");
 
-  const { error } = await (await supabase).auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback?next=/reset-password`,
-  });
+  try {
+    // Get the cookie store
+    const cookieStore = await cookies();
+    // Create the server client
+    const supabase = await createServerSupabaseClient(cookieStore);
+    
+    // Get the referer header for origin
+    const headersList = await headers();
+    const referer = headersList.get("referer");
+    const origin = referer ? new URL(referer).origin : "http://localhost:3000";
 
-  if (error) {
-    if (error.message.toLowerCase().includes("user not found")) {
-      return { error: "This email is not registered. Please sign up instead." };
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${origin}/auth/reset-password`,
+    });
+
+    if (error) {
+      return { error: error.message };
     }
-    return { error: error.message };
-  }
 
-  return { success: "Check your email for the reset link" };
+    return {
+      success: "Password reset link has been sent to your email",
+    };
+  } catch (error) {
+    return { 
+      error: error instanceof Error ? error.message : "Failed to send password reset email"
+    };
+  }
 };
 
+/**
+ * Reset password action
+ */
 export const resetPasswordAction = async (formData: FormData): Promise<AuthResponse> => {
   const password = formData.get("password")?.toString();
   if (!password) {
-    return { error: "Password is required." };
+    return { error: "Password is required" };
   }
-  const supabase = createServerSupabaseClient(await cookies());
-  const { error } = await (await supabase).auth.updateUser({ password });
-  if (error) {
-    return { error: "Failed to update your password. Please try again." };
+
+  try {
+    // Get the cookie store
+    const cookieStore = await cookies();
+    // Create the server client
+    const supabase = await createServerSupabaseClient(cookieStore);
+
+    const { error } = await supabase.auth.updateUser({
+      password,
+    });
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    return {
+      success: "Password has been reset successfully",
+      redirectTo: "/login",
+    };
+  } catch (error) {
+    return { 
+      error: error instanceof Error ? error.message : "Failed to reset password"
+    };
   }
-  return { success: "Password updated successfully", redirectTo: "/login" };
 };
 
+/**
+ * Sign out action
+ */
 export const signOutAction = async (): Promise<AuthResponse> => {
-  const supabase = createServerSupabaseClient(await cookies());
-  const { error } = await (await supabase).auth.signOut();
-  if (error) {
-    return { error: "Failed to sign out. Please try again." };
+  // Use the authService instance for logout
+  const result = await authService.logout();
+  
+  if (result.error) {
+    return { error: result.error.message };
   }
-  return { redirectTo: "/" };
+
+  return {
+    success: "Signed out successfully",
+    redirectTo: "/login",
+  };
+};
+
+/**
+ * Verify email action
+ */
+export const verifyEmailAction = async (token: string): Promise<AuthResponse> => {
+  if (!token) {
+    return { error: "Verification token is required" };
+  }
+  
+  try {
+    // Get the cookie store
+    const cookieStore = await cookies();
+    // Create the server client
+    const supabase = await createServerSupabaseClient(cookieStore);
+    
+    // Get the user session
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user?.email) {
+      return { error: "User session not found. Please sign in again." };
+    }
+    
+    // Use the authService instance for email verification
+    const result = await authService.verifyEmail(token);
+    
+    if (result.error) {
+      return { error: result.error.message };
+    }
+
+    return {
+      success: "Email verified successfully",
+      redirectTo: "/dashboard",
+    };
+  } catch (error) {
+    return { 
+      error: error instanceof Error ? error.message : "Failed to verify email"
+    };
+  }
+};
+
+/**
+ * Create a business profile for a user
+ * This allows a user to complete the business onboarding process
+ */
+export const createBusinessProfileAction = async (formData: FormData): Promise<AuthResponse> => {
+  try {
+    // Get the cookie store
+    
+    // Create a Supabase client
+    const client = await supabaseClientService.getBrowserClient();
+    
+    // Get the current session
+    const { data: { session } } = await client.auth.getSession();
+    
+    if (!session) {
+      return { error: "You must be logged in to create a business profile" };
+    }
+    
+    // Get the user's profile
+    const { data: profile, error: profileError } = await client
+      .from('profiles')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .single();
+      
+    if (profileError) {
+      return { error: profileError.message };
+    }
+    
+    // Extract form data
+    const name = formData.get("name")?.toString();
+    const description = formData.get("description")?.toString();
+    const businessCategoryId = formData.get("business_category")?.toString();
+    const businessTypeId = formData.get("business_type")?.toString();
+    const address = formData.get("address")?.toString();
+    const city = formData.get("city")?.toString();
+    const state = formData.get("state")?.toString();
+    const zip = formData.get("zip")?.toString();
+    const country = formData.get("country")?.toString();
+    const phone = formData.get("phone")?.toString();
+    const website = formData.get("website")?.toString();
+    
+    // Validate required fields
+    if (!name || !description || !businessCategoryId || !businessTypeId || !address || !city || !state || !zip || !country || !phone) {
+      return { error: "All fields are required" };
+    }
+    
+    // Create the business profile
+    const { data: business, error: businessError } = await client
+      .from('businesses')
+      .insert({
+        owner_profile_id: profile.id,
+        name,
+        description,
+        business_category: businessCategoryId,
+        business_type: businessTypeId,
+        address,
+        city,
+        state,
+        postal_code: zip,
+        contact_number: phone,
+        website: website || null,
+      })
+      .select()
+      .single();
+      
+    if (businessError) {
+      return { error: businessError.message };
+    }
+    
+    // Update the user's profile to mark onboarding as completed
+    const { error: updateError } = await client
+      .from('profiles')
+      .update({ onboarding_completed: true })
+      .eq('id', profile.id);
+      
+    if (updateError) {
+      return { error: updateError.message };
+    }
+    
+    return {
+      data: { business },
+      success: "Business profile created successfully",
+      redirectTo: "/dashboard",
+    };
+  } catch (error) {
+    return { error: (error as Error).message };
+  }
+};
+
+// Add a helper action for fetching business categories
+export const getBusinessCategoriesAction = async (): Promise<{ 
+  data?: any[]; 
+  error?: string; 
+}> => {
+  try {
+    const cookieStore = await cookies();
+    const supabase = await createServerSupabaseClient(cookieStore);
+    
+    const { data, error } = await supabase
+      .from('business_categories')
+      .select('*')
+      .order('name');
+    
+    if (error) throw error;
+    
+    return { data };
+  } catch (error) {
+    return { 
+      error: error instanceof Error ? error.message : "Failed to fetch business categories"
+    };
+  }
+};
+
+// Add a helper action for fetching service categories by business category
+export const getServiceCategoriesAction = async (businessCategoryId: string): Promise<{
+  data?: any[];
+  error?: string;
+}> => {
+  try {
+    const cookieStore = await cookies();
+    const supabase = await createServerSupabaseClient(cookieStore);
+    
+    const { data, error } = await supabase
+      .from('service_categories')
+      .select('*')
+      .eq('business_category_id', businessCategoryId)
+      .order('name');
+    
+    if (error) throw error;
+    
+    return { data };
+  } catch (error) {
+    return { 
+      error: error instanceof Error ? error.message : "Failed to fetch service categories"
+    };
+  }
 };

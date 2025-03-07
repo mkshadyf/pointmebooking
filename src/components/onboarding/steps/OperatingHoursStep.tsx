@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { BusinessProfile, WorkingHours, DayHours } from '@/types';
+import { BusinessProfile, DayHours, WorkingHours } from '@/types';
 import { ClockIcon } from '@heroicons/react/24/outline';
+import { useState } from 'react';
 
 export interface OperatingHoursStepProps {
   initialData: BusinessProfile | null;
@@ -87,25 +87,25 @@ export function OperatingHoursStep({
             <label className="inline-flex items-center">
               <input
                 type="checkbox"
-                checked={!workingHours[key].is_closed}
+                checked={!workingHours?.[key]?.is_closed}
                 onChange={(e) => handleDayChange(key, 'is_closed', !e.target.checked)}
                 className="rounded border-gray-300 text-primary focus:ring-primary"
               />
               <span className="ml-2 text-sm text-gray-700">Open</span>
             </label>
-            {!workingHours[key].is_closed && (
+            {!workingHours?.[key]?.is_closed && (
               <>
                 <ClockIcon className="h-5 w-5 text-gray-400" />
                 <input
                   type="time"
-                  value={workingHours[key].start}
+                  value={workingHours?.[key]?.start}
                   onChange={(e) => handleDayChange(key, 'start', e.target.value)}
                   className="block rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                 />
                 <span className="text-gray-500">to</span>
                 <input
                   type="time"
-                  value={workingHours[key].end}
+                  value={workingHours?.[key]?.end}
                   onChange={(e) => handleDayChange(key, 'end', e.target.value)}
                   className="block rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                 />

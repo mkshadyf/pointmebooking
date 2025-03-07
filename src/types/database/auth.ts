@@ -1,18 +1,19 @@
+import { UserProfile, UserRole } from '@/types';
 import { Database } from '@generated.types';
 import { Session, User } from '@supabase/supabase-js';
 
 // Base profile type from database
 export type DbProfile = Database['public']['Tables']['profiles']['Row'];
 
-// Auth role type
-export type AuthRole = Database['public']['Enums']['user_role'];
-export type UserStatus = Database['public']['Enums']['user_status'];
+// Auth role type - using UserRole from types/index.ts
+export type AuthRole = UserRole;
 
 // Auth error types
 export interface AuthError extends Error {
     code?: string;
     status?: number;
     details?: Record<string, unknown>;
+    __isAuthError?: boolean;
 }
 
 // Email template types
@@ -22,17 +23,20 @@ export interface EmailTemplate {
     data: Record<string, unknown>;
 }
 
-// Enhanced profile interface with all properties from database
-export interface AuthProfile extends DbProfile {
+/**
+ * Enhanced profile interface with security-related fields
+ * Extends UserProfile from types/index.ts to ensure consistency
+ */
+export interface AuthProfile extends UserProfile {
     // Additional auth-specific fields not in database
-    is_verified?: boolean;
-    is_email_verified?: boolean;
-    last_login?: string | null;
-    login_count?: number;
-    failed_login_attempts?: number;
-    last_failed_login?: string | null;
-    password_reset_token?: string | null;
-    password_reset_expires?: string | null;
+    is_verified: boolean;
+    is_email_verified: boolean;
+    last_login: string | null;
+    login_count: number;
+    failed_login_attempts: number;
+    last_failed_login: string | null;
+    password_reset_token: string | null;
+    password_reset_expires: string | null;
 }
 
 // Login credentials interface
@@ -43,13 +47,14 @@ export interface LoginCredentials {
 
 // Auth result interface
 export interface AuthResult {
-    user: AuthProfile;
+    user: AuthProfile | null;
     session: Session | null;
-    supabaseUser: User;
+    supabaseUser?: User | null;
+    requires2FA?: boolean;
 }
 
-// Auth response type
-export interface AuthResponse<T> {
+// Updated AuthResponse to be generic
+export interface AuthResponse<T = any> {
     data: T | null;
     error: AuthError | null;
 }
@@ -66,11 +71,17 @@ export interface AuthState {
 
 // Auth context interface
 export interface AuthContextType {
+    // User data
     user: User | null;
     profile: AuthProfile | null;
+    session?: Session | null;
+    
+    // Auth state
     isLoading: boolean;
     isAuthenticated: boolean;
     error: AuthError | null;
+    
+    // Auth actions
     login: (email: string, password: string) => Promise<void>;
     register: (email: string, password: string, role: AuthRole) => Promise<void>;
     signOut: () => Promise<void>;

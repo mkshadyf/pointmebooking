@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Slider } from '@/components/ui/Slider';
 import { formatCurrency } from '@/lib/utils';
-import { Category, Service } from '@/types';
+import { Category, UIService } from '@/types';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -17,7 +17,7 @@ const defaultImages = {
 };
 
 interface ServicesGridProps {
-  services: Service[];
+  services: UIService[];
   categories: Category[];
   showFilters?: boolean;
 }
@@ -31,7 +31,7 @@ export function ServicesGrid({ services, categories, showFilters = true }: Servi
   const [durationFilter, setDurationFilter] = useState<number | null>(null);
 
   const filteredServices = services
-    .filter((service) => {
+    .filter((service: UIService) => {
       const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (service.description?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
       const matchesCategory = !selectedCategory || service.category_id === selectedCategory;
@@ -61,7 +61,7 @@ export function ServicesGrid({ services, categories, showFilters = true }: Servi
     setPriceRange([0, maxPrice]);
   }, [maxPrice]);
 
-  const getServiceImage = (service: Service) => {
+  const getServiceImage = (service: UIService) => {
     if (service.image_url) return service.image_url;
     
     const name = service.name.toLowerCase();

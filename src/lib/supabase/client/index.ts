@@ -1,16 +1,21 @@
-import { SUPABASE_CONFIG } from '@/config/supabase';
-import { Database } from '@generated.types';
-import { createClient } from '@supabase/supabase-js';
+/**
+ * Supabase client exports
+ * This file provides a consistent interface for accessing Supabase clients
+ */
 
-// Browser client exports
-export * from './browser';
+import { CookieContainer, createBrowserSupabaseClient, createServerSupabaseClient } from '@/lib/supabase/client';
 
-// Server client exports
-export const supabase = createClient<Database>(
-    SUPABASE_CONFIG.URL!,
-    SUPABASE_CONFIG.ANON_KEY!
-);
+// Re-export the client creation functions
+export { createBrowserSupabaseClient, createServerSupabaseClient };
+export type { CookieContainer };
 
-// Type exports
-export type { Database } from '@generated.types';
-export type SupabaseClient = ReturnType<typeof createClient>; 
+// Export a type for the Supabase client
+export type TypedSupabaseClient = ReturnType<typeof createBrowserSupabaseClient>;
+
+// Create a browser client for direct imports
+export const supabase = createBrowserSupabaseClient();
+
+// Create a server client function for server components
+export const getServerClient = async (cookieStore: CookieContainer) => {
+  return await createServerSupabaseClient(cookieStore);
+}; 

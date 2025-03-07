@@ -1,6 +1,5 @@
-import { supabase } from '@/lib/supabase/client';
-import { ServiceCategory } from '@/lib/supabase/types';
-import { Database } from '@generated.types';
+import { Database } from '@/types/database/generated.types';
+import { supabase } from '../../client/browser';
 import { BaseService } from '../BaseService';
 
 type Tables = Database['public']['Tables'];
@@ -25,6 +24,21 @@ export class ServiceCategoryService extends BaseService<'service_categories'> {
         return super.getAll();
     }
 
+    async getAllActive(): Promise<ServiceCategoryTable['Row'][]> {
+        try {
+            const { data, error } = await this.client
+                .from(this.table)
+                .select('*')
+                .eq('status', 'active')
+                .order('name');
+
+            if (error) throw error;
+            return data || [];
+        } catch (error) {
+            return this.handleError(error);
+        }
+    }
+
     override async getById(id: string): Promise<ServiceCategoryTable['Row']> {
         return super.getById(id);
     }
@@ -39,7 +53,7 @@ export class ServiceCategoryService extends BaseService<'service_categories'> {
                 .order('name');
 
             if (error) throw error;
-            return data;
+            return data || [];
         } catch (error) {
             return this.handleError(error);
         }
@@ -62,9 +76,10 @@ export class ServiceCategoryService extends BaseService<'service_categories'> {
                 id: '',
                 name: '',
                 description: null,
-                created_at: '',
-                updated_at: '',
-                icon: null
+                created_at: null,
+                updated_at: null,
+                icon: null,
+                status: null
             };
             
             // Check if business_category exists and is a valid object
@@ -98,7 +113,7 @@ export class ServiceCategoryService extends BaseService<'service_categories'> {
         return super.delete(id);
     }
 
-    async getServiceCategoriesWithBusinessCategory(): Promise<ServiceCategory[]> {
+    async getServiceCategoriesWithBusinessCategory(): Promise<(ServiceCategoryTable['Row'] & { business_category: BusinessCategoryTable['Row'] })[]> {
         try {
             const { data, error } = await this.client
                 .from(this.table)
@@ -111,9 +126,10 @@ export class ServiceCategoryService extends BaseService<'service_categories'> {
                 id: '',
                 name: '',
                 description: null,
-                created_at: '',
-                updated_at: '',
-                icon: null
+                created_at: null,
+                updated_at: null,
+                icon: null,
+                status: null
             };
             
             return (data || []).map(item => {
@@ -128,7 +144,7 @@ export class ServiceCategoryService extends BaseService<'service_categories'> {
                     ...item,
                     business_category: businessCategory
                 };
-            }) as ServiceCategory[];
+            });
         } catch (error) {
             return this.handleError(error);
         }

@@ -1,7 +1,7 @@
 'use client';
 
 import { LoadingSpinner } from '@/components/ui/loading';
-import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 

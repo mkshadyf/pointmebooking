@@ -2,7 +2,7 @@
 
 import { DashboardHeader, DashboardSidebar, MobileNavigation } from '@/components/dashboard';
 import { LoadingSpinner } from '@/components/ui/loading';
-import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { Suspense } from 'react';
 
 export default function BusinessDashboardLayout({

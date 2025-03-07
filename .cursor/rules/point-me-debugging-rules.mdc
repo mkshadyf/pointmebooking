@@ -1,0 +1,49 @@
+---
+description: PointMe Error Debugging Context
+globs: 
+alwaysApply: false
+---
+---
+description: PointMe Error Debugging Context
+globs: ["**/*"]
+alwaysApply: true
+priority: 1
+---
+
+### Active Crisis Points
+```mermaid
+graph LR
+    A[Auth Store] --> B[Session Mismatch]
+    C[Transformers] --> D[Type Assertions]
+    E[Component Casing] --> F[TextArea vs Textarea]
+```
+
+### Real-Time File Tree
+```text
+src/
+├── lib/supabase/
+│   ├── services/[!auth]*.ts     # Non-auth services
+│   ├── services/auth/           # Auth implementations
+│   │   └── auth.service.ts      # Current auth service
+│   ├── store/auth.store.ts      # Zustand store (active issue)
+│   └── utils/transformers.ts    # Data conversions
+├── components/
+│   └── ui/                      # UI component casing issues
+│       ├── Select.tsx           # Fixed
+│       └── TextArea.tsx         # Needs standardization
+```
+
+### Change Detection
+```timestamp
+Last TypeScript Check: 2024-03-07T14:30:00Z
+File Hashes:
+- auth.store.ts: 3d5f8a2b
+- transformers.ts: 7c1e9f04
+- auth.service.ts: d82a1b3c (conflict)
+```
+
+### Automatic Context Updates
+This rule auto-updates with:
+1. File changes in critical paths
+2. New TypeScript errors
+3. Service layer modifications

@@ -4,28 +4,34 @@ import { Navigation } from '@/components/navigation';
 import { ServiceCard } from '@/components/services/ServiceCard';
 import { ServiceCardSkeletonGrid } from '@/components/services/ServiceCardSkeletonGrid';
 import { SearchFilter } from '@/components/ui/SearchFilter';
-import { SearchService } from '@/lib/supabase/services';
-import { useStore } from '@/lib/supabase/store';
-import { Service, SERVICE_STATUSES, ServiceStatus } from '@/types';
+import { useAuth } from '@/hooks/auth/useAuth';
+import { ServiceWithRelations } from '@/lib/supabase';
+import { searchService } from '@/lib/supabase/services';
+import { useStore } from '@/lib/supabase/store/store';
+import { SERVICE_STATUSES, ServiceStatus, UIService } from '@/types';
 import { FunnelIcon } from '@heroicons/react/24/outline';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-  
 
 const ITEMS_PER_PAGE = 9;
 
 function assertServiceStatus(status: string): ServiceStatus {
   return SERVICE_STATUSES.includes(status as ServiceStatus)
     ? (status as ServiceStatus)
-    : 'inactive';
+    : 'active';
 }
 
-function mapServiceWithRelationsToService(dbService: any): Service {
+function mapServiceWithRelationsToService(dbService: any): UIService {
+  if (!dbService) {
+    console.error('Invalid service data received:', dbService);
+    throw new Error('Invalid service data');
+  }
+  
   const { business, category, status, ...serviceData } = dbService;
   
   return {
     ...serviceData,
-    status: assertServiceStatus(status),
+    status: assertServiceStatus(status || 'active'),
     business: business ? {
       id: business.id,
       name: business.business_name || '',
@@ -41,18 +47,20 @@ function mapServiceWithRelationsToService(dbService: any): Service {
       name: category.name,
       icon: category.icon || undefined,
     } : undefined,
-  } as Service;
+  } as UIService;
 }
 
 export default function ServicesPage() {
+  const { isLoading: authLoading } = useAuth();
   const searchParams = useSearchParams();
-  const { categories } = useStore();
-  const [services, setServices] = useState<Service[]>([]);
-  const [filteredServices, setFilteredServices] = useState<Service[]>([]);
+  const { categories, fetchCategories, isLoading: categoriesLoading } = useStore();
+  const [services, setServices] = useState<UIService[]>([]);
+  const [filteredServices, setFilteredServices] = useState<UIService[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
+  const [, setTotalPages] = useState(1);
 
   // Get initial search query and category from URL
   const initialQuery = searchParams?.get('q') || '';
@@ -60,29 +68,74 @@ export default function ServicesPage() {
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory);
 
+  // Load categories on mount
   useEffect(() => {
+    if (categories.length === 0) {
+      fetchCategories().catch((error) => {
+        console.error('Error loading categories:', error);
+      });
+    }
+  }, [categories.length, fetchCategories]);
+
+  // Load services when search params change or on initial load
+  useEffect(() => {
+    // Skip if auth or categories are still loading
+    if (authLoading || categoriesLoading) {
+      return;
+    }
+
     const loadServices = async () => {
       try {
         setLoading(true);
         setError(null);
-        const results = await SearchService.searchServices(searchQuery || '', {
+        
+        // Add timeout to prevent infinite loading
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timed out')), 10000)
+        );
+        
+        const fetchPromise = searchService.searchServices(searchQuery || '', {
           category: selectedCategory || undefined,
           page,
           limit: ITEMS_PER_PAGE
         });
-        const mappedServices = results.data.map(mapServiceWithRelationsToService);
+        
+        // Race between fetch and timeout
+        const results = await Promise.race([fetchPromise, timeoutPromise]) as any;
+        
+        if (!results || !results.data) {
+          throw new Error('No results returned from search');
+        }
+        
+        const mappedServices = results.data
+          .map((service: any) => {
+            try {
+              return mapServiceWithRelationsToService(service);
+            } catch (err) {
+              console.error('Error mapping service:', err, service);
+              return null;
+            }
+          })
+          .filter(Boolean) as UIService[];
+        
         setServices(mappedServices);
         setFilteredServices(mappedServices);
       } catch (err) {
-        setError('Failed to load services. Please try again.');
         console.error('Error loading services:', err);
+        if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+          setError('Network error: Unable to reach the server. Please check your internet connection or try again later.');
+        } else if (err instanceof Error && err.message === 'Request timed out') {
+          setError('The request took too long to complete. Please try again later.');
+        } else {
+          setError(err instanceof Error ? err.message : 'Failed to load services');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     loadServices();
-  }, [searchQuery, selectedCategory, page]);
+  }, [searchQuery, selectedCategory, page, authLoading, categoriesLoading]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -96,10 +149,115 @@ export default function ServicesPage() {
 
   const hasMore = services.length >= page * ITEMS_PER_PAGE;
 
+  // Show loading state while initializing
+  if (authLoading || categoriesLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation type="main" />
+        <main className="pt-16 sm:pt-20">
+          <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <div className="mb-4 text-center text-gray-600">
+              {authLoading ? 'Initializing...' : 'Loading categories...'}
+            </div>
+            <ServiceCardSkeletonGrid />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Show error state if there's an error
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation type="main" />
+        <main className="pt-16 sm:pt-20">
+          <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <div className="text-center p-6 bg-white rounded-lg shadow-sm">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Oops!</h2>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <button
+                onClick={() => {
+                  setLoading(true);
+                  setError(null);
+                  fetchCategories().then(() => {
+                    searchService.searchServices(searchQuery || '', {
+                      category: selectedCategory || undefined,
+                      page,
+                      limit: ITEMS_PER_PAGE
+                    })
+                      .then((results: any) => {
+                        setServices(
+                          results.data
+                            .filter((service: any) => service !== null)
+                            .map((service: ServiceWithRelations) => {
+                              return mapServiceWithRelationsToService(service);
+                            })
+                        );
+                        // Use pagination data if available
+                        if (results.pagination) {
+                          setTotalPages(results.pagination.totalPages || 1);
+                        }
+                        setLoading(false);
+                      })
+                      .catch((err: Error) => {
+                        console.error('Error fetching services:', err);
+                        setError('Failed to load services. Please try again.');
+                        setLoading(false);
+                      });
+                  });
+                }}
+                className="text-purple-600 hover:text-purple-700 font-medium"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Show loading state while fetching services
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation type="main" />
+        <main className="pt-16 sm:pt-20">
+          <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <div className="mb-4 text-center text-gray-600">
+              Loading services...
+            </div>
+            <ServiceCardSkeletonGrid />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Show empty state if no services
+  if (filteredServices.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation type="main" />
+        <main className="pt-16 sm:pt-20">
+          <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <div className="text-center p-6 bg-white rounded-lg shadow-sm">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">No services found</h2>
+              <p className="text-gray-600">
+                Try adjusting your search or filters to find what you're looking for
+              </p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Show main content
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation type="main" />
-
       <main className="pt-16 sm:pt-20">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
           {/* Search and Filter Header */}
@@ -196,79 +354,40 @@ export default function ServicesPage() {
 
             {/* Services Grid */}
             <div className="flex-1 min-w-0">
-              {loading ? (
-                <ServiceCardSkeletonGrid />
-              ) : error ? (
-                <div className="text-center p-6 bg-white rounded-lg shadow-sm">
-                  <h2 className="text-xl font-bold text-gray-900 mb-2">Oops!</h2>
-                  <p className="text-gray-600 mb-4">{error}</p>
+              <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <h2 className="text-sm font-medium text-gray-500">
+                  {filteredServices.length} {filteredServices.length === 1 ? 'service' : 'services'} found
+                </h2>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500 whitespace-nowrap">Sort by:</span>
+                  <select className="w-full sm:w-auto text-sm border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
+                    <option>Most Relevant</option>
+                    <option>Price: Low to High</option>
+                    <option>Price: High to Low</option>
+                    <option>Newest First</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+                {filteredServices.map((service) => (
+                  <ServiceCard
+                    key={service.id}
+                    service={service}
+                    minimal={false}
+                  />
+                ))}
+              </div>
+
+              {hasMore && (
+                <div className="mt-8 flex justify-center">
                   <button
-                    onClick={() => {
-                      setLoading(true);
-                      SearchService.searchServices(searchQuery || '', {
-                        category: selectedCategory || undefined,
-                        page,
-                        limit: ITEMS_PER_PAGE
-                      })
-                        .then((results) => {
-                          const mappedServices = results.data.map(mapServiceWithRelationsToService);
-                          setServices(mappedServices);
-                          setFilteredServices(mappedServices);
-                          setError(null);
-                        })
-                        .catch(() => setError('Failed to load services'))
-                        .finally(() => setLoading(false));
-                    }}
-                    className="text-purple-600 hover:text-purple-700 font-medium"
+                    onClick={() => setPage(p => p + 1)}
+                    className="px-4 py-2 text-sm font-medium text-purple-600 bg-white border border-purple-300 rounded-md hover:bg-purple-50"
                   >
-                    Try Again
+                    Load More
                   </button>
                 </div>
-              ) : filteredServices.length === 0 ? (
-                <div className="text-center p-6 bg-white rounded-lg shadow-sm">
-                  <h2 className="text-xl font-bold text-gray-900 mb-2">No services found</h2>
-                  <p className="text-gray-600">
-                    Try adjusting your search or filters to find what you're looking for
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <h2 className="text-sm font-medium text-gray-500">
-                      {filteredServices.length} {filteredServices.length === 1 ? 'service' : 'services'} found
-                    </h2>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500 whitespace-nowrap">Sort by:</span>
-                      <select className="w-full sm:w-auto text-sm border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
-                        <option>Most Relevant</option>
-                        <option>Price: Low to High</option>
-                        <option>Price: High to Low</option>
-                        <option>Newest First</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                    {filteredServices.map((service) => (
-                      <ServiceCard
-                        key={service.id}
-                        service={service}
-                        minimal={false}
-                      />
-                    ))}
-                  </div>
-
-                  {hasMore && (
-                    <div className="mt-8 flex justify-center">
-                      <button
-                        onClick={() => setPage(p => p + 1)}
-                        className="px-4 py-2 text-sm font-medium text-purple-600 bg-white border border-purple-300 rounded-md hover:bg-purple-50"
-                      >
-                        Load More
-                      </button>
-                    </div>
-                  )}
-                </>
               )}
             </div>
           </div>

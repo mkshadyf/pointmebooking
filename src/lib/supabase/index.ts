@@ -9,13 +9,14 @@ export const supabase = createClient<Database>(
 
 // Re-export types and interfaces
 // Use the centralized types!
-export type { AuthProfile, Booking, BusinessCategory, ServiceCategory } from '@/lib/supabase/types';
-export { AuthContext, AuthProvider, useAuth } from './auth/context/AuthContext';
+export { AuthProvider } from './auth/context/AuthContext';
+export { useAuth, useSupabaseAuth } from './hooks/useAuth';
+export type { AuthProfile, Booking, BusinessCategory, ServiceCategory } from './types/index';
 
 // Re-export services
 export { AuthService } from './services/auth.service';
 export { BookingService } from './services/booking.service';
-export { ProfileService } from './services/profile.service';
+export { profileService } from './services/profile.service';
 export { ServiceService } from './services/service.service';
 
 // Re-export common types and interfaces
@@ -25,7 +26,7 @@ export * from './config';
 export { withAuth } from './auth/guards/withAuth';
 
 // Service exports
-export { EmailService, SearchService } from './services';
+export { SearchService } from './services/search/search.service';
 
 // Hook exports
 export {
@@ -51,7 +52,7 @@ export type {
     ServiceUpdate,
     ServiceWithRelations,
     SupabaseAuthError
-} from './types';
+} from './types/index';
 
 // Store exports
 export { useStore } from './store';
@@ -85,4 +86,4 @@ export const SUPABASE_CONFIG = {
     SERVICES: 'services',
     PROFILES: 'profiles',
   },
-} as const; 
+} as const;

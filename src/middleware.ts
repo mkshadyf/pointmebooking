@@ -1,134 +1,107 @@
-import { ROUTES } from '@/config/routes';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { NextRequest, NextResponse } from 'next/server';
 
-// Define public routes that don't require authentication
-const PUBLIC_ROUTES = [
-  '/',
-  '/services',
-  '/businesses',
-  ROUTES.login.path,
-  ROUTES.register.path,
-  ROUTES.forgotPassword.path,
-];
-
-// Helper to check if path starts with any of the given prefixes
-
-// Helper function for login redirects
-
-// Helper function for error redirects
-
-export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+/**
+ * Middleware for handling authentication and redirects
+ * - Protects routes that require authentication
+ * - Redirects authenticated users from auth pages
+ * - Handles business onboarding flow redirects
+ */
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ 
+    req: req as any, 
+    res: res as any 
   });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          });
-        },
-        remove(name: string, options: CookieOptions) {
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          });
-        },
-      },
+  
+  // Get the current route path
+  const path = req.nextUrl.pathname;
+  
+  // Check if the user is authenticated
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  
+  // Define route groups
+  const isAuthRoute = 
+    path.startsWith('/login') || 
+    path.startsWith('/register') || 
+    path.startsWith('/auth/reset-password');
+    
+  const isProtectedRoute = 
+    path.startsWith('/dashboard') || 
+    path.startsWith('/settings') || 
+    path.startsWith('/onboarding/business');
+    
+  const isBusinessRoute = 
+    path.startsWith('/dashboard/business');
+    
+  const isAdminRoute = 
+    path.startsWith('/dashboard/admin');
+    
+  // If the user is not authenticated and tries to access a protected route
+  if (isProtectedRoute && !session) {
+    const redirectUrl = new URL('/login', req.url);
+    redirectUrl.searchParams.set('redirectTo', path);
+    return NextResponse.redirect(redirectUrl);
+  }
+  
+  // If the user is authenticated and tries to access an auth route
+  if (isAuthRoute && session) {
+    return NextResponse.redirect(new URL('/dashboard', req.url));
+  }
+  
+  // If the user is authenticated, get the user profile
+  if (session) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, onboarding_completed')
+      .eq('user_id', session.user.id)
+      .single();
+    
+    // If it's a business route, but the user is not a business
+    if (isBusinessRoute && profile && profile.role !== 'business') {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
     }
-  );
-
-  const { data: { session } } = await supabase.auth.getSession();
-  const path = request.nextUrl.pathname;
-
-  // Skip auth check for public assets
-  if (
-    path.startsWith('/_next') ||
-    path.startsWith('/api') ||
-    path === '/manifest.json' ||
-    path === '/favicon.ico' ||
-    path.match(/\.(ico|png|jpg|jpeg|svg|css|js|webp|gif)$/)
-  ) {
-    return NextResponse.next();
-  }
-
-  // Check if the current path is public
-  const isPublicRoute = PUBLIC_ROUTES.some(route => path.startsWith(route));
-
-  // Allow access to public routes
-  if (isPublicRoute) {
-    // If user is logged in and trying to access login/register pages, redirect to dashboard
-    if (session && [ROUTES.login.path, ROUTES.register.path].some(route => path.startsWith(route))) {
-      const redirectUrl = new URL(
-        session.user?.user_metadata?.role === 'business' 
-          ? ROUTES.businessDashboard.path 
-          : ROUTES.customerDashboard.path,
-        request.url
-      );
-      return NextResponse.redirect(redirectUrl);
+    
+    // If it's an admin route, but the user is not an admin
+    if (isAdminRoute && profile && profile.role !== 'admin') {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
     }
-    return NextResponse.next();
-  }
-
-  // Protected routes
-  if (!session) {
-    // Only add redirectTo for protected routes, not for direct login attempts
-    const loginUrl = new URL(ROUTES.login.path, request.url);
-    if (!path.startsWith(ROUTES.login.path)) {
-      loginUrl.searchParams.set('redirectTo', path);
+    
+    // If the user is a business but hasn't completed onboarding
+    // and tries to access a business route (except onboarding)
+    if (
+      profile && 
+      profile.role === 'business' && 
+      !profile.onboarding_completed &&
+      isBusinessRoute &&
+      !path.startsWith('/onboarding/business')
+    ) {
+      return NextResponse.redirect(new URL('/onboarding/business', req.url));
     }
-    return NextResponse.redirect(loginUrl);
   }
-
-  // Get user profile for role and onboarding status
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, onboarding_completed, email_verified')
-    .eq('id', session.user.id)
-    .single();
-
-  // Check email verification first
-  if (profile && !profile.email_verified && !path.startsWith(ROUTES.verifyEmail.path)) {
-    return NextResponse.redirect(new URL(ROUTES.verifyEmail.path, request.url));
-  }
-
-  // Onboarding check for business users
-  if (
-    profile?.role === 'business' && 
-    !profile.onboarding_completed &&
-    !path.startsWith(ROUTES.businessOnboarding.path)
-  ) {
-    return NextResponse.redirect(new URL(ROUTES.businessOnboarding.path, request.url));
-  }
-
-  return response;
+  
+  return res;
 }
 
-// Update the config matcher to explicitly exclude manifest.json and other static files
+/**
+ * Matcher for the middleware
+ * This defines which routes the middleware should run on
+ */
 export const config = {
   matcher: [
-    /*
-     * Match all paths except:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - manifest.json
-     * - favicon.ico
-     * - public files (images, etc)
-     */
-    '/((?!_next/static|_next/image|api|manifest.json|favicon.ico).*)',
+    // Auth routes
+    '/login/:path*',
+    '/register/:path*',
+    '/auth/:path*',
+    
+    // Protected routes
+    '/dashboard/:path*',
+    '/settings/:path*',
+    '/onboarding/:path*',
+    
+    // Skip static files and API routes
+    '/((?!_next/static|_next/image|favicon.ico|public|api).*)',
   ],
 };

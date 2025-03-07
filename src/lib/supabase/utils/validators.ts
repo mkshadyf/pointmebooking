@@ -2,10 +2,22 @@ import { Booking } from '@/types';
 import { z } from 'zod';
 
 // Common patterns
-const EMAIL_PATTERN = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
-const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
+// Enhanced password pattern requiring at least one lowercase, one uppercase, one digit, one special character, and minimum 10 characters
+const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]{10,}$/;
 const PHONE_PATTERN = /^\+?[\d\s-]{10,}$/;
 const URL_PATTERN = /^https?:\/\/[\w-]+(\.[\w-]+)+[/#?]?.*$/i;
+
+/**
+ * Password validation rules
+ */
+export const PASSWORD_RULES = {
+  MIN_LENGTH: 10,
+  REQUIRE_UPPERCASE: true,
+  REQUIRE_LOWERCASE: true,
+  REQUIRE_NUMBER: true,
+  REQUIRE_SPECIAL: true,
+  MAX_LENGTH: 100,
+};
 
 // Base schemas
 export const ErrorSchema = z.object({
@@ -23,13 +35,18 @@ export const PaginationSchema = z.object({
 
 // Auth schemas
 export const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8).regex(PASSWORD_PATTERN),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string()
+    .min(10, "Password must be at least 10 characters long")
+    .regex(
+      PASSWORD_PATTERN, 
+      "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
+    ),
 });
 
 export const registerSchema = loginSchema.extend({
-  name: z.string().min(2),
-  phone: z.string().regex(PHONE_PATTERN).optional(),
+  name: z.string().min(2, "Name must be at least 2 characters long"),
+  phone: z.string().regex(PHONE_PATTERN, "Please enter a valid phone number").optional(),
 });
 
 export const resetPasswordSchema = z.object({
@@ -38,7 +55,12 @@ export const resetPasswordSchema = z.object({
 
 export const updatePasswordSchema = z.object({
   currentPassword: z.string(),
-  newPassword: z.string().min(8).regex(PASSWORD_PATTERN),
+  newPassword: z.string()
+    .min(10, "Password must be at least 10 characters long")
+    .regex(
+      PASSWORD_PATTERN, 
+      "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
+    ),
 });
 
 // Profile schemas
@@ -111,23 +133,6 @@ export const ServiceResponseSchema = z.object({
   }).optional(),
 });
 
-// Helper functions
-export function validateEmail(email: string): boolean {
-  return EMAIL_PATTERN.test(email);
-}
-
-export function validatePassword(password: string): boolean {
-  return PASSWORD_PATTERN.test(password);
-}
-
-export function validatePhone(phone: string): boolean {
-  return PHONE_PATTERN.test(phone);
-}
-
-export function validateUrl(url: string): boolean {
-  return URL_PATTERN.test(url);
-}
-
 // Types
 export type ApiError = z.infer<typeof ErrorSchema>;
 export type PaginationParams = z.infer<typeof PaginationSchema>;
@@ -137,6 +142,112 @@ export type UpdateProfileRequest = z.infer<typeof profileSchema>;
 export type UserResponse = z.infer<typeof UserResponseSchema>;
 export type ServiceResponse = z.infer<typeof ServiceResponseSchema>;
 
-export const validateBooking = (data: unknown): asserts data is Booking => {
+export const validateBooking = (data: Booking): void => {
   // Implement validation logic
-}; 
+};
+
+/**
+ * Validates a password against security requirements
+ * @param password - The password to validate
+ * @returns An object with validation result and any error messages
+ */
+export function validatePassword(password: string): { 
+  valid: boolean; 
+  errors: string[];
+} {
+  const errors: string[] = [];
+  
+  // Check password length
+  if (!password || password.length < PASSWORD_RULES.MIN_LENGTH) {
+    errors.push(`Password must be at least ${PASSWORD_RULES.MIN_LENGTH} characters long`);
+  }
+  
+  if (password && password.length > PASSWORD_RULES.MAX_LENGTH) {
+    errors.push(`Password cannot exceed ${PASSWORD_RULES.MAX_LENGTH} characters`);
+  }
+  
+  // Check for uppercase letters
+  if (PASSWORD_RULES.REQUIRE_UPPERCASE && !/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter');
+  }
+  
+  // Check for lowercase letters
+  if (PASSWORD_RULES.REQUIRE_LOWERCASE && !/[a-z]/.test(password)) {
+    errors.push('Password must contain at least one lowercase letter');
+  }
+  
+  // Check for numbers
+  if (PASSWORD_RULES.REQUIRE_NUMBER && !/\d/.test(password)) {
+    errors.push('Password must contain at least one number');
+  }
+  
+  // Check for special characters
+  if (PASSWORD_RULES.REQUIRE_SPECIAL && !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    errors.push('Password must contain at least one special character');
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+/**
+ * Validates an email address format
+ * @param email - The email to validate
+ * @returns Whether the email is valid
+ */
+export function validateEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+/**
+ * Validates a username
+ * @param username - The username to validate
+ * @returns An object with validation result and any error messages
+ */
+export function validateUsername(username: string): {
+  valid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+  
+  if (!username || username.length < 3) {
+    errors.push('Username must be at least 3 characters long');
+  }
+  
+  if (username && username.length > 30) {
+    errors.push('Username cannot exceed 30 characters');
+  }
+  
+  // Only allow alphanumeric characters, underscores, and hyphens
+  if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+    errors.push('Username can only contain letters, numbers, underscores, and hyphens');
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+/**
+ * Validates a phone number format
+ * @param phone - The phone number to validate
+ * @returns Whether the phone number is valid
+ */
+export function validatePhone(phone: string): boolean {
+  // Basic phone validation - would need to be adjusted for international formats
+  const phoneRegex = /^\+?[0-9]{10,15}$/;
+  return phoneRegex.test(phone);
+}
+
+/**
+ * Validates a URL format
+ * @param url - The URL to validate
+ * @returns Whether the URL is valid
+ */
+export function validateUrl(url: string): boolean {
+  return URL_PATTERN.test(url);
+} 

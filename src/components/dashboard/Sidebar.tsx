@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { usePathname } from 'next/navigation';
 import { NavItem } from './NavItem';
 export function DashboardSidebar() {

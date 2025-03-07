@@ -1,9 +1,21 @@
 // Re-export generated types
 export * from './generated.types';
 
-// Export shared interfaces and types
+// Export from auth module
 export * from './auth';
-export * from './categories';
+
+// Export from categories module (except ambiguous exports)
+export {
+  CategoryStatus
+} from './categories';
+export type {
+  BusinessCategoryInsert, BusinessCategoryUpdate, BusinessCategoryWithServices, DbBusinessCategory,
+  DbServiceCategory, ServiceCategoryInsert, ServiceCategoryUpdate,
+  ServiceCategoryWithBusiness
+} from './categories';
+
+// Export from models module
+export * from './models';
 
 // Export common types
 export type Json =
@@ -24,5 +36,3 @@ export interface Activity {
   customer_name?: string;
   // ... other fields ...
 }
-
-export * from './auth';

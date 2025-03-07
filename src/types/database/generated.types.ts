@@ -6,523 +6,794 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
+export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          operationName?: string
+          query?: string
+          variables?: Json
+          extensions?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
-      bookings: {
+      account_lockouts: {
         Row: {
-          id: string
           created_at: string
+          email: string | null
+          expires_at: string | null
+          failed_attempts: number
+          id: string
+          locked_until: string | null
           updated_at: string
-          user_id: string
-          service_id: string
-          business_id: string
-          start_time: string
-          end_time: string
-          status: string
-          notes: string | null
-          payment_status: string | null
-          payment_id: string | null
-          customer_name: string | null
-          date: string | null
+          user_id: string | null
         }
         Insert: {
-          id?: string
           created_at?: string
+          email?: string | null
+          expires_at?: string | null
+          failed_attempts?: number
+          id?: string
+          locked_until?: string | null
           updated_at?: string
-          user_id: string
-          service_id: string
-          business_id: string
-          start_time: string
-          end_time: string
-          status?: string
-          notes?: string | null
-          payment_status?: string | null
-          payment_id?: string | null
-          customer_name?: string | null
-          date?: string | null
+          user_id?: string | null
         }
         Update: {
-          id?: string
           created_at?: string
+          email?: string | null
+          expires_at?: string | null
+          failed_attempts?: number
+          id?: string
+          locked_until?: string | null
           updated_at?: string
-          user_id?: string
-          service_id?: string
-          business_id?: string
-          start_time?: string
-          end_time?: string
-          status?: string
-          notes?: string | null
-          payment_status?: string | null
-          payment_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      audit_logs: {
+        Row: {
+          created_at: string
+          details: Json | null
+          event_type: string
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      bookings: {
+        Row: {
+          business_id: string
+          created_at: string | null
+          customer_id: string
+          customer_name: string | null
+          date: string
+          end_time: string
+          id: string
+          notes: string | null
+          service_id: string
+          start_time: string
+          status: Database["public"]["Enums"]["booking_status"]
+          total_amount: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string | null
+          customer_id: string
           customer_name?: string | null
-          date?: string | null
+          date: string
+          end_time: string
+          id?: string
+          notes?: string | null
+          service_id: string
+          start_time: string
+          status?: Database["public"]["Enums"]["booking_status"]
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string | null
+          customer_id?: string
+          customer_name?: string | null
+          date?: string
+          end_time?: string
+          id?: string
+          notes?: string | null
+          service_id?: string
+          start_time?: string
+          status?: Database["public"]["Enums"]["booking_status"]
+          total_amount?: number | null
+          updated_at?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "bookings_business_id_fkey"
             columns: ["business_id"]
+            isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "bookings_service_id_fkey"
             columns: ["service_id"]
+            isOneToOne: false
             referencedRelation: "services"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "bookings_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          }
         ]
       }
       business_categories: {
         Row: {
+          created_at: string | null
+          description: string | null
+          icon: string | null
           id: string
           name: string
-          description: string | null
-          created_at: string
-          updated_at: string
-          icon: string | null
+          status: string | null
+          updated_at: string | null
         }
         Insert: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
           id?: string
           name: string
-          description?: string | null
-          created_at?: string
-          updated_at?: string
-          icon?: string | null
+          status?: string | null
+          updated_at?: string | null
         }
         Update: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
           id?: string
           name?: string
-          description?: string | null
-          created_at?: string
-          updated_at?: string
-          icon?: string | null
+          status?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
       businesses: {
         Row: {
-          id: string
-          created_at: string
-          updated_at: string
-          name: string
-          description: string | null
-          owner_id: string
           address: string | null
+          avatar_url: string | null
+          business_category: string | null
+          business_type: string | null
           city: string | null
-          state: string | null
-          zip_code: string | null
-          country: string | null
-          phone: string | null
-          email: string | null
-          website: string | null
+          contact_email: string | null
+          contact_number: string | null
+          cover_image_url: string | null
+          created_at: string | null
+          description: string | null
+          id: string
           logo_url: string | null
-          banner_url: string | null
-          category_id: string | null
-          status: string
+          name: string
+          owner_profile_id: string
+          postal_code: string | null
+          state: string | null
+          status: Database["public"]["Enums"]["user_status"]
+          updated_at: string | null
+          website: string | null
           working_hours: Json | null
         }
         Insert: {
-          id?: string
-          created_at?: string
-          updated_at?: string
-          name: string
-          description?: string | null
-          owner_id: string
           address?: string | null
+          avatar_url?: string | null
+          business_category?: string | null
+          business_type?: string | null
           city?: string | null
-          state?: string | null
-          zip_code?: string | null
-          country?: string | null
-          phone?: string | null
-          email?: string | null
-          website?: string | null
+          contact_email?: string | null
+          contact_number?: string | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
           logo_url?: string | null
-          banner_url?: string | null
-          category_id?: string | null
-          status?: string
+          name: string
+          owner_profile_id: string
+          postal_code?: string | null
+          state?: string | null
+          status?: Database["public"]["Enums"]["user_status"]
+          updated_at?: string | null
+          website?: string | null
           working_hours?: Json | null
         }
         Update: {
-          id?: string
-          created_at?: string
-          updated_at?: string
-          name?: string
-          description?: string | null
-          owner_id?: string
           address?: string | null
+          avatar_url?: string | null
+          business_category?: string | null
+          business_type?: string | null
           city?: string | null
-          state?: string | null
-          zip_code?: string | null
-          country?: string | null
-          phone?: string | null
-          email?: string | null
-          website?: string | null
+          contact_email?: string | null
+          contact_number?: string | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
           logo_url?: string | null
-          banner_url?: string | null
-          category_id?: string | null
-          status?: string
+          name?: string
+          owner_profile_id?: string
+          postal_code?: string | null
+          state?: string | null
+          status?: Database["public"]["Enums"]["user_status"]
+          updated_at?: string | null
+          website?: string | null
           working_hours?: Json | null
         }
         Relationships: [
           {
-            foreignKeyName: "businesses_category_id_fkey"
-            columns: ["category_id"]
+            foreignKeyName: "businesses_business_category_fkey"
+            columns: ["business_category"]
+            isOneToOne: false
             referencedRelation: "business_categories"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "businesses_owner_id_fkey"
-            columns: ["owner_id"]
+            foreignKeyName: "businesses_owner_profile_id_fkey"
+            columns: ["owner_profile_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       error_logs: {
         Row: {
-          id: string
-          created_at: string
-          error_type: string
+          context: Json | null
+          created_at: string | null
+          error_code: string
           error_message: string
-          error_stack: string | null
+          id: string
+          stack_trace: string | null
           user_id: string | null
-          metadata: Json | null
         }
         Insert: {
-          id?: string
-          created_at?: string
-          error_type: string
+          context?: Json | null
+          created_at?: string | null
+          error_code: string
           error_message: string
-          error_stack?: string | null
+          id?: string
+          stack_trace?: string | null
           user_id?: string | null
-          metadata?: Json | null
         }
         Update: {
-          id?: string
-          created_at?: string
-          error_type?: string
+          context?: Json | null
+          created_at?: string | null
+          error_code?: string
           error_message?: string
-          error_stack?: string | null
+          id?: string
+          stack_trace?: string | null
           user_id?: string | null
-          metadata?: Json | null
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          booking_id: string
+          created_at: string | null
+          id: string
+          payment_status: string
+          transaction_id: string | null
+        }
+        Insert: {
+          amount: number
+          booking_id: string
+          created_at?: string | null
+          id?: string
+          payment_status: string
+          transaction_id?: string | null
+        }
+        Update: {
+          amount?: number
+          booking_id?: string
+          created_at?: string | null
+          id?: string
+          payment_status?: string
+          transaction_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "error_logs_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "profiles"
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       profiles: {
         Row: {
-          id: string
-          created_at: string
-          updated_at: string
-          email: string
-          first_name: string | null
-          last_name: string | null
           avatar_url: string | null
-          phone: string | null
-          role: string
-          status: string
-          preferences: Json | null
+          cover_image_url: string | null
+          created_at: string | null
+          email: string
           email_verified: boolean | null
-          onboarding_completed: boolean | null
-          business_name: string | null
-          business_type: string | null
-          description: string | null
-          address: string | null
-          city: string | null
-          state: string | null
-          working_hours: Json | null
-          social_media: Json | null
-          verification_code: string | null
-          verification_attempts: number | null
-          logo_url: string | null
           full_name: string | null
+          id: string
+          onboarding_completed: boolean | null
+          role: Database["public"]["Enums"]["user_role"]
+          status: Database["public"]["Enums"]["user_status"]
+          updated_at: string | null
+          user_id: string
         }
         Insert: {
-          id: string
-          created_at?: string
-          updated_at?: string
-          email: string
-          first_name?: string | null
-          last_name?: string | null
           avatar_url?: string | null
-          phone?: string | null
-          role?: string
-          status?: string
-          preferences?: Json | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          email: string
           email_verified?: boolean | null
-          onboarding_completed?: boolean | null
-          business_name?: string | null
-          business_type?: string | null
-          description?: string | null
-          address?: string | null
-          city?: string | null
-          state?: string | null
-          working_hours?: Json | null
-          social_media?: Json | null
-          verification_code?: string | null
-          verification_attempts?: number | null
-          logo_url?: string | null
           full_name?: string | null
+          id?: string
+          onboarding_completed?: boolean | null
+          role?: Database["public"]["Enums"]["user_role"]
+          status?: Database["public"]["Enums"]["user_status"]
+          updated_at?: string | null
+          user_id: string
         }
         Update: {
-          id?: string
-          created_at?: string
-          updated_at?: string
-          email?: string
-          first_name?: string | null
-          last_name?: string | null
           avatar_url?: string | null
-          phone?: string | null
-          role?: string
-          status?: string
-          preferences?: Json | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          email?: string
           email_verified?: boolean | null
-          onboarding_completed?: boolean | null
-          business_name?: string | null
-          business_type?: string | null
-          description?: string | null
-          address?: string | null
-          city?: string | null
-          state?: string | null
-          working_hours?: Json | null
-          social_media?: Json | null
-          verification_code?: string | null
-          verification_attempts?: number | null
-          logo_url?: string | null
           full_name?: string | null
+          id?: string
+          onboarding_completed?: boolean | null
+          role?: Database["public"]["Enums"]["user_role"]
+          status?: Database["public"]["Enums"]["user_status"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          business_id: string
+          comment: string | null
+          created_at: string | null
+          customer_id: string
+          id: string
+          rating: number
+        }
+        Insert: {
+          business_id: string
+          comment?: string | null
+          created_at?: string | null
+          customer_id: string
+          id?: string
+          rating: number
+        }
+        Update: {
+          business_id?: string
+          comment?: string | null
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          rating?: number
         }
         Relationships: [
           {
-            foreignKeyName: "profiles_id_fkey"
-            columns: ["id"]
-            referencedRelation: "users"
+            foreignKeyName: "reviews_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
             referencedColumns: ["id"]
-          }
+          },
+          {
+            foreignKeyName: "reviews_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       schedules: {
         Row: {
-          id: string
-          created_at: string
-          updated_at: string
           business_id: string
-          service_id: string | null
-          staff_id: string | null
+          created_at: string | null
           day_of_week: number
-          start_time: string
           end_time: string
-          is_available: boolean
-          max_bookings: number | null
+          id: string
+          is_available: boolean | null
+          staff_id: string
+          start_time: string
+          updated_at: string | null
         }
         Insert: {
-          id?: string
-          created_at?: string
-          updated_at?: string
           business_id: string
-          service_id?: string | null
-          staff_id?: string | null
+          created_at?: string | null
           day_of_week: number
-          start_time: string
           end_time: string
-          is_available?: boolean
-          max_bookings?: number | null
+          id?: string
+          is_available?: boolean | null
+          staff_id: string
+          start_time: string
+          updated_at?: string | null
         }
         Update: {
-          id?: string
-          created_at?: string
-          updated_at?: string
           business_id?: string
-          service_id?: string | null
-          staff_id?: string | null
+          created_at?: string | null
           day_of_week?: number
-          start_time?: string
           end_time?: string
-          is_available?: boolean
-          max_bookings?: number | null
+          id?: string
+          is_available?: boolean | null
+          staff_id?: string
+          start_time?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "schedules_business_id_fkey"
             columns: ["business_id"]
+            isOneToOne: false
             referencedRelation: "businesses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "schedules_service_id_fkey"
-            columns: ["service_id"]
-            referencedRelation: "services"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "schedules_staff_id_fkey"
             columns: ["staff_id"]
+            isOneToOne: false
             referencedRelation: "staff"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       service_categories: {
         Row: {
+          business_category_id: string | null
+          created_at: string | null
+          description: string | null
+          icon: string | null
           id: string
           name: string
-          description: string | null
-          created_at: string
-          updated_at: string
-          icon: string | null
+          status: string | null
+          updated_at: string | null
         }
         Insert: {
+          business_category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
           id?: string
           name: string
-          description?: string | null
-          created_at?: string
-          updated_at?: string
-          icon?: string | null
+          status?: string | null
+          updated_at?: string | null
         }
         Update: {
+          business_category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
           id?: string
           name?: string
-          description?: string | null
-          created_at?: string
-          updated_at?: string
-          icon?: string | null
+          status?: string | null
+          updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "service_categories_business_category_id_fkey"
+            columns: ["business_category_id"]
+            isOneToOne: false
+            referencedRelation: "business_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       services: {
         Row: {
-          id: string
-          created_at: string
-          updated_at: string
-          name: string
-          description: string | null
-          price: number
-          duration: number
+          admin_notes: string | null
+          approval_status: Database["public"]["Enums"]["approval_status"] | null
+          approved_at: string | null
+          approved_by_id: string | null
           business_id: string
           category_id: string | null
+          created_at: string | null
+          created_by_id: string | null
+          description: string | null
+          duration: number
+          featured: boolean | null
+          featured_order: number | null
+          id: string
           image_url: string | null
-          status: string
-          max_capacity: number | null
-          location: string | null
           is_available: boolean | null
+          name: string
+          price: number
+          status: Database["public"]["Enums"]["service_status"]
+          updated_at: string | null
         }
         Insert: {
-          id?: string
-          created_at?: string
-          updated_at?: string
-          name: string
-          description?: string | null
-          price: number
-          duration: number
+          admin_notes?: string | null
+          approval_status?:
+            | Database["public"]["Enums"]["approval_status"]
+            | null
+          approved_at?: string | null
+          approved_by_id?: string | null
           business_id: string
           category_id?: string | null
+          created_at?: string | null
+          created_by_id?: string | null
+          description?: string | null
+          duration: number
+          featured?: boolean | null
+          featured_order?: number | null
+          id?: string
           image_url?: string | null
-          status?: string
-          max_capacity?: number | null
-          location?: string | null
           is_available?: boolean | null
+          name: string
+          price: number
+          status?: Database["public"]["Enums"]["service_status"]
+          updated_at?: string | null
         }
         Update: {
-          id?: string
-          created_at?: string
-          updated_at?: string
-          name?: string
-          description?: string | null
-          price?: number
-          duration?: number
+          admin_notes?: string | null
+          approval_status?:
+            | Database["public"]["Enums"]["approval_status"]
+            | null
+          approved_at?: string | null
+          approved_by_id?: string | null
           business_id?: string
           category_id?: string | null
+          created_at?: string | null
+          created_by_id?: string | null
+          description?: string | null
+          duration?: number
+          featured?: boolean | null
+          featured_order?: number | null
+          id?: string
           image_url?: string | null
-          status?: string
-          max_capacity?: number | null
-          location?: string | null
           is_available?: boolean | null
+          name?: string
+          price?: number
+          status?: Database["public"]["Enums"]["service_status"]
+          updated_at?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "services_business_id_fkey"
             columns: ["business_id"]
+            isOneToOne: false
             referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "services_category_id_fkey"
             columns: ["category_id"]
+            isOneToOne: false
             referencedRelation: "service_categories"
             referencedColumns: ["id"]
-          }
+          },
         ]
+      }
+      sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          ip_address: string | null
+          is_active: boolean
+          last_active_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean
+          last_active_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean
+          last_active_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       staff: {
         Row: {
-          id: string
-          created_at: string
-          updated_at: string
           business_id: string
-          user_id: string
+          created_at: string | null
+          id: string
           role: string
-          status: string
-          services: string[] | null
+          status: Database["public"]["Enums"]["user_status"] | null
+          updated_at: string | null
+          user_id: string
         }
         Insert: {
-          id?: string
-          created_at?: string
-          updated_at?: string
           business_id: string
+          created_at?: string | null
+          id?: string
+          role: string
+          status?: Database["public"]["Enums"]["user_status"] | null
+          updated_at?: string | null
           user_id: string
-          role?: string
-          status?: string
-          services?: string[] | null
         }
         Update: {
-          id?: string
-          created_at?: string
-          updated_at?: string
           business_id?: string
-          user_id?: string
+          created_at?: string | null
+          id?: string
           role?: string
-          status?: string
-          services?: string[] | null
+          status?: Database["public"]["Enums"]["user_status"] | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "staff_business_id_fkey"
             columns: ["business_id"]
+            isOneToOne: false
             referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "staff_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          }
         ]
+      }
+      user_2fa: {
+        Row: {
+          backup_codes: Json | null
+          created_at: string
+          enabled: boolean
+          id: string
+          last_used_at: string | null
+          totp_secret: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          backup_codes?: Json | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_used_at?: string | null
+          totp_secret: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          backup_codes?: Json | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_used_at?: string | null
+          totp_secret?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_expired_lockouts: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      cleanup_expired_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      generate_backup_codes: {
+        Args: {
+          p_user_id: string
+          p_count?: number
+        }
+        Returns: string[]
+      }
+      get_user_active_sessions: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: {
+          created_at: string
+          expires_at: string
+          id: string
+          ip_address: string | null
+          is_active: boolean
+          last_active_at: string
+          user_agent: string | null
+          user_id: string
+        }[]
+      }
+      has_2fa_enabled: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      invalidate_all_sessions: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      is_email_verified: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      log_security_event: {
+        Args: {
+          p_event_type: string
+          p_details?: Json
+        }
+        Returns: string
+      }
+      update_session_activity: {
+        Args: {
+          p_session_id: string
+        }
+        Returns: boolean
+      }
+      verify_backup_code: {
+        Args: {
+          p_user_id: string
+          p_code: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      booking_status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no-show'
-      service_status: 'active' | 'inactive' | 'draft' | 'archived'
-      user_role: 'admin' | 'business' | 'customer' | 'staff'
-      user_status: 'active' | 'inactive' | 'pending' | 'suspended'
+      approval_status: "pending" | "approved" | "rejected"
+      booking_status: "pending" | "confirmed" | "cancelled" | "completed"
+      service_status: "active" | "inactive" | "deleted"
+      user_role: "customer" | "business" | "admin"
+      user_status: "active" | "inactive" | "suspended"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -530,7 +801,99 @@ export interface Database {
   }
 }
 
-export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']
-export type Insertable<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert']
-export type Updatable<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update']
-export type Relationships<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Relationships']
+type PublicSchema = Database[Extract<keyof Database, "public">]
+
+export type Tables<
+  PublicTableNameOrOptions extends
+    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
+        PublicSchema["Views"])
+    ? (PublicSchema["Tables"] &
+        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  PublicTableNameOrOptions extends
+    | keyof PublicSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  PublicTableNameOrOptions extends
+    | keyof PublicSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  PublicEnumNameOrOptions extends
+    | keyof PublicSchema["Enums"]
+    | { schema: keyof Database },
+  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
+    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof PublicSchema["CompositeTypes"]
+    | { schema: keyof Database },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
+    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never

@@ -1,4 +1,5 @@
 import { Database } from '@generated.types';
+import { UIService } from '..';
 
 // Base types from generated schema
 export type DbErrorLog = Database['public']['Tables']['error_logs']['Row'];
@@ -9,6 +10,35 @@ export type DbBusiness = Database['public']['Tables']['businesses']['Row'];
 export type DbBusinessCategory = Database['public']['Tables']['business_categories']['Row'];
 export type DbService = Database['public']['Tables']['services']['Row'];
 export type DbServiceCategory = Database['public']['Tables']['service_categories']['Row'];
+
+// ServiceFromDB for database-to-UI transformation
+export interface ServiceFromDB extends Omit<DbService, 'admin_notes' | 'approval_status' | 'approved_at' | 'approved_by_id'> {
+  max_capacity: number | null;
+  location: string | null;
+  created_by_id: string | null;
+  approved_by_id: string | null;
+  approved_at: string | null;
+  featured: boolean;
+  featured_order: number | null;
+  approval_status: string;
+  admin_notes: string | null;
+  business?: {
+    id: string;
+    name: string;
+    description?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    phone?: string;
+    email?: string;
+    logo_url?: string;
+  };
+  category?: {
+    id: string;
+    name: string;
+    icon?: string;
+  };
+}
 
 // Enhanced types with relationships
 export interface ErrorLog extends DbErrorLog {
@@ -87,30 +117,15 @@ export interface Business extends DbBusiness {
         name: string;
         icon: string | null;
     };
-    services?: Service[];
+    services?: UIService[];
 }
 
-export interface Service extends DbService {
-    business?: {
-        id: string;
-        name: string;
-        description?: string | null;
-        address?: string | null;
-        city?: string | null;
-        state?: string | null;
-        phone?: string | null;
-        email?: string | null;
-        logo_url?: string | null;
-    };
-    category?: {
-        id: string;
-        name: string;
-        icon?: string | null;
-    };
-}
+// Deprecated - use UIService from @/types instead for consistency
+// This is kept for backward compatibility
+export type Service = UIService;
 
 export interface Booking extends DbBooking {
-    user?: {
+    customer?: {
         email: string;
         full_name: string | null;
     };

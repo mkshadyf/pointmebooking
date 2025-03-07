@@ -1,49 +1,66 @@
-import { Input } from '@/components/ui/Input';
+'use client';
 
-interface AuthInputProps {
-  id: string;
+import { Input } from '@/components/ui/Input';
+import React from 'react';
+
+export interface AuthInputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
-  type?: 'text' | 'email' | 'password' | 'tel';
-  required?: boolean;
-  value: string;
-  onChange: (value: string) => void;
   error?: string;
-  placeholder?: string;
+  icon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  fullWidth?: boolean;
 }
 
 export function AuthInput({
   id,
+  name,
   label,
-  type = 'text',
-  required = false,
-  value,
-  onChange,
   error,
-  placeholder
+  className = '',
+  icon,
+  rightIcon,
+  fullWidth = true,
+  ...rest
 }: AuthInputProps) {
   return (
-    <div>
+    <div className="space-y-2">
       <label
         htmlFor={id}
-        className="block text-sm font-medium leading-6 text-gray-900"
+        className="block text-sm font-medium text-gray-700"
       >
         {label}
       </label>
-      <div className="mt-2">
+      <div className="relative">
+        {icon && (
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            {icon}
+          </div>
+        )}
         <Input
           id={id}
-          name={id}
-          type={type}
-          required={required}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className={error ? 'border-red-500' : ''}
+          name={name}
+          className={`${icon ? 'pl-10' : ''} ${rightIcon ? 'pr-10' : ''} ${className}`}
+          inputSize="lg"
+          fullWidth={fullWidth}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${id}-error` : undefined}
+          {...rest}
         />
-        {error && (
-          <p className="mt-2 text-sm text-red-600">{error}</p>
+        {rightIcon && (
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+            {rightIcon}
+          </div>
         )}
       </div>
+      {error && (
+        <p
+          id={`${id}-error`}
+          className="mt-1 text-sm text-red-600"
+        >
+          {error}
+        </p>
+      )}
     </div>
   );
 } 

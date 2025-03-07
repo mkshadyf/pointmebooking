@@ -3,5 +3,10 @@
         {
             "path": "."
         }
-    ]
+    ],
+    "settings": {
+        "exportall.config.folderListener": [
+            "/src"
+        ]
+    }
 }

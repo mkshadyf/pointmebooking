@@ -1,293 +1,436 @@
-import { AppError, ErrorHandler, ErrorType } from '@/lib/error-handling';
-import { AuthError, AuthProfile, AuthResponse, AuthResult, AuthRole, DbProfile, LoginCredentials } from '@/types/database/auth';
-import { Database } from '@generated.types';
-import { PostgrestError, Session, User } from '@supabase/supabase-js';
-import { supabase } from '../client';
+import { convertToAuthError } from '@/lib/error/auth-error-utils';
+import { AuthProfile, AuthResponse, AuthResult, AuthRole, DbProfile } from '@/types/database/auth';
+import { Session, User } from '@supabase/supabase-js';
+import { createServerSupabaseClient } from '../client';
 import { BaseServiceUtils } from './BaseService';
 
-// Define the type for inserting a new profile based on the generated types
-export type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
+// Initialize the client lazily to avoid issues in SSR
+let supabaseClientInstance: Awaited<ReturnType<typeof createServerSupabaseClient>> | null = null;
 
-export interface AuthLoginResponse {
-    user: User;
-    session: Session | null;
-}
+/**
+ * Gets the Supabase client instance, creating it if necessary
+ */
+const getSupabaseClient = async () => {
+  if (!supabaseClientInstance) {
+    // Provide a dummy cookie container that satisfies the type requirements
+    supabaseClientInstance = await createServerSupabaseClient({
+      get: () => '',
+      set: () => {},
+      delete: () => {}
+    } as any);
+  }
+  return supabaseClientInstance;
+};
 
-// Convert PostgrestError to AuthError
-const toAuthError = (error: PostgrestError): AuthError => ({
-    name: error.code,
-    message: error.message,
-    code: error.code,
-    status: Number(error.code) || 500,
-    details: { hint: error.hint, details: error.details }
-});
+/**
+ * Helper function to convert DbProfile to AuthProfile
+ * Maps database profile fields to auth profile fields with proper types
+ */
+export const createAuthProfile = (profile: DbProfile): AuthProfile => {
+  // Destructure to handle null values properly
+  const { 
+    email_verified, 
+    avatar_url, 
+    cover_image_url, 
+    onboarding_completed,
+    created_at,
+    updated_at,
+    role,
+    full_name,
+    ...rest 
+  } = profile;
 
+  return {
+    ...rest,
+    is_verified: Boolean(email_verified),
+    is_email_verified: Boolean(email_verified),
+    avatar_url: avatar_url || undefined,
+    cover_image_url: cover_image_url || undefined,
+    onboarding_completed: onboarding_completed || false,
+    created_at: created_at || new Date().toISOString(),
+    updated_at: updated_at || new Date().toISOString(),
+    email_verified: Boolean(email_verified),
+    role: role as AuthRole,
+    user_id: profile.id,
+    full_name: full_name || '',
+    last_login: null,
+    login_count: 0,
+    failed_login_attempts: 0,
+    last_failed_login: null,
+    password_reset_token: null,
+    password_reset_expires: null
+  };
+};
+
+/**
+ * Service class for authentication operations
+ * Handles user authentication, registration, and profile management
+ * Implements the singleton pattern for consistent instance usage
+ */
 export class AuthService extends BaseServiceUtils {
-    static async login(credentials: LoginCredentials): Promise<AuthResponse<AuthResult>> {
+    private static instance: AuthService;
+
+    private constructor() {
+        super();
+    }
+
+    public static getInstance(): AuthService {
+        if (!AuthService.instance) {
+            AuthService.instance = new AuthService();
+        }
+        return AuthService.instance;
+    }
+
+    /**
+     * Login a user with email and password
+     */
+    async login(credentials: { email: string; password: string }): Promise<AuthResponse<AuthResult>> {
+        const { email, password } = credentials;
+        
         try {
-            // Use retry mechanism for network operations
-            const authData = await this.withRetry(
-                async () => {
-                    const { data, error } = await supabase.auth.signInWithPassword(credentials);
-                    if (error) throw error;
-                    return data;
-                },
-                { context: 'AuthService.login' }
-            );
+            const supabase = await getSupabaseClient();
+            if (!supabase) throw new Error('Failed to initialize Supabase client');
             
-            const profile = await this.withRetry(
-                async () => {
-                    const { data, error } = await this.getProfile();
-                    if (error) throw error;
-                    return data;
-                },
-                { context: 'AuthService.login.getProfile' }
-            );
-
+            // Attempt to sign in
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+            
+            if (error) throw error;
+            if (!data?.user) throw new Error('No user returned from authentication');
+            
+            // Get user profile
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', data.user.id as any)
+                .single();
+                
+            if (profileError) throw profileError;
+            if (!profile) throw new Error('No profile found for user');
+            
+            // Convert profile to auth profile
+            const authProfile = createAuthProfile(profile as unknown as DbProfile);
+            
             return {
                 data: {
-                    user: profile as AuthProfile,
-                    session: authData.session,
-                    supabaseUser: authData.user
+                    user: authProfile,
+                    session: data.session,
+                    supabaseUser: data.user
                 },
                 error: null
             };
         } catch (error) {
-            const appError = ErrorHandler.convertToAppError(error, 'auth.login');
-            return { data: null, error: appError as AuthError };
+            console.error('Login error:', error);
+            
+            return {
+                data: null,
+                error: convertToAuthError(error)
+            };
         }
     }
-
-    static async register(email: string, password: string, role: AuthRole): Promise<AuthResponse<AuthResult>> {
+    
+    /**
+     * Register a new user
+     */
+    async register(email: string, password: string, role: AuthRole): Promise<AuthResponse<AuthResult>> {
         try {
-            // Use retry mechanism for network operations
-            const authData = await this.withRetry(
-                async () => {
-                    const { data, error } = await supabase.auth.signUp({
-                        email,
-                        password,
-                        options: {
-                            data: { role }
-                        }
-                    });
-                    if (error) throw error;
-                    return data;
-                },
-                { context: 'AuthService.register' }
-            );
-
-            // Check if user is null
-            if (!authData.user) {
-                const error = new AppError(
-                    'Failed to create user',
-                    ErrorType.AUTHENTICATION,
-                    null,
-                    500
-                );
-                return { data: null, error: error as AuthError };
-            }
-
-            // Create profile with retry
-            const profile = await this.withRetry(
-                async () => {
-                    const { data, error } = await supabase
-                        .from('profiles')
-                        .insert([
-                            {
-                                user_id: authData.user!.id,
-                                email,
-                                role,
-                                status: 'active'
-                            }
-                        ])
-                        .select()
-                        .single();
-                    
-                    if (error) throw error;
-                    return data;
-                },
-                { context: 'AuthService.register.createProfile' }
-            );
-
+            const supabase = await getSupabaseClient();
+            if (!supabase) throw new Error('Failed to initialize Supabase client');
+            
+            // Create user account
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    emailRedirectTo: `${window.location.origin}/auth/callback?next=/auth/verify-email`,
+                    data: {
+                        role
+                    }
+                }
+            });
+            
+            if (error) throw error;
+            if (!data?.user) throw new Error('No user returned from registration');
+            
+            // Create user profile
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .insert({
+                    id: data.user.id,
+                    email,
+                    role,
+                    email_verified: false,
+                    onboarding_completed: false,
+                    status: 'active',
+                    full_name: ''
+                } as any);
+                
+            if (profileError) throw profileError;
+            
+            // Get the created profile
+            const { data: profile, error: getProfileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', data.user.id as any)
+                .single();
+                
+            if (getProfileError) throw getProfileError;
+            if (!profile) throw new Error('No profile found for new user');
+            
+            // Convert to auth profile
+            const authProfile = createAuthProfile(profile as unknown as DbProfile);
+            
             return {
                 data: {
-                    user: profile as AuthProfile,
-                    session: authData.session,
-                    supabaseUser: authData.user
+                    user: authProfile,
+                    session: data.session,
+                    supabaseUser: data.user
                 },
                 error: null
             };
         } catch (error) {
-            const appError = ErrorHandler.convertToAppError(error, 'auth.register');
-            return { data: null, error: appError as AuthError };
+            console.error('Registration error:', error);
+            
+            return {
+                data: null,
+                error: convertToAuthError(error)
+            };
         }
     }
-
-    static async logout(): Promise<AuthResponse<boolean>> {
+    
+    /**
+     * Log out the current user
+     */
+    async logout(): Promise<AuthResponse<boolean>> {
         try {
+            const supabase = await getSupabaseClient();
+            if (!supabase) throw new Error('Failed to initialize Supabase client');
+            
             const { error } = await supabase.auth.signOut();
             
-            if (error) {
-                return { data: false, error };
-            }
+            if (error) throw error;
             
-            return { data: true, error: null };
+            return {
+                data: true,
+                error: null
+            };
         } catch (error) {
-            const appError = ErrorHandler.convertToAppError(error, 'auth.logout');
-            return { data: false, error: appError as AuthError };
+            console.error('Logout error:', error);
+            
+            return {
+                data: null,
+                error: convertToAuthError(error)
+            };
         }
     }
-
-    static async getUser(): Promise<AuthResponse<User | null>> {
+    
+    /**
+     * Get the current user
+     */
+    async getUser(): Promise<AuthResponse<User | null>> {
         try {
+            const supabase = await getSupabaseClient();
+            if (!supabase) throw new Error('Failed to initialize Supabase client');
+            
             const { data, error } = await supabase.auth.getUser();
             
-            if (error) {
-                return { data: null, error };
-            }
+            if (error) throw error;
             
-            return { data: data.user, error: null };
+            return {
+                data: data?.user || null,
+                error: null
+            };
         } catch (error) {
-            const appError = ErrorHandler.convertToAppError(error, 'auth.getUser');
-            return { data: null, error: appError as AuthError };
+            console.error('Get user error:', error);
+            
+            return {
+                data: null,
+                error: convertToAuthError(error)
+            };
         }
     }
-
-    static async getProfile(): Promise<AuthResponse<AuthProfile | null>> {
+    
+    /**
+     * Get the current user's profile
+     */
+    async getProfile(): Promise<AuthResponse<AuthProfile | null>> {
         try {
+            const supabase = await getSupabaseClient();
+            if (!supabase) throw new Error('Failed to initialize Supabase client');
+            
             const { data: userData, error: userError } = await supabase.auth.getUser();
             
-            if (userError) {
-                return { data: null, error: userError };
-            }
-            
-            if (!userData.user) {
-                return { data: null, error: null };
-            }
+            if (userError) throw userError;
+            if (!userData?.user) return { data: null, error: null };
             
             const { data: profile, error: profileError } = await supabase
                 .from('profiles')
                 .select('*')
-                .eq('user_id', userData.user.id)
+                .eq('id', userData.user.id as any)
                 .single();
                 
-            if (profileError) {
-                return { data: null, error: toAuthError(profileError) };
-            }
+            if (profileError) throw profileError;
             
-            return { data: profile as AuthProfile, error: null };
+            return {
+                data: createAuthProfile(profile as unknown as DbProfile),
+                error: null
+            };
         } catch (error) {
-            const appError = ErrorHandler.convertToAppError(error, 'auth.getProfile');
-            return { data: null, error: appError as AuthError };
+            console.error('Get profile error:', error);
+            
+            return {
+                data: null,
+                error: convertToAuthError(error)
+            };
         }
     }
-
-    static async getSession(): Promise<AuthResponse<Session>> {
+    
+    /**
+     * Get the current session
+     */
+    async getSession(): Promise<AuthResponse<Session | null>> {
         try {
+            const supabase = await getSupabaseClient();
+            if (!supabase) throw new Error('Failed to initialize Supabase client');
+            
             const { data, error } = await supabase.auth.getSession();
-            return { data: data.session, error };
-        } catch (error) {
-            const appError = ErrorHandler.convertToAppError(error, 'auth.getSession');
-            return { data: null, error: appError as AuthError };
-        }
-    }
-
-    static async refreshSession(): Promise<AuthResponse<Session>> {
-        try {
-            const { data, error } = await supabase.auth.refreshSession();
-            return { data: data.session, error };
-        } catch (error) {
-            const appError = ErrorHandler.convertToAppError(error, 'auth.refreshSession');
-            return { data: null, error: appError as AuthError };
-        }
-    }
-
-    static async updateProfile(data: Partial<AuthProfile>): Promise<AuthResponse<DbProfile>> {
-        try {
-            const { data: session } = await supabase.auth.getSession();
             
-            if (!session.session?.user) {
-                const error = new AppError(
-                    'No authenticated user found',
-                    ErrorType.AUTHENTICATION,
-                    null,
-                    401
-                );
-                return { data: null, error: error as AuthError };
-            }
+            if (error) throw error;
             
-            const { data: updatedProfile, error } = await supabase
-                .from('profiles')
-                .update(data)
-                .eq('user_id', session.session.user.id)
-                .select()
-                .single();
-                
-            return { data: updatedProfile, error: error ? toAuthError(error) : null };
+            return {
+                data: data?.session || null,
+                error: null
+            };
         } catch (error) {
-            const appError = ErrorHandler.convertToAppError(error, 'auth.updateProfile');
-            return { data: null, error: appError as AuthError };
+            console.error('Get session error:', error);
+            
+            return {
+                data: null,
+                error: convertToAuthError(error)
+            };
         }
     }
-
-    static async verifyEmail(email: string, token: string): Promise<AuthResponse<void>> {
+    
+    /**
+     * Send a password reset email
+     */
+    async resetPassword(email: string): Promise<AuthResponse<boolean>> {
         try {
-            const { error } = await supabase.auth.verifyOtp({
-                email,
-                token,
-                type: 'email'
+            const supabase = await getSupabaseClient();
+            if (!supabase) throw new Error('Failed to initialize Supabase client');
+            
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/auth/reset-password`,
             });
             
-            return { data: null, error };
-        } catch (error) {
-            const appError = ErrorHandler.convertToAppError(error, 'auth.verifyEmail');
-            return { data: null, error: appError as AuthError };
-        }
-    }
-
-    static async resetPassword(email: string): Promise<AuthResponse<void>> {
-        try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email);
-            return { data: null, error };
-        } catch (error) {
-            const appError = ErrorHandler.convertToAppError(error, 'auth.resetPassword');
-            return { data: null, error: appError as AuthError };
-        }
-    }
-
-    static async updatePassword(newPassword: string): Promise<AuthResponse<void>> {
-        try {
-            const { error } = await supabase.auth.updateUser({ password: newPassword });
-            return { data: null, error };
-        } catch (error) {
-            const appError = ErrorHandler.convertToAppError(error, 'auth.updatePassword');
-            return { data: null, error: appError as AuthError };
-        }
-    }
-
-    static async resendVerificationEmail(): Promise<AuthResponse<void>> {
-        try {
-            const { data: session } = await supabase.auth.getSession();
+            if (error) throw error;
             
-            if (!session.session?.user?.email) {
-                const error = new AppError(
-                    'No authenticated user found or email missing',
-                    ErrorType.AUTHENTICATION,
-                    null,
-                    401
-                );
-                return { data: null, error: error as AuthError };
-            }
+            return {
+                data: true,
+                error: null
+            };
+        } catch (error) {
+            console.error('Reset password error:', error);
             
-            const { error } = await supabase.auth.resend({
-                type: 'signup',
-                email: session.session.user.email
+            return {
+                data: null,
+                error: convertToAuthError(error)
+            };
+        }
+    }
+    
+    /**
+     * Update the user's password
+     */
+    async updatePassword(password: string): Promise<AuthResponse<boolean>> {
+        try {
+            const supabase = await getSupabaseClient();
+            if (!supabase) throw new Error('Failed to initialize Supabase client');
+            
+            const { error } = await supabase.auth.updateUser({
+                password,
             });
             
-            return { data: null, error };
+            if (error) throw error;
+            
+            return {
+                data: true,
+                error: null
+            };
         } catch (error) {
-            const appError = ErrorHandler.convertToAppError(error, 'auth.resendVerificationEmail');
-            return { data: null, error: appError as AuthError };
+            console.error('Update password error:', error);
+            
+            return {
+                data: null,
+                error: convertToAuthError(error)
+            };
         }
+    }
+}
+
+// Export the singleton instance
+export const authService = AuthService.getInstance();
+
+/**
+ * Static wrapper for backward compatibility
+ * Delegates to the singleton instance
+ */
+export class AuthServiceStatic {
+    /**
+     * Login a user with email and password
+     */
+    static async login(credentials: { email: string; password: string }): Promise<AuthResponse<AuthResult>> {
+        return authService.login(credentials);
+    }
+    
+    /**
+     * Register a new user
+     */
+    static async register(email: string, password: string, role: AuthRole): Promise<AuthResponse<AuthResult>> {
+        return authService.register(email, password, role);
+    }
+    
+    /**
+     * Log out the current user
+     */
+    static async logout(): Promise<AuthResponse<boolean>> {
+        return authService.logout();
+    }
+    
+    /**
+     * Get the current user
+     */
+    static async getUser(): Promise<AuthResponse<User | null>> {
+        return authService.getUser();
+    }
+    
+    /**
+     * Get the current user's profile
+     */
+    static async getProfile(): Promise<AuthResponse<AuthProfile | null>> {
+        return authService.getProfile();
+    }
+    
+    /**
+     * Get the current session
+     */
+    static async getSession(): Promise<AuthResponse<Session | null>> {
+        return authService.getSession();
+    }
+    
+    /**
+     * Send a password reset email
+     */
+    static async resetPassword(email: string): Promise<AuthResponse<boolean>> {
+        return authService.resetPassword(email);
+    }
+    
+    /**
+     * Update the user's password
+     */
+    static async updatePassword(password: string): Promise<AuthResponse<boolean>> {
+        return authService.updatePassword(password);
     }
 } 

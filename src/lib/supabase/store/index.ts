@@ -1,25 +1,20 @@
+import { handleClientError } from '@/lib/error/error-handler';
 import { SearchService } from '@/lib/supabase/services/search.service';
-import { ServiceService } from '@/lib/supabase/services/service.service';
-import { handleClientError } from '@/lib/supabase/utils/errors';
-import { BusinessCategory, BusinessProfile, Category, Service, ServiceCategory, ServiceStatus } from '@/types';
-import { Database } from '@generated.types';
+import { ServiceServiceStatic as ServiceService } from '@/lib/supabase/services/service/service.service';
+import { BusinessCategory, BusinessProfile, Category, ServiceCategory, ServiceStatus, UIService } from '@/types';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { authSlice } from './slices/auth.slice';
+import { authSlice } from './auth.store';
 
-// Type definitions from database
-type DbService = Database['public']['Tables']['services']['Row'];
-type DbServiceStatus = Database['public']['Enums']['service_status'];
-type DbApprovalStatus = 'pending' | 'approved' | 'rejected';
 
 // Base state without actions
 interface BaseState {
   categories: Category[];
   businessCategories: BusinessCategory[];
   serviceCategories: ServiceCategory[];
-  services: Service[];
+  services: UIService[];
   selectedBusiness: BusinessProfile | null;
-  selectedService: Service | null;
+  selectedService: UIService | null;
   selectedCategory: string | null;
   isLoading: boolean;
   error: string | null;
@@ -28,13 +23,13 @@ interface BaseState {
 // Actions as a separate interface
 interface Actions {
   setSelectedBusiness: (business: BusinessProfile | null) => void;
-  setSelectedService: (service: Service | null) => void;
+  setSelectedService: (service: UIService | null) => void;
   setSelectedCategory: (id: string | null) => void;
-  setServices: (services: Service[]) => void;
-  addService: (service: Service) => Promise<Service>;
-  updateService: (id: string, service: Partial<Service>) => Promise<Service>;
+  setServices: (services: UIService[]) => void;
+  addService: (service: UIService) => Promise<UIService>;
+  updateService: (id: string, service: Partial<UIService>) => Promise<UIService>;
   deleteService: (id: string) => Promise<void>;
-  loadServices: (businessId: string) => Promise<Service[]>;
+  loadServices: (businessId: string) => Promise<UIService[]>;
   fetchAllServices: () => Promise<void>;
   fetchAllBusinesses: () => Promise<void>;
   fetchFeaturedServices: () => Promise<void>;
@@ -43,69 +38,32 @@ interface Actions {
 // Combined store state type
 export type StoreState = BaseState & Actions;
 
-// Helper function to transform service data
-function transformServiceData(service: any): Service {
-  // Handle database service fields with type safety
-  const dbService: Partial<DbService> = {
-    id: service.id,
-    business_id: service.business_id,
-    name: service.name,
-    description: service.description,
-    price: service.price,
-    duration: service.duration,
-    image_url: service.image_url,
-    is_available: service.is_available,
-    status: service.status as DbServiceStatus,
-    category_id: service.category_id,
-    created_at: service.created_at,
-    updated_at: service.updated_at,
-  };
-
-  // Business details with type safety
-  const business = service.business ? {
-    id: service.business.id || '',
-    name: service.business.business_name || '',
-    description: service.business.description,
-    address: service.business.address,
-    city: service.business.city,
-    state: service.business.state,
-    phone: service.business.phone,
-    email: service.business.email,
-    logo_url: service.business.logo_url,
-  } : undefined;
-
-  // Category with type safety
-  const category = service.category ? {
-    id: service.category.id || '',
-    name: service.category.name,
-    icon: service.category.icon,
-  } : undefined;
-
-  // Return complete Service object with all required fields
+// Transform database service to UI service
+function transformServiceData(dbService: any): UIService {
   return {
-    ...dbService,
-    id: dbService.id || '',
-    business_id: dbService.business_id || '',
-    name: dbService.name || '',
-    description: dbService.description || null,
-    price: dbService.price || 0,
-    duration: dbService.duration || 0,
-    image_url: dbService.image_url || null,
-    is_available: dbService.is_available || null,
-    status: dbService.status as ServiceStatus || 'active',
-    category_id: dbService.category_id || null,
-    created_at: dbService.created_at || null,
-    updated_at: dbService.updated_at || null,
-    // Additional fields required by Service type
-    created_by_id: service.created_by_id || null,
-    approved_by_id: service.approved_by_id || null,
-    approved_at: service.approved_at || null,
-    featured: service.featured || false,
-    featured_order: service.featured_order || null,
-    approval_status: (service.approval_status as DbApprovalStatus) || 'pending',
-    admin_notes: service.admin_notes || null,
-    business,
-    category,
+    id: dbService.id,
+    business_id: dbService.business_id,
+    name: dbService.name,
+    description: dbService.description,
+    price: dbService.price,
+    duration: dbService.duration,
+    image_url: dbService.image_url,
+    max_capacity: dbService.max_capacity,
+    location: dbService.location,
+    is_available: dbService.is_available === null ? true : dbService.is_available,
+    created_at: dbService.created_at || '',
+    updated_at: dbService.updated_at || '',
+    status: dbService.status as ServiceStatus,
+    category_id: dbService.category_id,
+    created_by_id: dbService.created_by_id || null,
+    approved_by_id: dbService.approved_by_id || null,
+    approved_at: dbService.approved_at || null,
+    featured: Boolean(dbService.featured),
+    featured_order: dbService.featured_order || null,
+    approval_status: dbService.approval_status || 'pending',
+    admin_notes: dbService.admin_notes || null,
+    business: dbService.business,
+    category: dbService.category
   };
 }
 
@@ -196,9 +154,9 @@ export const useStore = create<StoreState>()(
         }
       },
 
-      addService: async (service: Service) => {
+      addService: async (service: UIService): Promise<UIService> => {
         try {
-          // Convert the Service type to ServiceInsert type
+          // Map UI service to database service
           const serviceInsert = {
             name: service.name,
             description: service.description,
@@ -207,7 +165,8 @@ export const useStore = create<StoreState>()(
             business_id: service.business_id,
             category_id: service.category_id,
             image_url: service.image_url,
-            status: service.status,
+            // Convert 'draft' or 'archived' to 'inactive' to match the database schema
+            status: (service.status === 'draft' || service.status === 'archived') ? 'inactive' : service.status,
             is_available: service.is_available
           };
           
@@ -225,25 +184,28 @@ export const useStore = create<StoreState>()(
         }
       },
 
-      updateService: async (id: string, updatedService: Partial<Service>) => {
+      updateService: async (id: string, service: Partial<UIService>) => {
         try {
-          // Convert the Partial<Service> type to ServiceUpdate type
+          // Map UI service to database service
           const serviceUpdate = {
-            name: updatedService.name,
-            description: updatedService.description,
-            price: updatedService.price,
-            duration: updatedService.duration,
-            category_id: updatedService.category_id,
-            image_url: updatedService.image_url,
-            status: updatedService.status,
-            is_available: updatedService.is_available
+            name: service.name,
+            description: service.description,
+            price: service.price,
+            duration: service.duration,
+            category_id: service.category_id,
+            image_url: service.image_url,
+            // Convert 'draft' or 'archived' to 'inactive' to match the database schema
+            status: service.status ? 
+              ((service.status === 'draft' || service.status === 'archived') ? 'inactive' : service.status) 
+              : undefined,
+            is_available: service.is_available
           };
           
           const updated = await ServiceService.update(id, serviceUpdate);
           if (updated) {
             const transformedService = transformServiceData(updated);
             set((state: StoreState) => ({
-              services: state.services.map((service: Service) =>
+              services: state.services.map((service: UIService) =>
                 service.id === id ? transformedService : service
               ),
             }));
@@ -262,7 +224,7 @@ export const useStore = create<StoreState>()(
           const success = await ServiceService.delete(id);
           if (success) {
             set((state: StoreState) => ({
-              services: state.services.filter((service: Service) => service.id !== id),
+              services: state.services.filter((service: UIService) => service.id !== id),
             }));
           } else {
             throw new Error('Failed to delete service');

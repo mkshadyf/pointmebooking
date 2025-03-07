@@ -1,7 +1,7 @@
 import { signOutAction } from '@/app/actions';
-import { ROUTES } from '@/config/routes';
-import { useAuth } from '@/lib/supabase/auth/context/AuthContext';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { classNames } from '@/lib/utils';
+import { PROTECTED_PATHS, PUBLIC_PATHS, ROUTES } from '@/routes';
 import { Disclosure, Menu, Transition } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
@@ -34,28 +34,28 @@ export default function Navigation({ type }: NavigationProps) {
   };
 
   const mainNavigation = [
-    { name: 'Home', href: '/' },
-    { name: 'Services', href: '/services' },
-    { name: 'Businesses', href: '/businesses' },
+    { name: 'Home', href: PUBLIC_PATHS.HOME },
+    { name: 'Services', href: PUBLIC_PATHS.SERVICES },
+    { name: 'Businesses', href: PUBLIC_PATHS.BUSINESSES },
     ...(profile?.role === 'business'
-      ? [{ name: 'Dashboard', href: '/dashboard/business' }]
+      ? [{ name: 'Dashboard', href: PROTECTED_PATHS.BUSINESS_DASHBOARD }]
       : profile?.role === 'customer'
-      ? [{ name: 'Dashboard', href: '/dashboard/customer' }]
+      ? [{ name: 'Dashboard', href: PROTECTED_PATHS.CUSTOMER_DASHBOARD }]
       : []),
   ];
 
   const dashboardNavigation = profile?.role === 'business'
     ? [
-        { name: 'Dashboard', href: '/dashboard/business' },
-        { name: 'Appointments', href: '/dashboard/business/appointments' },
-        { name: 'Services', href: '/dashboard/business/services' },
-        { name: 'Settings', href: '/dashboard/business/settings' },
+        { name: 'Dashboard', href: PROTECTED_PATHS.BUSINESS_DASHBOARD },
+        { name: 'Appointments', href: PROTECTED_PATHS.BUSINESS_DASHBOARD + '/appointments' },
+        { name: 'Services', href: PROTECTED_PATHS.BUSINESS_DASHBOARD + '/services' },
+        { name: 'Settings', href: PROTECTED_PATHS.BUSINESS_DASHBOARD + '/settings' },
       ]
     : [
-        { name: 'Dashboard', href: '/dashboard/customer' },
-        { name: 'My Appointments', href: '/dashboard/customer/appointments' },
-        { name: 'Favorites', href: '/dashboard/customer/favorites' },
-        { name: 'Settings', href: '/dashboard/customer/settings' },
+        { name: 'Dashboard', href: PROTECTED_PATHS.CUSTOMER_DASHBOARD },
+        { name: 'My Appointments', href: PROTECTED_PATHS.CUSTOMER_APPOINTMENTS },
+        { name: 'Favorites', href: PROTECTED_PATHS.CUSTOMER_FAVORITES },
+        { name: 'Settings', href: PROTECTED_PATHS.CUSTOMER_SETTINGS },
       ];
 
   const navigation = type === 'main' ? mainNavigation : dashboardNavigation;

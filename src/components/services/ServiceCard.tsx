@@ -1,88 +1,84 @@
 'use client';
 
-import { BaseCard } from '@/components/ui/shared/BaseCard';
-import { Service } from '@/types';
-import { MapPinIcon } from '@heroicons/react/24/outline';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { Card } from '@/components/ui/Card';
+import { formatCurrency } from '@/lib/utils';
+import { getImageUrl } from '@/lib/utils/image';
+import { UIService } from '@/types';
+import Image from 'next/image';
+import { memo } from 'react';
 
 interface ServiceCardProps {
-  service: Service;
-  showActions?: boolean;
-  onEdit?: (id: string) => void;
-  onDelete?: (id: string) => void;
+  service: UIService;
   minimal?: boolean;
 }
 
-export function ServiceCard({ service, showActions, onEdit, onDelete, minimal }: ServiceCardProps) {
-  const router = useRouter();
-  const [isNavigating, setIsNavigating] = useState(false);
-
-  const businessAddress = service.business ? 
-    [service.business.address, service.business.city, service.business.state]
-      .filter(Boolean)
-      .join(', ') : 
-    'Address not available';
-
-  const handleClick = async () => {
-    if (isNavigating || !service.id) return;
-    setIsNavigating(true);
-    await router.push(`/services/${service.id}`);
-  };
+// Component implementation wrapped with memo for performance optimization
+export const ServiceCard = memo(function ServiceCard({ service }: ServiceCardProps) {
+  const { name, description, price, duration, image_url, business } = service;
+  const imageUrl = getImageUrl(image_url, 'services');
 
   return (
-    <BaseCard
-      title={service.name}
-      description={service.description || undefined}
-      imageUrl={service.image_url}
-      logoUrl={service.business?.logo_url || null}
-      minimal={minimal}
-      onClick={!showActions ? handleClick : undefined}
-    >
-      {!minimal && (
-        <>
-          {service.business && (
-            <div className="mt-4 flex items-center text-sm text-gray-500">
-              <MapPinIcon className="h-4 w-4 mr-1" />
-              <span>{businessAddress}</span>
-            </div>
-          )}
-          
-          <div className="mt-4 flex items-center justify-between">
-            <div className="text-lg font-semibold text-gray-900">
-              ${service.price.toFixed(2)}
-            </div>
-            {showActions ? (
-              <div className="flex space-x-2">
-                {onEdit && (
-                  <button
-                    onClick={() => onEdit(service.id)}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    Edit
-                  </button>
-                )}
-                {onDelete && (
-                  <button
-                    onClick={() => onDelete(service.id)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    Delete
-                  </button>
-                )}
-              </div>
-            ) : (
-              <button
-                onClick={handleClick}
-                disabled={isNavigating}
-                className="flex items-center text-purple-600 hover:text-purple-800"
-              >
-                View Details →
-              </button>
-            )}
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+      <div className="relative h-48 w-full bg-gray-200">
+        {image_url ? (
+          <Image
+            src={imageUrl}
+            alt={name}
+            fill
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            loading="lazy"
+            placeholder="blur"
+            blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN88P/BfwAJEAPYrnHY4QAAAABJRU5ErkJggg=="
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full bg-gray-100">
+            <span className="text-gray-400">No image</span>
           </div>
-        </>
-      )}
-    </BaseCard>
+        )}
+      </div>
+      
+      <div className="p-4">
+        <h3 className="text-xl font-semibold mb-2 text-gray-900">{name}</h3>
+        <p className="text-gray-600 mb-4 line-clamp-2">{description}</p>
+        
+        <div className="flex justify-between items-center">
+          <div className="font-medium text-primary">{formatCurrency(price)}</div>
+          <div className="text-sm text-gray-500">{duration} min</div>
+        </div>
+        
+        {business && (
+          <div className="mt-4 flex items-center border-t pt-4">
+            {business.logo_url ? (
+              <Image
+                src={getImageUrl(business.logo_url, 'business')}
+                alt={business.name}
+                width={32}
+                height={32}
+                className="rounded-full"
+                loading="lazy"
+              />
+            ) : (
+              <div className="h-8 w-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center">
+                {business.name.charAt(0)}
+              </div>
+            )}
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-900">{business.name}</p>
+              {business.city && (
+                <p className="text-xs text-gray-500">{business.city}</p>
+              )}
+            </div>
+          </div>
+        )}
+        
+        <button 
+          className="mt-4 w-full bg-primary text-white py-2 rounded-md hover:bg-primary/90 transition-colors"
+          aria-label={`Book ${name}`}
+        >
+          Book Now
+        </button>
+      </div>
+    </Card>
   );
-} 
+}); 

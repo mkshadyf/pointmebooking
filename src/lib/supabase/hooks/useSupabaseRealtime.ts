@@ -2,7 +2,7 @@
 
 import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
-import { supabase } from '../client';
+import { supabaseClientService } from '../services/core/supabase-client.service';
 
 export interface RealtimeOptions<T extends Record<string, any>> {
   table: string;
@@ -23,32 +23,66 @@ export function useSupabaseRealtime<T extends Record<string, any>>({
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    const channel = supabase
-      .channel('realtime')
-      .on<T>(
-        'postgres_changes' as any,
-        {
-          event,
-          schema: 'public',
-          table,
-          filter,
-        },
-        (payload: RealtimePostgresChangesPayload<T>) => {
-          const newData = payload.new as T;
-          setData(newData);
-          onData?.(newData);
-        }
-      )
-      .subscribe((status: any) => {
-        if (status === 'SUBSCRIPTION_ERROR') {
-          const error = new Error('Realtime subscription error');
-          setError(error);
-          onError?.(error);
-        }
-      });
+    let channel: any = null;
+    let isSubscribed = true;
+
+    const setupRealtime = async () => {
+      try {
+        // Get the client
+        const client = await supabaseClientService.getBrowserClient();
+        
+        // Create and subscribe to the channel
+        channel = client
+          .channel('realtime')
+          .on<T>(
+            'postgres_changes' as any,
+            {
+              event,
+              schema: 'public',
+              table,
+              filter,
+            },
+            (payload: RealtimePostgresChangesPayload<T>) => {
+              if (!isSubscribed) return;
+              const newData = payload.new as T;
+              setData(newData);
+              onData?.(newData);
+            }
+          )
+          .subscribe((status: any) => {
+            if (!isSubscribed) return;
+            if (status === 'SUBSCRIPTION_ERROR') {
+              const subscriptionError = new Error('Realtime subscription error');
+              setError(subscriptionError);
+              onError?.(subscriptionError);
+            }
+          });
+      } catch (err) {
+        if (!isSubscribed) return;
+        const setupError = err instanceof Error ? err : new Error('Failed to setup realtime subscription');
+        setError(setupError);
+        onError?.(setupError);
+      }
+    };
+
+    setupRealtime();
 
     return () => {
-      supabase.removeChannel(channel);
+      isSubscribed = false;
+      
+      // Clean up the channel if it exists
+      if (channel) {
+        const cleanup = async () => {
+          try {
+            const client = await supabaseClientService.getBrowserClient();
+            client.removeChannel(channel);
+          } catch (err) {
+            console.error('Error removing channel:', err);
+          }
+        };
+        
+        cleanup();
+      }
     };
   }, [table, event, filter, onData, onError]);
 
@@ -61,7 +95,6 @@ export function useSupabaseRealtime<T extends Record<string, any>>({
 //     table: 'bookings',
 //     event: 'INSERT',
 //     filter: 'business_id',
-//     filterValue: 'some-business-id',
 //     onData: (payload) => {
 //       console.log('New booking:', payload);
 //     },

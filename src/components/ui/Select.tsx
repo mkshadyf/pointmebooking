@@ -1,10 +1,17 @@
-import { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
+import { forwardRef } from 'react';
 
-export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {}
+export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+  onValueChange?: (value: string) => void;
+}
 
-const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, children, ...props }, ref) => {
+export const Select = forwardRef<HTMLSelectElement, SelectProps>(
+  ({ className, children, onValueChange, onChange, ...props }, ref) => {
+    const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      if (onChange) onChange(e);
+      if (onValueChange) onValueChange(e.target.value);
+    };
+
     return (
       <select
         className={cn(
@@ -12,6 +19,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
           className
         )}
         ref={ref}
+        onChange={handleChange}
         {...props}
       >
         {children}
@@ -22,4 +30,37 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
 
 Select.displayName = 'Select';
 
-export { Select };
+export interface SelectContentProps {
+  children: React.ReactNode;
+}
+
+export const SelectContent = ({ children }: SelectContentProps) => {
+  return <>{children}</>;
+};
+
+export interface SelectItemProps {
+  value: string;
+  children: React.ReactNode;
+}
+
+export const SelectItem = ({ value, children }: SelectItemProps) => {
+  return <option value={value}>{children}</option>;
+};
+
+export interface SelectTriggerProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export const SelectTrigger = ({ children, className }: SelectTriggerProps) => {
+  return <div className={className}>{children}</div>;
+};
+
+export interface SelectValueProps {
+  children?: React.ReactNode;
+  placeholder?: string;
+}
+
+export const SelectValue = ({ children, placeholder }: SelectValueProps) => {
+  return <>{children || placeholder}</>;
+};

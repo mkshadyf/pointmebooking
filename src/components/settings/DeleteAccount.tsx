@@ -1,8 +1,8 @@
 'use client';
 
 import { Button } from '@/components/ui/Button';
+import { handleClientError } from '@/lib/error/error-handler';
 import { useAuth } from '@/lib/supabase';
-import { handleClientError } from '@/lib/supabase/utils';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';

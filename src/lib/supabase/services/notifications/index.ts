@@ -1,5 +1,5 @@
 import { showToast } from '@/components/ToastHost';
-import { ErrorCode } from '@/lib/supabase/utils/errors';
+import { ErrorCode } from '@/lib/error';
 import { Booking } from '@/types';
 import { ErrorMessageMap } from '../../utils';
  

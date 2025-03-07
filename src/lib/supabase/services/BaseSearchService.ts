@@ -1,5 +1,5 @@
 import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
-import { PaginatedResponse } from '../types';
+import { PaginatedResponse } from '../types/index';
 
 export interface SearchOptions {
   limit?: number;
@@ -26,11 +26,10 @@ export class BaseSearchService {
   ): PaginatedResponse<T> {
     return {
       data,
-      pagination: {
-        page,
-        limit,
-        total: count || 0,
-      },
+      total: count || 0,
+      page,
+      pageSize: limit,
+      totalPages: Math.ceil((count || 0) / limit)
     };
   }
 

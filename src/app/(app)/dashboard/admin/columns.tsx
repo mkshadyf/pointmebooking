@@ -7,7 +7,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui';
 import { Button } from '@/components/ui/Button';
-import { ColumnDef } from '@tanstack/react-table';
+import { Column } from '@/components/ui/DataTable';
 import { MoreHorizontal } from 'lucide-react';
 
 // This type is used to define the shape of our data.
@@ -19,28 +19,27 @@ export type UserData = {
   created_at: string;
 };
 
-export const userColumns: ColumnDef<UserData>[] = [
+export const userColumns: Column<UserData>[] = [
   {
-    accessorKey: 'email',
+    key: 'email',
     header: 'Email',
   },
   {
-    accessorKey: 'role',
+    key: 'role',
     header: 'Role',
   },
   {
-    accessorKey: 'created_at',
+    key: 'created_at',
     header: 'Created At',
-    cell: ({ row }: { row: { getValue: (key: string) => string } }) => {
-      const date = new Date(row.getValue('created_at'));
+    render: (value) => {
+      const date = new Date(value as string);
       return <div>{date.toLocaleDateString()}</div>;
     },
   },
   {
-    id: 'actions',
-    cell: ({ row }: { row: { original: UserData } }) => {
-      const user = row.original;
-
+    key: 'id',
+    header: 'Actions',
+    render: (_, item) => {
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -50,11 +49,11 @@ export const userColumns: ColumnDef<UserData>[] = [
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => console.log('Edit', user)}>
+            <DropdownMenuItem onClick={() => console.log('Edit', item)}>
               Edit
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => console.log('Delete', user)}
+              onClick={() => console.log('Delete', item)}
               className="text-red-500"
             >
               Delete

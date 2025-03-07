@@ -1,6 +1,5 @@
-import { supabase } from '@/lib/supabase/client';
-import { BusinessCategory } from '@/lib/supabase/types';
-import type { Database } from '@generated.types';
+import { Database } from '@/types/database/generated.types';
+import { supabase } from '../../client/browser';
 import { BaseService } from '../BaseService';
 
 type Tables = Database['public']['Tables'];
@@ -21,11 +20,27 @@ export class BusinessCategoryService extends BaseService<'business_categories'> 
     return BusinessCategoryService.instance;
   }
 
-  async getBusinessCategories(): Promise<BusinessCategory[]> {
+  async getBusinessCategories(): Promise<BusinessCategoryTable['Row'][]> {
     try {
       const { data, error } = await this.client
         .from(this.table)
-        .select('*');
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  async getActiveBusinessCategories(): Promise<BusinessCategoryTable['Row'][]> {
+    try {
+      const { data, error } = await this.client
+        .from(this.table)
+        .select('*')
+        .eq('status', 'active')
+        .order('name');
 
       if (error) throw error;
       return data || [];

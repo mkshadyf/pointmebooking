@@ -1,110 +1,99 @@
-import type { Database } from '@generated.types';
+/**
+ * Centralized Types Export
+ * 
+ * This file re-exports all types from the generated types file and defines additional types
+ * needed throughout the application.
+ */
 
-// Database utility types
-export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
-export type Enums<T extends keyof Database['public']['Enums']> = Database['public']['Enums'][T];
+import type { Database, Tables } from '../../../types/database/generated.types';
 
-// Re-export the Database type
-export type { Database };
+// Re-export types
+export type { Database, Tables };
 
-// Database row types
-export type DbProfile = Database['public']['Tables']['profiles']['Row'] & {
-	working_hours?: Record<string, any>;
-	preferences?: Record<string, any>;
-	social_media?: Record<string, any>;
-	created_at: string;
-	updated_at: string;
-};
-export type DbService = Database['public']['Tables']['services']['Row'];
+// Define helper types for database operations
+export type TableName = keyof Database['public']['Tables'];
+
+export type Row<T extends TableName> = Database['public']['Tables'][T]['Row'];
+export type Insert<T extends TableName> = Database['public']['Tables'][T]['Insert'];
+export type Update<T extends TableName> = Database['public']['Tables'][T]['Update'];
+
+// Define custom insertable and updatable types
+export type Insertable<T extends TableName> = Omit<Insert<T>, 'id' | 'created_at' | 'updated_at'>;
+export type Updatable<T extends TableName> = Omit<Update<T>, 'id' | 'created_at' | 'updated_at'>;
+
+// Export other types
+// Commented out to avoid import errors
+// export * from './auth';
+// export * from './business';
+// export * from './service';
+// export * from './profile';
+// export * from './booking';
+// export * from './schedule';
+// export * from './session';
+
+// Define and export common types
+export type AuthProfile = Tables<'profiles'>;
+export type Booking = Tables<'bookings'>;
+export type BusinessCategory = Tables<'business_categories'>;
+export type ServiceCategory = Tables<'service_categories'>;
+export type Service = Tables<'services'>;
+export type Business = Tables<'businesses'>;
+export type Staff = Tables<'staff'>;
+export type Schedule = Tables<'schedules'>;
+export type ErrorLog = Tables<'error_logs'>;
+
+// Define and export insert/update types
+export type ProfileInsert = Insertable<'profiles'>;
+export type ProfileUpdate = Updatable<'profiles'>;
+export type BookingInsert = Insertable<'bookings'>;
+export type BookingUpdate = Updatable<'bookings'>;
+export type BusinessCategoryInsert = Insertable<'business_categories'>;
+export type BusinessCategoryUpdate = Updatable<'business_categories'>;
+export type ServiceCategoryInsert = Insertable<'service_categories'>;
+export type ServiceCategoryUpdate = Updatable<'service_categories'>;
+export type ServiceInsert = Insertable<'services'>;
+export type ServiceUpdate = Updatable<'services'>;
+export type BusinessInsert = Insertable<'businesses'>;
+export type BusinessUpdate = Updatable<'businesses'>;
+
+// Define database model types with prefixes
+export type DbProfile = Tables<'profiles'>;
 export type DbBooking = Tables<'bookings'>;
 export type DbBusinessCategory = Tables<'business_categories'>;
 export type DbServiceCategory = Tables<'service_categories'>;
+export type DbService = Tables<'services'>;
+export type DbBusiness = Tables<'businesses'>;
 
-// Base types
-export type BusinessCategory = DbBusinessCategory;
-export type ServiceCategory = DbServiceCategory & { service_count?: number };
-
-// Insert types
-export type ProfileInsert = Omit<DbProfile, 'id' | 'created_at' | 'updated_at' | 'user_id'> & {
-	avatar_url?: string;
-	business_logo?: string;
-	verification_attempts?: number;
-	last_verification_attempt?: string;
-	email_verified?: boolean;
-	is_verified?: boolean;
-	is_email_verified?: boolean;
-};
-export type ServiceInsert = Omit<DbService, 'id' | 'created_at' | 'updated_at'>;
-export type BookingInsert = Omit<DbBooking, 'id' | 'created_at' | 'updated_at'>;
-export type BusinessCategoryInsert = Omit<DbBusinessCategory, 'id' | 'created_at' | 'updated_at'>;
-export type ServiceCategoryInsert = Omit<DbServiceCategory, 'id' | 'created_at' | 'updated_at'>;
-
-// Update types
-export type ProfileUpdate = Partial<ProfileInsert>;
-export type ServiceUpdate = Partial<ServiceInsert>;
-export type BookingUpdate = Partial<BookingInsert>;
-export type BusinessCategoryUpdate = Partial<BusinessCategoryInsert>;
-export type ServiceCategoryUpdate = Partial<ServiceCategoryInsert>;
-
-// Auth and Profile types
-export type AuthRole = 'admin' | 'user' | 'business' | 'customer';
-export type AuthProfile = DbProfile & {
-	is_verified: boolean;
-	is_email_verified: boolean;
-	verification_attempts?: number;
-	last_verification_attempt?: string | null;
-	avatar_url?: string | null;
-	business_logo?: string | null;
-	logo_url?: string | null;
-	working_hours?: Record<string, any>;
-	preferences?: Record<string, any>;
-	social_media?: Record<string, any>;
-};
-
-// Booking with relations
-export type Booking = DbBooking & {
-	service: DbService;
-	customer: DbProfile;
-	business: DbProfile;
-};
-
-// Service with relations
-export type ServiceWithRelations = DbService & {
-	business: DbProfile;
-	category: DbServiceCategory;
-};
-
-// API response types
-export interface ApiResponse<T> {
-	data: T;
-	count: number;
-	error: string | null;
-}
-
+// Define response types
 export interface PaginatedResponse<T> {
 	data: T[];
-	pagination: {
-		page: number;
-		limit: number;
-		total: number;
-	};
+	total: number;
+	page: number;
+	pageSize: number;
+	totalPages: number;
 }
 
-// Supabase Auth Error
-export interface SupabaseAuthError extends Error {
+export interface ApiResponse<T> {
+	data: T | null;
+	error: {
+		message: string;
+		code: string;
+		status: number;
+	} | null;
+}
+
+// Auth error type
+export interface SupabaseAuthError {
+	name: string;
+	message: string;
+	code: string;
 	status: number;
+	details?: any;
 }
 
-// Activity type
-export interface Activity {
-	id: string;
-	title: string;
-	description: string;
-	timestamp: string;
-	type: 'booking' | 'service' | 'profile' | 'system';
-	status?: 'pending' | 'completed' | 'cancelled';
-	metadata?: Record<string, any>;
-	created_at: string;
-	updated_at: string;
+// Service with relations type
+export interface ServiceWithRelations extends Service {
+	business?: Business;
+	category?: ServiceCategory;
 }
 

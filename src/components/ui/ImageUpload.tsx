@@ -7,7 +7,8 @@ import { Button } from './Button';
 
 export interface ImageUploadProps {
   initialUrl?: string;
-  onChange: (file: File) => void | Promise<void>;
+  value?: string;
+  onChange: ((file: File) => void | Promise<void>) | ((url: string) => void | Promise<void>);
   maxSize?: number;
   aspectRatio?: number;
   className?: string;
@@ -15,11 +16,12 @@ export interface ImageUploadProps {
 
 export function ImageUpload({
   initialUrl,
+  value,
   onChange,
   maxSize = 5,
   className = ''
 }: ImageUploadProps) {
-  const [preview, setPreview] = useState<string>(initialUrl || '');
+  const [preview, setPreview] = useState<string>(initialUrl || value || '');
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -31,7 +33,7 @@ export function ImageUpload({
       setPreview(objectUrl);
 
       // Call onChange handler
-      await onChange(file);
+      await (onChange as (file: File) => void | Promise<void>)(file);
 
       // Clean up preview URL
       return () => URL.revokeObjectURL(objectUrl);

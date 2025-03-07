@@ -1,3 +1,4 @@
+export { ErrorBoundary, ErrorPage, withErrorBoundary } from '@/lib/error';
 export * from './Avatar';
 export * from './Badge';
 export * from './Breadcrumbs';
@@ -6,7 +7,6 @@ export * from './Card';
 export * from './Checkbox';
 export * from './DataTable';
 export * from './Dropdown';
-export * from './ErrorBoundary';
 export * from './form';
 export * from './Icon';
 export * from './ImageUpload';
@@ -27,3 +27,4 @@ export * from './loading';
 
 // Re-export shared components
 export * from './shared';
+

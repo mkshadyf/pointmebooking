@@ -1,6 +1,6 @@
 'use client';
 
-import { BusinessProfile, Service } from '@/types';
+import { BusinessProfile, UIService } from '@/types';
 import { useState } from 'react';
   
 export interface StepProps {
@@ -9,7 +9,7 @@ export interface StepProps {
   onBackAction?: () => void;
 }
 
-const defaultService: Service = {
+const defaultService: UIService = {
   id: '',
   name: '',
   description: '',
@@ -22,6 +22,8 @@ const defaultService: Service = {
   updated_at: new Date().toISOString(),
   status: 'active',
   image_url: null,
+  max_capacity: null,
+  location: null,
   created_by_id: null,
   approved_by_id: null,
   approved_at: null,
@@ -32,12 +34,12 @@ const defaultService: Service = {
 };
 
 export function ServicesStep({ initialData, onNextAction, onBackAction }: StepProps) {
-  const defaultServiceWithBusinessId: Service = {
+  const defaultServiceWithBusinessId: UIService = {
     ...defaultService,
     business_id: initialData?.id || '',
   };
 
-  const [services, setServices] = useState<Service[]>(
+  const [services, setServices] = useState<UIService[]>(
     initialData?.services || []
   );
 
@@ -54,7 +56,7 @@ export function ServicesStep({ initialData, onNextAction, onBackAction }: StepPr
     setServices([...services, { ...defaultServiceWithBusinessId, id: newId }]);
   };
 
-  const updateService = (index: number, data: Partial<Service>) => {
+  const updateService = (index: number, data: Partial<UIService>) => {
     const updatedServices = [...services];
     updatedServices[index] = { ...updatedServices[index], ...data };
     setServices(updatedServices);
