@@ -1,5 +1,5 @@
 // Export all auth-related components and utilities
-export * from '../services/auth.service';
+export * from '../services/auth/auth.service';
 export * from './context/AuthContext';
 
 // Re-export auth types for convenience

@@ -1,4 +1,4 @@
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/hooks/ui/useToast';
 import { businessOnboardingService } from '@/lib/supabase/services/business/business-onboarding-service';
 import {
     BusinessCategory,

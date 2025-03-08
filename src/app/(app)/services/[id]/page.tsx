@@ -3,7 +3,7 @@
 import { Navigation } from '@/components/navigation';
 import { ErrorBoundary } from '@/components/ui';
 import { Button } from '@/components/ui/Button';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/hooks/ui/useToast';
 import { useAuth } from '@/lib/auth';
 import { ErrorHandler, convertToAppError } from '@/lib/error';
 import { ErrorCategory } from '@/lib/error/error-handler';
@@ -11,12 +11,12 @@ import { supabase } from '@/lib/supabase';
 import { transformJoinedServiceData } from '@/lib/supabase/utils/transformers';
 import { UIService } from '@/types';
 import {
-  CalendarIcon,
-  ClockIcon,
-  CurrencyDollarIcon,
-  MapPinIcon,
-  PhoneIcon,
-  UserIcon,
+    CalendarIcon,
+    ClockIcon,
+    CurrencyDollarIcon,
+    MapPinIcon,
+    PhoneIcon,
+    UserIcon,
 } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 import Link from 'next/link';

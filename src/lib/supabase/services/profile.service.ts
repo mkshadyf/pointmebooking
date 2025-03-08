@@ -1,6 +1,9 @@
 import { AuthProfile } from '@/types/database/auth';
-import { DbProfile } from '../types/index';
+import { Database } from '@/types/database/generated.types';
 import { ProfileService } from './profile/profile.service';
+
+// Define DbProfile type from Database
+type DbProfile = Database['public']['Tables']['profiles']['Row'];
 
 // Export the singleton instance
 export const profileService = ProfileService.getInstance();

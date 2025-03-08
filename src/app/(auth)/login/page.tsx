@@ -3,7 +3,7 @@
 import { AuthFormWrapper } from '@/components/auth/shared/AuthFormWrapper';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useForm } from '@/hooks/useForm';
+import { useForm } from '@/hooks/core/useForm';
 import { authService } from '@/lib/supabase/services/auth/auth.service';
 import { supabaseClientService } from '@/lib/supabase/services/core/supabase-client.service';
 import { loginSchema } from '@/lib/validation/schemas';

@@ -9,14 +9,14 @@ export const supabase = createClient<Database>(
 
 // Re-export types and interfaces
 // Use the centralized types!
+export { useAuth } from '@/hooks/auth/useAuth';
 export { AuthProvider } from './auth/context/AuthContext';
-export { useAuth, useSupabaseAuth } from './hooks/useAuth';
 export type { AuthProfile, Booking, BusinessCategory, ServiceCategory } from './types/index';
 
 // Re-export services
-export { AuthService } from './services/auth.service';
-export { BookingService } from './services/booking.service';
-export { profileService } from './services/profile.service';
+export { AuthService, authService } from './services/auth/auth.service';
+export { bookingService } from './services/booking.service';
+export { ProfileService, profileService } from './services/profile/profile.service';
 export { ServiceService } from './services/service.service';
 
 // Re-export common types and interfaces

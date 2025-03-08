@@ -47,24 +47,34 @@ export class BusinessOnboardingService extends BaseServiceUtils {
   async getOnboardingSteps(businessId: string): Promise<BusinessOnboardingStepResponse<BusinessOnboardingStep[]>> {
     return supabaseClientService.executeWithRetry(async (client) => {
       try {
-        // Use type assertion for client to access the business_onboarding_steps table
-        const extendedClient = client as any;
+        // Use a type assertion with unknown as an intermediate step
+        const supabase = client as unknown as {
+          from(table: string): {
+            select(columns: string): {
+              eq(column: string, value: string): {
+                order(column: string, options: { ascending: boolean }): {
+                  data: any;
+                  error: { message: string } | null;
+                }
+              }
+            }
+          }
+        };
         
-        const { data, error } = await extendedClient
+        const { data, error } = await supabase
           .from('business_onboarding_steps')
           .select('*')
           .eq('business_id', businessId)
           .order('step_number', { ascending: true });
-        
+
         if (error) {
-          console.error('Error getting onboarding steps:', error);
           return { data: null, error: error.message };
         }
-        
-        return { data: data as unknown as BusinessOnboardingStep[], error: null };
+
+        return { data: data as BusinessOnboardingStep[], error: null };
       } catch (error) {
-        console.error('Error in getOnboardingSteps:', error);
-        return { data: null, error: String(error) };
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return { data: null, error: errorMessage };
       }
     });
   }
@@ -77,25 +87,37 @@ export class BusinessOnboardingService extends BaseServiceUtils {
   async getOnboardingStep(businessId: string, stepNumber: number): Promise<BusinessOnboardingStepResponse<BusinessOnboardingStep>> {
     return supabaseClientService.executeWithRetry(async (client) => {
       try {
-        // Use type assertion for client to access the business_onboarding_steps table
-        const extendedClient = client as any;
+        // Use a type assertion with unknown as an intermediate step
+        const supabase = client as unknown as {
+          from(table: string): {
+            select(columns: string): {
+              eq(column: string, value: string | number): {
+                eq(column: string, value: string | number): {
+                  single(): {
+                    data: any;
+                    error: { message: string } | null;
+                  }
+                }
+              }
+            }
+          }
+        };
         
-        const { data, error } = await extendedClient
+        const { data, error } = await supabase
           .from('business_onboarding_steps')
           .select('*')
           .eq('business_id', businessId)
           .eq('step_number', stepNumber)
           .single();
-        
+
         if (error) {
-          console.error('Error getting onboarding step:', error);
           return { data: null, error: error.message };
         }
-        
+
         return { data: data as BusinessOnboardingStep, error: null };
       } catch (error) {
-        console.error('Error in getOnboardingStep:', error);
-        return { data: null, error: String(error) };
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return { data: null, error: errorMessage };
       }
     });
   }
@@ -113,26 +135,43 @@ export class BusinessOnboardingService extends BaseServiceUtils {
   ): Promise<BusinessOnboardingStepResponse<BusinessOnboardingStep>> {
     return supabaseClientService.executeWithRetry(async (client) => {
       try {
-        // Use type assertion for client to access the business_onboarding_steps table
-        const extendedClient = client as any;
+        // Use a type assertion with unknown as an intermediate step
+        const supabase = client as unknown as {
+          from(table: string): {
+            update(data: any): {
+              eq(column: string, value: string | number): {
+                eq(column: string, value: string | number): {
+                  select(columns: string): {
+                    single(): {
+                      data: any;
+                      error: { message: string } | null;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        };
         
-        const { data, error } = await extendedClient
+        const { data, error } = await supabase
           .from('business_onboarding_steps')
-          .update(updates)
+          .update({
+            ...updates,
+            updated_at: new Date().toISOString()
+          })
           .eq('business_id', businessId)
           .eq('step_number', stepNumber)
-          .select()
+          .select('*')
           .single();
-        
+
         if (error) {
-          console.error('Error updating onboarding step:', error);
           return { data: null, error: error.message };
         }
-        
+
         return { data: data as BusinessOnboardingStep, error: null };
       } catch (error) {
-        console.error('Error in updateOnboardingStep:', error);
-        return { data: null, error: String(error) };
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return { data: null, error: errorMessage };
       }
     });
   }
@@ -145,29 +184,46 @@ export class BusinessOnboardingService extends BaseServiceUtils {
   async completeOnboardingStep(businessId: string, stepNumber: number): Promise<BusinessOnboardingStepResponse<BusinessOnboardingStep>> {
     return supabaseClientService.executeWithRetry(async (client) => {
       try {
-        // Use type assertion for client to access the business_onboarding_steps table
-        const extendedClient = client as any;
+        // Use a type assertion with unknown as an intermediate step
+        const supabase = client as unknown as {
+          from(table: string): {
+            update(data: any): {
+              eq(column: string, value: string | number): {
+                eq(column: string, value: string | number): {
+                  select(columns: string): {
+                    single(): {
+                      data: any;
+                      error: { message: string } | null;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        };
         
-        const { data, error } = await extendedClient
+        const now = new Date().toISOString();
+        
+        const { data, error } = await supabase
           .from('business_onboarding_steps')
           .update({
             status: 'completed',
-            completed_at: new Date().toISOString()
+            completed_at: now,
+            updated_at: now
           })
           .eq('business_id', businessId)
           .eq('step_number', stepNumber)
-          .select()
+          .select('*')
           .single();
-        
+
         if (error) {
-          console.error('Error completing onboarding step:', error);
           return { data: null, error: error.message };
         }
-        
-        return { data: data as unknown as BusinessOnboardingStep, error: null };
+
+        return { data: data as BusinessOnboardingStep, error: null };
       } catch (error) {
-        console.error('Error in completeOnboardingStep:', error);
-        return { data: null, error: String(error) };
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return { data: null, error: errorMessage };
       }
     });
   }
@@ -184,23 +240,48 @@ export class BusinessOnboardingService extends BaseServiceUtils {
   }>> {
     return supabaseClientService.executeWithRetry(async (client) => {
       try {
-        // Use type assertion for client to access the business_onboarding_steps table
-        const extendedClient = client as any;
+        // Use a type assertion with unknown as an intermediate step
+        const supabase = client as unknown as {
+          from(table: string): {
+            select(columns: string): {
+              eq(column: string, value: string): {
+                order(column: string, options: { ascending: boolean }): {
+                  data: any;
+                  error: { message: string } | null;
+                }
+              }
+            }
+          }
+        };
         
-        const { data, error } = await extendedClient
+        const { data, error } = await supabase
           .from('business_onboarding_steps')
           .select('*')
           .eq('business_id', businessId)
           .order('step_number', { ascending: true });
-        
+
         if (error) {
           return { data: null, error: error.message };
         }
+
+        const steps = data as BusinessOnboardingStep[];
+        const totalSteps = steps.length;
+        const completedSteps = steps.filter(step => step.status === 'completed').length;
         
-        // Calculate onboarding progress
-        const totalSteps = data.length;
-        const completedSteps = data.filter((step: any) => step.status === 'completed').length;
-        const currentStep = completedSteps < totalSteps ? completedSteps + 1 : totalSteps;
+        // Find the current step (first incomplete step)
+        let currentStep = 1;
+        for (const step of steps) {
+          if (step.status !== 'completed') {
+            currentStep = step.step_number;
+            break;
+          }
+        }
+        
+        // If all steps are completed, set current step to the last step
+        if (completedSteps === totalSteps && totalSteps > 0) {
+          currentStep = totalSteps;
+        }
+        
         const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
         
         return {
@@ -213,8 +294,8 @@ export class BusinessOnboardingService extends BaseServiceUtils {
           error: null
         };
       } catch (error) {
-        console.error('Error getting onboarding status:', error);
-        return { data: null, error: String(error) };
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return { data: null, error: errorMessage };
       }
     });
   }
@@ -225,20 +306,31 @@ export class BusinessOnboardingService extends BaseServiceUtils {
   async getBusinessCategories(): Promise<BusinessOnboardingStepResponse<any[]>> {
     return supabaseClientService.executeWithRetry(async (client) => {
       try {
-        const { data, error } = await client
+        // Use a type assertion with unknown as an intermediate step
+        const supabase = client as unknown as {
+          from(table: string): {
+            select(columns: string): {
+              eq(column: string, value: string): {
+                data: any;
+                error: { message: string } | null;
+              }
+            }
+          }
+        };
+        
+        const { data, error } = await supabase
           .from('business_categories')
           .select('*')
-          .order('name', { ascending: true });
-        
+          .eq('status', 'active');
+
         if (error) {
-          console.error('Error getting business categories:', error);
           return { data: null, error: error.message };
         }
-        
+
         return { data, error: null };
       } catch (error) {
-        console.error('Error in getBusinessCategories:', error);
-        return { data: null, error: 'Failed to get business categories' };
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return { data: null, error: errorMessage };
       }
     });
   }
@@ -250,21 +342,34 @@ export class BusinessOnboardingService extends BaseServiceUtils {
   async getServiceCategoriesByBusinessCategory(businessCategoryId: string): Promise<BusinessOnboardingStepResponse<any[]>> {
     return supabaseClientService.executeWithRetry(async (client) => {
       try {
-        const { data, error } = await client
+        // Use a type assertion with unknown as an intermediate step
+        const supabase = client as unknown as {
+          from(table: string): {
+            select(columns: string): {
+              eq(column: string, value: string): {
+                order(column: string, options: { ascending: boolean }): {
+                  data: any;
+                  error: { message: string } | null;
+                }
+              }
+            }
+          }
+        };
+        
+        const { data, error } = await supabase
           .from('service_categories')
           .select('*')
           .eq('business_category_id', businessCategoryId)
           .order('name', { ascending: true });
-        
+
         if (error) {
-          console.error('Error getting service categories:', error);
           return { data: null, error: error.message };
         }
-        
+
         return { data, error: null };
       } catch (error) {
-        console.error('Error in getServiceCategoriesByBusinessCategory:', error);
-        return { data: null, error: 'Failed to get service categories' };
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return { data: null, error: errorMessage };
       }
     });
   }
@@ -272,6 +377,27 @@ export class BusinessOnboardingService extends BaseServiceUtils {
 
 // Export the singleton instance
 export const businessOnboardingService = BusinessOnboardingService.getInstance();
+
+// Export helper functions for backward compatibility
+export function getOnboardingSteps(businessId: string) {
+  return BusinessOnboardingService.getInstance().getOnboardingSteps(businessId);
+}
+
+export function getOnboardingStep(businessId: string, stepNumber: number) {
+  return BusinessOnboardingService.getInstance().getOnboardingStep(businessId, stepNumber);
+}
+
+export function updateOnboardingStep(businessId: string, stepNumber: number, updates: Partial<BusinessOnboardingStep>) {
+  return BusinessOnboardingService.getInstance().updateOnboardingStep(businessId, stepNumber, updates);
+}
+
+export function completeOnboardingStep(businessId: string, stepNumber: number) {
+  return BusinessOnboardingService.getInstance().completeOnboardingStep(businessId, stepNumber);
+}
+
+export function getOnboardingStatus(businessId: string) {
+  return BusinessOnboardingService.getInstance().getOnboardingStatus(businessId);
+}
 
 // Static wrapper for backward compatibility
 export class BusinessOnboardingServiceStatic {

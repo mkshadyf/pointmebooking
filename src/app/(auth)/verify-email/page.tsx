@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/hooks/auth/useAuth';
-import { EmailService } from '@/lib/supabase/services/email.service';
+import { EmailService } from '@/lib/supabase/services/email/email.service';
 import { NotificationService } from '@/lib/supabase/services/notifications';
 import { ROUTES } from '@/routes';
 import { useRouter } from 'next/navigation';

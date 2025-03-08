@@ -50,7 +50,7 @@ export {
 // Re-export auth service
 export {
     AuthService
-} from '@/lib/supabase/services/auth.service';
+} from '@/lib/supabase/services/auth/auth.service';
 
 // Re-export auth store
 export {
