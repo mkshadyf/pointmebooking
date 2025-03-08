@@ -1,6 +1,38 @@
----
-description: 
-globs: 
-alwaysApply: false
----
- 
+# PointMe Project Implementation Guidelines
+
+## Development Philosophy
+- **YOLO Mode**: Implement and maintain with speed and efficiency as the priority
+- **End-to-End Assessment**: Consider the entire system when working on tasks that span the codebase
+- **Mobile-First**: Ensure mobile features are prioritized as PointMe is primarily mobile-focused
+- **Shortcuts Over Complexity**: Choose simpler, faster solutions over lengthy development efforts
+
+## Code Organization
+- **DRY Principle**: Before creating new files, check if similar functionality exists elsewhere
+- **Singleton Pattern**: Maintain singleton pattern across the service layer
+- **Barrel Exports**: Use index files for exports in all directories
+- **Single Source of Truth**: Centralize data management and state
+- **Documentation**: Each module or major feature should have a README with clear details
+
+## Technical Standards
+- **Supabase Integration**: Use latest Supabase features, including @supabase/ssr instead of @supabase/auth-helpers
+- **TypeScript**: Follow generated types in `src/types/database/generated.types.ts`
+- **Component Reuse**: Utilize existing components before creating new ones with parallel logic
+- **File Structure**: Maintain consistent file organization and naming conventions
+
+## Development Process
+- **Documentation Updates**: After major changes, update project documentation
+- **Progress Tracking**: Maintain awareness of what's been done and what's next
+- **Tool Optimization**: Use latest dev tools and hacks to save time and effort
+
+## Error Handling
+- **TypeScript Errors**: Prioritize fixing type errors to maintain code quality
+- **Consistent Error Handling**: Use centralized error handling patterns
+- **Validation**: Implement proper validation for user inputs and API responses
+
+## Current Priorities
+1. Fix remaining TypeScript errors (149 remaining)
+2. Resolve authentication service inconsistencies
+3. Complete business onboarding implementation
+4. Improve mobile responsiveness
+
+*Refer to point-me-debugging-rules.mdc for current error status and recent changes* 

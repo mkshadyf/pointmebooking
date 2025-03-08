@@ -1,6 +1,120 @@
----
-description: 
-globs: 
-alwaysApply: false
----
- 
+# PointMe Implementation Context
+
+## Current Project State
+**TypeScript Errors**: 149 remaining (19.5% reduction from initial 185)  
+**Last Updated**: [current date/time]
+
+## Active Development Areas
+1. Authentication System Overhaul
+   - File: `src/lib/supabase/store/auth.store.ts`
+   - Current Issue: Method signature mismatches with auth.service.ts
+   - Recent Fixes: Session handling, error state management
+
+2. Data Transformation Layer
+   - File: `src/lib/supabase/utils/transformers.ts`
+   - Current Issue: Property access errors for database types
+   - Recent Fixes: Type assertions for UIService/Business conversions
+
+3. Component Architecture
+   - Key Files: 
+     - `src/components/ui/Select.tsx`
+     - `src/components/ui/TextArea.tsx`
+   - Current Issue: Casing inconsistencies (TextArea vs Textarea)
+
+## File Structure Hotspots
+```text
+src/
+├── app/(app)/services/page.tsx          # Core services listing
+├── components/onboarding/               # Business onboarding UI
+│   └── BusinessBasicInfoForm.tsx        # Current focus component
+├── lib/supabase/
+│   ├── services/auth.service.ts         # Authentication service (duplicate)
+│   ├── store/auth.store.ts              # Zustand store
+│   └── utils/transformers.ts            # Data transformation
+└── types/database/
+    ├── generated.types.ts               # Supabase-generated types
+    └── models.ts                        # Custom type extensions
+```
+
+## Recent Code Changes
+1. **Authentication Flow Fixes** (`auth.store.ts`)
+   - Added session state synchronization
+   - Implemented error handling wrapper functions
+   - Resolved auth service import conflicts
+
+2. **Data Transformation Updates** (`transformers.ts`)
+   - Added type guards for database entities
+   - Created safe conversion methods:
+     ```typescript
+     export function toUIService(service: any): UIService {
+       return {
+         id: service.id,
+         // ... other properties
+       } as UIService;
+     }
+     ```
+
+3. **UI Component Standardization**
+   - Fixed Select component exports
+   - Made form field properties optional
+   - Created placeholder onboarding components
+
+## Critical Dependencies
+```mermaid
+graph TD
+    A[auth.store.ts] --> B[auth.service.ts]
+    A --> C[supabase-client.service.ts]
+    D[transformers.ts] --> E[generated.types.ts]
+    F[BusinessBasicInfoForm.tsx] --> G[useBusinessOnboarding.ts]
+```
+
+## Immediate Next Steps
+1. Resolve auth service duplication:
+   - Consolidate `services/auth.service.ts` and `services/auth/auth.service.ts`
+   
+2. Fix remaining type assertions:
+   ```typescript
+   // transformers.ts
+   static transformService(serviceData: DbService) {
+     return {
+       // Add missing properties with safe defaults
+       max_capacity: serviceData.max_capacity ?? 1,
+       location: serviceData.location || ''
+     } as UIService;
+   }
+   ```
+
+3. Address component casing:
+   - Standardize on either TextArea or Textarea convention
+   - Update imports throughout codebase
+
+## Implementation Notes
+⚠️ **Critical Warning**: Two versions of auth.service.ts exist:
+- `src/lib/supabase/services/auth.service.ts`
+- `src/lib/supabase/services/auth/auth.service.ts`
+
+🚧 **Workaround in Place**:
+```typescript
+// auth.store.ts
+const response = await authService.login(
+  credentials.email, 
+  credentials.password
+);
+```
+
+## Progress Tracking
+```progress
+TypeScript Errors: ██████████░░░░ 80.5% (149/185)
+Authentication:    ████████░░░░░░ 70% 
+UI Components:     █████████░░░░░ 75%
+Data Layer:        ████░░░░░░░░░░ 40%
+```
+
+## Agent Action Checklist
+1. Verify Supabase client initialization
+2. Check for duplicate service implementations
+3. Validate type assertions in data transformations
+4. Confirm component property interfaces
+5. Test cross-module imports
+
+*This context auto-updates with each code change. Always check Last Updated timestamp before making changes.* 
