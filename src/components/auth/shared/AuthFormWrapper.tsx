@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { ReactNode } from 'react';
 
@@ -18,15 +19,17 @@ export function AuthFormWrapper({
 }: AuthFormWrapperProps) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-lg">
+      <div className="sm:mx-auto sm:w-full sm:max-w-2xl md:max-w-3xl">
         <div className="flex justify-center">
           <Link href="/" className="inline-flex items-center">
-            <span className="sr-only">Your Logo</span>
-            <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
-              <svg className="h-9 w-9 text-primary" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-              </svg>
-            </div>
+            <span className="sr-only">PointMe</span>
+            <Image
+              src="/logo.svg"
+              alt="PointMe Logo"
+              width={200}
+              height={50}
+              priority
+            />
           </Link>
         </div>
         <h2 className="mt-8 text-center text-3xl font-extrabold tracking-tight text-gray-900">
@@ -37,8 +40,8 @@ export function AuthFormWrapper({
         </p>
       </div>
 
-      <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-lg">
-        <div className="bg-white py-10 px-6 sm:px-10 md:px-12 shadow-lg sm:rounded-xl transition-shadow duration-300 hover:shadow-xl">
+      <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-2xl md:max-w-3xl">
+        <div className="bg-white py-12 px-8 sm:px-12 md:px-16 shadow-lg sm:rounded-xl transition-shadow duration-300 hover:shadow-xl">
           <form className="space-y-6" onSubmit={onSubmit}>
             {children}
           </form>

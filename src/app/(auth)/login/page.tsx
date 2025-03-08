@@ -112,7 +112,7 @@ export default function LoginPage() {
               disabled={isLoading}
               value={values.email}
               onChange={(e) => handleChange('email', e.target.value)}
-              className="pl-10 w-full focus:ring-primary focus:border-primary"
+              className="pl-10 w-full"
               placeholder="you@example.com"
               inputSize="lg"
             />
@@ -148,7 +148,7 @@ export default function LoginPage() {
               disabled={isLoading}
               value={values.password}
               onChange={(e) => handleChange('password', e.target.value)}
-              className="pl-10 pr-10 w-full focus:ring-primary focus:border-primary"
+              className="pl-10 pr-10 w-full"
               placeholder="••••••••"
               inputSize="lg"
             />

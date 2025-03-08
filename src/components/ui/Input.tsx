@@ -16,7 +16,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           {
             'h-8 text-xs': inputSize === 'sm',
             'h-10': inputSize === 'md',
-            'h-12 text-base px-4': inputSize === 'lg',
+            'h-14 text-base px-5': inputSize === 'lg',
             'w-full': fullWidth
           },
           className

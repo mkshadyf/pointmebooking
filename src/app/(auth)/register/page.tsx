@@ -193,7 +193,7 @@ export default function RegisterPage() {
               disabled={isLoading}
               value={values.first_name}
               onChange={(e) => handleChange('first_name', e.target.value)}
-              className="w-full focus:ring-primary focus:border-primary"
+              className="w-full"
               placeholder="John"
               inputSize="lg"
             />
@@ -215,7 +215,7 @@ export default function RegisterPage() {
               disabled={isLoading}
               value={values.last_name}
               onChange={(e) => handleChange('last_name', e.target.value)}
-              className="w-full focus:ring-primary focus:border-primary"
+              className="w-full"
               placeholder="Doe"
               inputSize="lg"
             />
@@ -245,7 +245,7 @@ export default function RegisterPage() {
               disabled={isLoading}
               value={values.email}
               onChange={(e) => handleChange('email', e.target.value)}
-              className="pl-10 w-full focus:ring-primary focus:border-primary"
+              className="pl-10 w-full"
               placeholder="you@example.com"
               inputSize="lg"
             />
@@ -273,7 +273,7 @@ export default function RegisterPage() {
               disabled={isLoading}
               value={values.phone}
               onChange={(e) => handleChange('phone', e.target.value)}
-              className="pl-10 w-full focus:ring-primary focus:border-primary"
+              className="pl-10 w-full"
               placeholder="+1 (555) 123-4567"
               inputSize="lg"
             />
@@ -302,7 +302,7 @@ export default function RegisterPage() {
               disabled={isLoading}
               value={values.password}
               onChange={(e) => handleChange('password', e.target.value)}
-              className="pl-10 pr-10 w-full focus:ring-primary focus:border-primary"
+              className="pl-10 pr-10 w-full"
               placeholder="••••••••"
               inputSize="lg"
             />
@@ -345,7 +345,7 @@ export default function RegisterPage() {
               disabled={isLoading}
               value={values.confirmPassword}
               onChange={(e) => handleChange('confirmPassword', e.target.value)}
-              className="pl-10 pr-10 w-full focus:ring-primary focus:border-primary"
+              className="pl-10 pr-10 w-full"
               placeholder="••••••••"
               inputSize="lg"
             />
