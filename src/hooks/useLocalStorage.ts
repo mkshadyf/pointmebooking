@@ -1,60 +1,21 @@
-'use client';
+/**
+ * @deprecated This hook is deprecated. Use the hook from '@/hooks/core/useLocalStorage' instead.
+ * This will be removed in a future version.
+ */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useLocalStorage as useLocalStorageCore } from './core/useLocalStorage';
 
+/**
+ * @deprecated Use useLocalStorage from '@/hooks/core' instead.
+ */
 export function useLocalStorage<T>(key: string, initialValue: T) {
-  // State to store our value
-  // Pass initial state function to useState so logic is only executed once
-  const [storedValue, setStoredValue] = useState<T>(() => {
-    if (typeof window === 'undefined') {
-      return initialValue;
-    }
-
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      console.warn(`Error reading localStorage key "${key}":`, error);
-      return initialValue;
-    }
-  });
-
-  // Return a wrapped version of useState's setter function that persists the new value to localStorage
-  const setValue = useCallback(
-    (value: T | ((val: T) => T)) => {
-      try {
-        // Allow value to be a function so we have same API as useState
-        const valueToStore = value instanceof Function ? value(storedValue) : value;
-        
-        // Save state
-        setStoredValue(valueToStore);
-        
-        // Save to localStorage
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem(key, JSON.stringify(valueToStore));
-        }
-      } catch (error) {
-        console.warn(`Error setting localStorage key "${key}":`, error);
-      }
-    },
-    [key, storedValue]
+  console.warn(
+    'useLocalStorage from @/hooks root is deprecated. ' +
+    'Please use useLocalStorage from @/hooks/core instead. ' +
+    'This hook will be removed in a future version.'
   );
+  
+  return useLocalStorageCore(key, initialValue);
+}
 
-  // Listen for changes to localStorage from other tabs/windows
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === key && e.newValue !== null) {
-        try {
-          setStoredValue(JSON.parse(e.newValue));
-        } catch (error) {
-          console.warn(`Error parsing localStorage value:`, error);
-        }
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [key]);
-
-  return [storedValue, setValue] as const;
-} 
+export default useLocalStorage; 

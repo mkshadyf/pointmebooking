@@ -7,6 +7,22 @@ type DbProfile = Database['public']['Tables']['profiles']['Row'];
 type DbCategory = Database['public']['Tables']['service_categories']['Row'];
 type DbBusiness = Database['public']['Tables']['businesses']['Row'];
 
+// Update the UIService type if it's defined locally (otherwise keep importing it)
+// interface UIService extends DbService {
+//   max_capacity?: number;
+//   location?: string;
+//   business?: {
+//     id: string;
+//     name: string;
+//     logo_url: string;
+//   };
+//   category?: {
+//     id: string;
+//     name: string;
+//     icon: string;
+//   };
+// }
+
 // Extended interfaces for transformations
 interface ExtendedBusiness extends Business {
   owner?: {
@@ -27,7 +43,7 @@ export class EntityTransformer {
    * Transforms a database service record into a UIService object
    * @param serviceData Database service record
    * @param includeRelations Optional related data to include
-   * @returns Fully typed UIService object
+   * @returns Fully typed UIService object or null if input is null/undefined
    */
   static transformService(
     serviceData: DbService | null | undefined, 
@@ -48,42 +64,48 @@ export class EntityTransformer {
         ? this.transformCategoryData(includeRelations.category)
         : undefined;
 
-      // Create a properly typed UIService object
-      return {
+      // Create a properly typed UIService object with safe fallbacks
+      const result: UIService = {
         id: serviceData.id,
         business_id: serviceData.business_id,
-        name: serviceData.name,
+        name: serviceData.name || '',
         description: serviceData.description || '',
-        price: serviceData.price,
-        duration: serviceData.duration,
+        price: serviceData.price || 0,
+        duration: serviceData.duration || 0,
         image_url: serviceData.image_url || '',
-        is_available: serviceData.is_available === null ? true : serviceData.is_available,
+        is_available: serviceData.is_available === true, // Explicitly check for true
         status: (serviceData.status as ServiceStatus) || 'active',
-        category_id: serviceData.category_id,
+        category_id: serviceData.category_id || null,
         created_at: serviceData.created_at || new Date().toISOString(),
         updated_at: serviceData.updated_at || new Date().toISOString(),
-        // Add additional fields required by UIService
-        max_capacity: 1, // Default value
-        location: '', // Default value
+        // Add only fields that exist on the UIService type
         created_by_id: serviceData.created_by_id || null,
         approved_by_id: serviceData.approved_by_id || null,
         approved_at: serviceData.approved_at || null,
-        featured: serviceData.featured || false,
+        featured: serviceData.featured === true, // Explicitly check for true
         featured_order: serviceData.featured_order || null,
         approval_status: (serviceData.approval_status as ApprovalStatus) || 'pending',
         admin_notes: serviceData.admin_notes || null,
-        // Add related entities if available
-        business: business ? {
+      } as UIService; // Force type assertion here as we know we're creating a valid UIService
+      
+      // Add related entities if available using optional chaining
+      if (business) {
+        result.business = {
           id: business.id,
-          name: business.name,
+          name: business.name || '',
           logo_url: business.logo_url || ''
-        } : undefined,
-        category: category ? {
+        };
+      }
+      
+      if (category) {
+        result.category = {
           id: category.id,
-          name: category.name,
-          icon: category.icon
-        } : undefined
-      };
+          name: category.name || '',
+          icon: category.icon || ''
+        };
+      }
+      
+      return result;
     } catch (error) {
       console.error('Error transforming service:', error);
       return null;
@@ -269,4 +291,46 @@ export function toUIBusiness(business: DbBusiness): Business {
     email: business.email || '',
     logo_url: business.banner_url || ''
   };
-} 
+}
+
+/**
+ * A safer generic transformer that ensures type safety
+ * @param source The source object to transform
+ * @param transform Function that transforms the source to destination type
+ * @param defaultValue Default value if source is null/undefined
+ * @returns The transformed object or defaultValue
+ */
+export function safeTransform<T, R>(
+  source: T | null | undefined, 
+  transform: (validSource: T) => R, 
+  defaultValue: R | null = null
+): R | null {
+  if (source === null || source === undefined) {
+    return defaultValue;
+  }
+  
+  try {
+    return transform(source);
+  } catch (error) {
+    console.error('Error in safeTransform:', error);
+    return defaultValue;
+  }
+}
+
+/**
+ * Safe property accessor that handles nulls and undefined
+ * @param obj The object to access property from
+ * @param key The property key
+ * @param defaultValue Default value if property is null/undefined
+ * @returns The property value or defaultValue
+ */
+export function safeGet<T, K extends keyof T>(
+  obj: T | null | undefined, 
+  key: K, 
+  defaultValue: T[K] | null = null
+): T[K] | null {
+  if (!obj) return defaultValue;
+  return obj[key] !== undefined && obj[key] !== null ? obj[key] : defaultValue;
+}
+
+// Use these safer functions in transformers as needed 

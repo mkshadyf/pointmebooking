@@ -1,7 +1,10 @@
 'use client';
 
 import { useBusinessOnboarding } from '@/hooks/business/useBusinessOnboarding';
-import React from 'react';
+import { useLocalStorage } from '@/hooks/core/useLocalStorage';
+import { useToast } from '@/hooks/ui/useToast';
+import React, { useCallback, useEffect } from 'react';
+import { Button } from '../ui/Button';
 
 // Define interfaces for the form components
 interface FormProps {
@@ -38,6 +41,16 @@ const STEP_LOCATION = 2;
 const STEP_MEDIA = 3;
 const STEP_SERVICES = 4;
 const STEP_REVIEW = 5;
+
+// Define step names for better UX
+const STEP_NAMES = [
+  'Basic Information',
+  'Contact Details',
+  'Location',
+  'Media & Branding',
+  'Services',
+  'Review & Submit'
+];
 
 // Create placeholder components
 const BusinessBasicInfoForm: React.FC<BusinessBasicInfoFormProps> = ({ 
@@ -166,62 +179,127 @@ const BusinessReviewForm: React.FC<BusinessReviewFormProps> = ({
   </div>
 );
 
-// Helper function to get step label
-const getStepLabel = (step: number): string => {
-  switch (step) {
-    case STEP_BASIC_INFO:
-      return 'Basic Info';
-    case STEP_CONTACT:
-      return 'Contact';
-    case STEP_LOCATION:
-      return 'Location';
-    case STEP_MEDIA:
-      return 'Media';
-    case STEP_SERVICES:
-      return 'Services';
-    case STEP_REVIEW:
-      return 'Review';
-    default:
-      return '';
-  }
+/**
+ * A responsive step indicator that shows progress in the onboarding flow
+ */
+const StepIndicator: React.FC<{ currentStep: number; totalSteps: number }> = ({ 
+  currentStep, 
+  totalSteps 
+}) => {
+  return (
+    <div className="mb-8">
+      <div className="flex items-center justify-between">
+        {Array.from({ length: totalSteps }).map((_, index) => (
+          <React.Fragment key={index}>
+            <div className="flex flex-col items-center">
+              <div className={`rounded-full h-10 w-10 flex items-center justify-center text-sm font-medium 
+                ${index < currentStep 
+                  ? 'bg-green-500 text-white' 
+                  : index === currentStep 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-gray-200 text-gray-500'
+                }`}>
+                {index < currentStep ? '✓' : index + 1}
+              </div>
+              <span className="mt-2 text-xs text-center hidden md:block">
+                {STEP_NAMES[index]}
+              </span>
+            </div>
+            {index < totalSteps - 1 && (
+              <div className={`flex-1 h-1 mx-2 ${index < currentStep ? 'bg-green-500' : 'bg-gray-200'}`}></div>
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
+  );
 };
 
-// Step indicator component
-const StepIndicator: React.FC<{ currentStep: number, totalSteps: number }> = ({ currentStep, totalSteps }) => {
+/**
+ * Save Progress Button component to allow users to save and exit
+ */
+const SaveProgressButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   return (
-    <div className="flex justify-between mb-8">
-      {Array.from({ length: totalSteps }).map((_, index) => (
-        <div key={index} className="flex flex-col items-center">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-            index < currentStep ? 'bg-green-500 text-white' : 
-            index === currentStep ? 'bg-blue-500 text-white' : 
-            'bg-gray-200 text-gray-500'
-          }`}>
-            {index + 1}
-          </div>
-          <span className="text-xs mt-1">{getStepLabel(index)}</span>
-        </div>
-      ))}
-    </div>
+    <Button 
+      type="button" 
+      variant="outline" 
+      className="mr-2"
+      onClick={onClick}
+    >
+      Save Progress & Exit
+    </Button>
   );
 };
 
 // Main component
 const BusinessOnboardingWizard: React.FC = () => {
-  const {
-    currentStep,
-    totalSteps,
-    stepData,
-    updateStepData,
-    goToNextStep,
-    goToPrevStep,
+  const { 
+    loading, 
+    currentStep, 
+    totalSteps, 
+    stepData, 
+    updateStepData, 
+    goToNextStep, 
+    goToPrevStep, 
     submitOnboarding,
     isSubmitting,
     errors,
     setErrors,
-    categories,
-    serviceCategories
-  } = useBusinessOnboarding();
+    businessCategories,
+    serviceCategories  } = useBusinessOnboarding();
+  
+  const { toast } = useToast();
+  
+  // Add localStorage for progress persistence
+  const [savedProgress, setSavedProgress] = useLocalStorage<{
+    lastStep: number;
+    data: Record<string, any>;
+    timestamp: string;
+  } | null>('business-onboarding-progress', null);
+  
+  // Load saved progress if available
+  useEffect(() => {
+    if (savedProgress && !loading) {
+      // Only load if saved data is less than 7 days old
+      const savedDate = new Date(savedProgress.timestamp);
+      const now = new Date();
+      const daysDiff = (now.getTime() - savedDate.getTime()) / (1000 * 60 * 60 * 24);
+      
+      if (daysDiff < 7) {
+        updateStepData(savedProgress.data);
+        if (savedProgress.lastStep < totalSteps) {
+          // Go to the saved step
+          setTimeout(() => {
+            for (let i = 0; i < savedProgress.lastStep; i++) {
+              goToNextStep();
+            }
+            toast.success("Your previous progress has been loaded.", {
+              title: "Progress Restored"
+            });
+          }, 100);
+        }
+      } else {
+        // Clear expired progress
+        setSavedProgress(null);
+      }
+    }
+  }, [loading]);
+  
+  // Save progress handler
+  const handleSaveProgress = useCallback(() => {
+    setSavedProgress({
+      lastStep: currentStep,
+      data: stepData,
+      timestamp: new Date().toISOString()
+    });
+    
+    toast.success("You can return later to continue your onboarding.", {
+      title: "Progress Saved"
+    });
+    
+    // Redirect to dashboard or homepage
+    window.location.href = '/dashboard';
+  }, [currentStep, stepData, setSavedProgress, toast]);
 
   const renderCurrentStep = () => {
     switch (currentStep) {
@@ -233,7 +311,7 @@ const BusinessOnboardingWizard: React.FC = () => {
             onNext={goToNextStep}
             errors={errors}
             setErrors={setErrors}
-            categories={categories}
+            categories={businessCategories}
           />
         );
       case STEP_CONTACT:
@@ -300,7 +378,15 @@ const BusinessOnboardingWizard: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md">
       <h1 className="text-2xl font-bold mb-6 text-center">Business Onboarding</h1>
+      
+      {/* Replace the existing step indicator with our enhanced version */}
       <StepIndicator currentStep={currentStep} totalSteps={totalSteps} />
+      
+      {/* Add a save progress button at the top */}
+      <div className="mb-6 flex justify-end">
+        <SaveProgressButton onClick={handleSaveProgress} />
+      </div>
+      
       {renderCurrentStep()}
     </div>
   );

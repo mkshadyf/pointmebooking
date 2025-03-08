@@ -1,16 +1,24 @@
-'use client';
+/**
+ * @deprecated This hook is deprecated. Use the hook from '@/hooks/core/usePrevious' instead.
+ * This will be removed in a future version.
+ */
 
-import { useEffect, useRef } from 'react';
+import { usePrevious as usePreviousCore } from './core/usePrevious';
 
+/**
+ * @deprecated Use usePrevious from '@/hooks/core' instead.
+ */
 export function usePrevious<T>(value: T): T | undefined {
-  const ref = useRef<T>();
-
-  useEffect(() => {
-    ref.current = value;
-  }, [value]);
-
-  return ref.current;
+  console.warn(
+    'usePrevious from @/hooks root is deprecated. ' +
+    'Please use usePrevious from @/hooks/core instead. ' +
+    'This hook will be removed in a future version.'
+  );
+  
+  return usePreviousCore(value);
 }
+
+export default usePrevious;
 
 // Example usage:
 // const MyComponent = () => {
