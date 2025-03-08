@@ -135,6 +135,41 @@ const getErrorSolution = (error: AuthError): ErrorSolution => {
         message: 'The request timed out. Please try again.',
       };
     
+    case 'auth/session-mismatch':
+      return {
+        message: 'There was an issue with your login session. Please login again to continue.',
+        action: {
+          label: 'Login',
+          href: '/login',
+        },
+      };
+    
+    case 'auth/stored_session_missing':
+      return {
+        message: 'Your session was restored. Welcome back!',
+      };
+    
+    case 'auth/actual_session_missing':
+      return {
+        message: 'Your session has expired. Please login again to continue.',
+        action: {
+          label: 'Login',
+          href: '/login',
+        },
+      };
+    
+    case 'auth/access_token_mismatch':
+    case 'auth/expiry_mismatch':
+    case 'auth/user_id_mismatch':
+    case 'auth/user_email_mismatch':
+      return {
+        message: 'Your session information has changed. For security reasons, please login again.',
+        action: {
+          label: 'Login',
+          href: '/login',
+        },
+      };
+    
     default:
       return {
         message: error.message || 'An unexpected error occurred. Please try again later.',

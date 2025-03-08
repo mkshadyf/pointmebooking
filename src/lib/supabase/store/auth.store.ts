@@ -5,6 +5,7 @@
  * It handles user login, registration, profile management, and session control.
  */
 
+import { logError } from '@/lib/error/error-logger';
 import { Session, User } from '@supabase/supabase-js';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -34,6 +35,7 @@ interface AuthState {
   error: string | null;
   requires2FA: boolean;
   isAuthenticated: boolean;
+  sessionChecked: boolean;
   profile?: DbProfile | null;
   // Actions
   setUser: (user: User | null) => void;
@@ -42,6 +44,7 @@ interface AuthState {
   setError: (error: string | null) => void;
   setRequires2FA: (requires2FA: boolean) => void;
   setIsAuthenticated: (isAuthenticated: boolean) => void;
+  setSessionChecked: (checked: boolean) => void;
   reset: () => void;
   
   // Add missing methods
@@ -56,6 +59,9 @@ interface AuthState {
   resendVerification: () => Promise<any>;
   refreshSession: () => Promise<any>;
   fetchProfile: () => Promise<any>;
+  
+  // Add the session integrity check method
+  checkSessionIntegrity: () => Promise<boolean>;
 }
 
 // Helper function to safely convert profile data
@@ -108,6 +114,7 @@ export const useAuthStore = create<AuthState>()(
       error: null,
       requires2FA: false,
       isAuthenticated: false,
+      sessionChecked: false,
 
       // Actions
       setUser: (user) => set({ user }),
@@ -116,7 +123,15 @@ export const useAuthStore = create<AuthState>()(
       setError: (error) => set({ error }),
       setRequires2FA: (requires2FA) => set({ requires2FA }),
       setIsAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
-        reset: () => set({ user: null, session: null, error: null, requires2FA: false, isAuthenticated: false }),
+      setSessionChecked: (sessionChecked) => set({ sessionChecked }),
+      reset: () => set({ 
+        user: null, 
+        session: null, 
+        error: null, 
+        requires2FA: false, 
+        isAuthenticated: false,
+        sessionChecked: false
+      }),
 
       login: async (credentials: { email: string; password: string }) => {
         set({ isLoading: true, error: null });
@@ -360,6 +375,93 @@ export const useAuthStore = create<AuthState>()(
         } catch (error) {
           set({ isLoading: false, error: (error as Error).message });
           return handleAuthError(error);
+        }
+      },
+
+      /**
+       * Check session integrity to prevent mismatches between stored and actual session
+       * @returns True if session is valid, false otherwise
+       */
+      checkSessionIntegrity: async () => {
+        try {
+          const state = get();
+          
+          // Skip if already checked and recently authenticated
+          if (state.sessionChecked && state.session) {
+            // Check if session is still valid based on expiry
+            const expiresAt = state.session.expires_at;
+            if (expiresAt) {
+              const expiryTime = new Date(expiresAt * 1000);
+              const now = new Date();
+              
+              // If session is not expired, no need to check again
+              if (expiryTime > now) {
+                return true;
+              }
+            }
+          }
+          
+          set({ isLoading: true });
+          
+          // Use the auth service to verify session integrity
+          const { data, error } = await authService.verifySessionIntegrity(
+            get().user, 
+            get().session
+          );
+          
+          if (error) {
+            console.error('Session integrity check failed:', error);
+            logError(error, get().user?.id, { 
+              action: 'checkSessionIntegrity', 
+              context: 'authStore' 
+            });
+            
+            // Reset auth state on error
+            set({ 
+              error: error.message || 'Session check failed',
+              isLoading: false,
+              sessionChecked: true, // Mark as checked even though it failed
+              isAuthenticated: false
+            });
+            return false;
+          }
+          
+          if (!data || !data.sessionValid) {
+            // Session is not valid, update state
+            set({ 
+              user: data?.user || null,
+              session: data?.session || null,
+              isAuthenticated: !!data?.user,
+              isLoading: false,
+              sessionChecked: true
+            });
+            return false;
+          }
+          
+          // Session is valid, update state with correct user/session
+          set({ 
+            user: data.user,
+            session: data.session,
+            isAuthenticated: !!data.user,
+            isLoading: false,
+            sessionChecked: true
+          });
+          
+          // Fetch profile after session check if authenticated
+          if (data.user) {
+            get().fetchProfile();
+          }
+          
+          return true;
+        } catch (err) {
+          console.error('Error during session integrity check:', err);
+          logError(err, get().user?.id, { 
+            action: 'checkSessionIntegrity', 
+            context: 'authStore' 
+          });
+          
+          set({ isLoading: false, sessionChecked: true });
+          return false;
         }
       },
     }),

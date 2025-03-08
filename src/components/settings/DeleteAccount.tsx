@@ -1,8 +1,8 @@
 'use client';
 
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { handleClientError } from '@/lib/error/error-handler';
-import { useAuth } from '@/lib/supabase';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast';
 
 export function DeleteAccount() {
   const [isDeleting, setIsDeleting] = useState(false);
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const router = useRouter();
 
   const handleDeleteAccount = async () => {
@@ -70,7 +70,7 @@ export function DeleteAccount() {
       if (authDeleteError) throw new Error('Failed to delete account completely');
 
       // 5. Sign out
-      await supabase.auth.signOut();
+      await signOut();
 
       toast.success('Account deleted successfully');
       router.push('/');

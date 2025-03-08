@@ -41,6 +41,7 @@ interface UseAuthReturn {
   resendVerification: () => Promise<void>;
   updateProfile: (data: Partial<AuthProfile>) => Promise<void>;
   refreshSession: () => Promise<void>;
+  validateSession: () => Promise<boolean>;
 }
 
 // Utility function to safely convert profile data
@@ -237,6 +238,25 @@ export function useAuth({
       return () => {};
     }
   }, [onAuthStateChange, onError]);
+  
+  // Add initialization for session check
+  useEffect(() => {
+    // Check session integrity on first load
+    const validateInitialSession = async () => {
+      setIsLoading(true);
+      try {
+        // Use the auth store's session integrity check
+        await authService.verifySessionIntegrity(user, session);
+      } catch (err) {
+        console.error('Initial session validation failed:', err);
+        logError(err, user?.id, { context: 'useAuth', action: 'validateInitialSession' });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    validateInitialSession();
+  }, []);
   
   // Derived state
   const isAuthenticated = !!user;
@@ -446,6 +466,52 @@ export function useAuth({
     }
   }, [onError, user?.id]);
   
+  // Add new method to the return object
+  const validateSession = useCallback(async (): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await authService.verifySessionIntegrity(user, session);
+      
+      if (error) {
+        const customError = convertToAuthError(error);
+        setError(() => customError);
+        if (onError) onError(customError as any);
+        setIsLoading(false);
+        return false;
+      }
+      
+      if (data) {
+        // Update state with the validated session data
+        setUser(data.user);
+        setSession(data.session);
+        
+        // Get the profile data if authenticated
+        if (data.user) {
+          try {
+            const { data: profileData } = await authService.getProfile();
+            if (profileData) {
+              setProfile(safelyConvertProfile(profileData));
+            }
+          } catch (profileErr) {
+            console.error('Error fetching profile during session validation:', profileErr);
+          }
+        }
+        
+        setIsLoading(false);
+        return data.sessionValid;
+      }
+      
+      setIsLoading(false);
+      return false;
+    } catch (err) {
+      const customError = convertToAuthError(err);
+      setError(() => customError);
+      if (onError) onError(customError as any);
+      setIsLoading(false);
+      return false;
+    }
+  }, [user, session, onError]);
+  
   return {
     // User state
     user,
@@ -467,5 +533,6 @@ export function useAuth({
     resendVerification,
     updateProfile,
     refreshSession,
+    validateSession,
   };
 } 

@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth';
 import { ErrorHandler, convertToAppError } from '@/lib/error';
 import { ErrorCategory } from '@/lib/error/error-handler';
 import { supabase } from '@/lib/supabase';
-import { transformJoinedServiceData } from '@/lib/supabase/utils/transformers';
+import { safeTransform, transformJoinedServiceData } from '@/lib/supabase/utils/transformers';
 import { UIService } from '@/types';
 import {
     CalendarIcon,
@@ -76,7 +76,11 @@ function ServiceDetails() {
         }
 
         // Use the transformer to get a properly typed Service object
-        const completeServiceData = transformJoinedServiceData(serviceData);
+        const completeServiceData = safeTransform(
+          serviceData,
+          (validService) => transformJoinedServiceData(validService, { business, category }),
+          null
+        );
         
         if (!completeServiceData) {
           setError('Failed to process service data');
@@ -318,7 +322,9 @@ export default function ServiceDetailsPage() {
   };
   
   return (
-    <ErrorBoundary onError={handleError}>
+    <ErrorBoundary 
+      fallback={(error) => <ErrorPage error={error} />}
+    >
       <ServiceDetails />
     </ErrorBoundary>
   );

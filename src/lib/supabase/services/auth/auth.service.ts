@@ -1,6 +1,7 @@
 import { convertToAuthError } from '@/lib/error/auth-error-utils';
+import { logError } from '@/lib/error/error-logger';
 import { AuthProfile, AuthResponse, DbProfile } from '@/types/database/auth';
-import { Session } from '@supabase/supabase-js';
+import { Session, User } from '@supabase/supabase-js';
 import { BaseServiceUtils } from '../BaseService';
 import { supabaseClientService } from '../core/supabase-client.service';
 
@@ -15,6 +16,9 @@ type AuthRole = 'customer' | 'business' | 'admin';
  */
 export class AuthService extends BaseServiceUtils {
   private static instance: AuthService;
+  
+  // Add a flag to track session verification status
+  private sessionVerified: boolean = false;
   
   private constructor() {
     super();
@@ -348,6 +352,142 @@ export class AuthService extends BaseServiceUtils {
     return supabaseClientService.executeWithRetry(async (client) => {
       return client.auth.onAuthStateChange(callback);
     });
+  }
+  
+  /**
+   * Verify session integrity between auth store and actual session
+   * This helps prevent session mismatches that can lead to authentication errors
+   * @param storedUser User from the auth store
+   * @param storedSession Session from the auth store
+   * @returns A response with the reconciled session or error
+   */
+  public async verifySessionIntegrity(
+    storedUser: User | null, 
+    storedSession: Session | null
+  ): Promise<AuthResponse<{ user: User | null; session: Session | null; sessionValid: boolean }>> {
+    // If already verified and recently, skip to prevent unnecessary calls
+    if (this.sessionVerified) {
+      return { 
+        data: { 
+          user: storedUser, 
+          session: storedSession, 
+          sessionValid: !!storedSession 
+        }, 
+        error: null 
+      };
+    }
+    
+    return supabaseClientService.executeWithRetry(async (client) => {
+      try {
+        // Get the current session from Supabase
+        const { data: sessionData, error: sessionError } = await client.auth.getSession();
+        
+        if (sessionError) {
+          return { 
+            data: { user: null, session: null, sessionValid: false }, 
+            error: convertToAuthError(sessionError) 
+          };
+        }
+        
+        const actualSession = sessionData.session;
+        const actualUser = actualSession?.user || null;
+        
+        // Compare actual session with stored session
+        const sessionMismatch = this.detectSessionMismatch(storedSession, actualSession);
+        
+        if (sessionMismatch) {
+          // Log the mismatch for debugging
+          console.warn('Session mismatch detected:', sessionMismatch);
+          logError(
+            new Error(`Session mismatch: ${sessionMismatch}`),
+            storedUser?.id || actualUser?.id, 
+            { action: 'verifySessionIntegrity', type: sessionMismatch }
+          );
+          
+          // Return the actual session which should be used to update the store
+          return { 
+            data: { 
+              user: actualUser, 
+              session: actualSession, 
+              sessionValid: !!actualSession 
+            }, 
+            error: null 
+          };
+        }
+        
+        // Session is valid and matches
+        this.sessionVerified = true;
+        return { 
+          data: { 
+            user: actualUser || storedUser, 
+            session: actualSession || storedSession, 
+            sessionValid: !!actualSession 
+          }, 
+          error: null 
+        };
+      } catch (error) {
+        console.error('Error verifying session integrity:', error);
+        logError(error, storedUser?.id, { action: 'verifySessionIntegrity' });
+        
+        // Return current stored values but mark session as potentially invalid
+        return { 
+          data: { 
+            user: storedUser, 
+            session: storedSession, 
+            sessionValid: false 
+          }, 
+          error: convertToAuthError(error) 
+        };
+      }
+    });
+  }
+  
+  /**
+   * Detect mismatches between stored and actual session
+   * @param storedSession The session from auth store
+   * @param actualSession The session from Supabase
+   * @returns A string describing the mismatch or null if no mismatch
+   */
+  private detectSessionMismatch(
+    storedSession: Session | null, 
+    actualSession: Session | null
+  ): string | null {
+    // Both null - not a mismatch, just not authenticated
+    if (!storedSession && !actualSession) {
+      return null;
+    }
+    
+    // One null, the other not - definite mismatch
+    if (!storedSession && actualSession) {
+      return 'stored_session_missing';
+    }
+    
+    if (storedSession && !actualSession) {
+      return 'actual_session_missing';
+    }
+    
+    // Both exist, compare expiry and session ID
+    if (storedSession && actualSession) {
+      if (storedSession.access_token !== actualSession.access_token) {
+        return 'access_token_mismatch';
+      }
+      
+      if (storedSession.expires_at !== actualSession.expires_at) {
+        return 'expiry_mismatch';
+      }
+      
+      // Check user properties
+      if (storedSession.user?.id !== actualSession.user?.id) {
+        return 'user_id_mismatch';
+      }
+      
+      if (storedSession.user?.email !== actualSession.user?.email) {
+        return 'user_email_mismatch';
+      }
+    }
+    
+    // No mismatch detected
+    return null;
   }
   
   /**

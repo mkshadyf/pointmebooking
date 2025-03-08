@@ -84,18 +84,14 @@ export const signInWithGoogleAction = async (): Promise<AuthResponse> => {
     // Get the cookie store
     const cookieStore = await cookies();
     // Create the server client
-    const supabase = await createServerSupabaseClient(cookieStore);
     
     // Get the referer header for origin
     const headersList = await headers();
     const referer = headersList.get("referer");
     const origin = referer ? new URL(referer).origin : "http://localhost:3000";
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${origin}/auth/callback`,
-      },
+    const { data, error } = await authService.signInWithOAuth("google", {
+      redirectTo: `${origin}/auth/callback?next=${referer}`,
     });
 
     if (error) {
@@ -126,15 +122,14 @@ export const forgotPasswordAction = async (formData: FormData): Promise<AuthResp
     // Get the cookie store
     const cookieStore = await cookies();
     // Create the server client
-    const supabase = await createServerSupabaseClient(cookieStore);
     
     // Get the referer header for origin
     const headersList = await headers();
     const referer = headersList.get("referer");
     const origin = referer ? new URL(referer).origin : "http://localhost:3000";
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin}/auth/reset-password`,
+    const { error } = await authService.resetPassword(email, {
+      redirectTo: `${origin}/reset-password?next=${referer}`,
     });
 
     if (error) {
@@ -164,9 +159,8 @@ export const resetPasswordAction = async (formData: FormData): Promise<AuthRespo
     // Get the cookie store
     const cookieStore = await cookies();
     // Create the server client
-    const supabase = await createServerSupabaseClient(cookieStore);
 
-    const { error } = await supabase.auth.updateUser({
+    const { error } = await authService.updateUser({
       password,
     });
 
@@ -214,10 +208,9 @@ export const verifyEmailAction = async (token: string): Promise<AuthResponse> =>
     // Get the cookie store
     const cookieStore = await cookies();
     // Create the server client
-    const supabase = await createServerSupabaseClient(cookieStore);
     
     // Get the user session
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: session } = await authService.getSession();
     
     if (!session?.user?.email) {
       return { error: "User session not found. Please sign in again." };
@@ -253,7 +246,7 @@ export const createBusinessProfileAction = async (formData: FormData): Promise<A
     const client = await supabaseClientService.getBrowserClient();
     
     // Get the current session
-    const { data: { session } } = await client.auth.getSession();
+    const { data: session } = await client.auth.getSession();
     
     if (!session) {
       return { error: "You must be logged in to create a business profile" };

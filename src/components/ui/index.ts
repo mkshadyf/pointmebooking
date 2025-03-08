@@ -1,4 +1,4 @@
-export { ErrorBoundary, ErrorPage, withErrorBoundary } from '@/lib/error';
+export { ErrorBoundary, withErrorBoundary } from '@/lib/error';
 export * from './Avatar';
 export * from './Badge';
 export * from './Breadcrumbs';
@@ -18,7 +18,7 @@ export * from './Select';
 export * from './Slider';
 export * from './Table';
 export * from './Tabs';
-export * from './TextArea';
+export * from './TextArea'; // Exports Textarea (preferred) and TextArea (deprecated)
 export * from './Toast';
 export * from './ToastContainer';
 
