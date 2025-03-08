@@ -17,7 +17,7 @@ export type { AuthProfile, Booking, BusinessCategory, ServiceCategory } from './
 export { AuthService, authService } from './services/auth/auth.service';
 export { bookingService } from './services/booking.service';
 export { ProfileService, profileService } from './services/profile/profile.service';
-export { ServiceService } from './services/service.service';
+export { ServiceService } from './services/service/service.service';
 
 // Re-export common types and interfaces
 export * from './config';

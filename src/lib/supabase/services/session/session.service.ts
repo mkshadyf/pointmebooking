@@ -181,7 +181,16 @@ export class SessionService extends BaseServiceUtils {
         };
       }
       
-      const sessions = data.map(session => ({
+      const sessions = data.map((session: {
+        id: string;
+        user_id: string;
+        expires_at: string;
+        created_at: string;
+        last_active_at: string;
+        user_agent?: string;
+        ip_address?: string;
+        is_active: boolean;
+      }) => ({
         id: session.id,
         userId: session.user_id,
         expiresAt: new Date(session.expires_at).getTime(),
@@ -401,7 +410,7 @@ export class SessionService extends BaseServiceUtils {
           .update({
             is_active: false
           })
-          .in('id', expiredSessions.map(s => s.id));
+          .in('id', expiredSessions.map((s: { id: string }) => s.id));
           
         return { error };
       });

@@ -314,6 +314,48 @@ export class ServiceService extends BaseService<'services'> {
       mediumCache.delete(this.getCacheKey('getActiveByCategory', service.category_id));
     }
   }
+
+  /**
+   * Get a service by ID with related business and category data
+   * @param id The service ID
+   * @returns The service with related data or null if not found
+   */
+  async getByIdWithRelations(id: string): Promise<{
+    data: DbService & { 
+      businesses?: Database['public']['Tables']['businesses']['Row'] | null; 
+      service_categories?: Database['public']['Tables']['service_categories']['Row'] | null;
+    } | null;
+    error: Error | null;
+  }> {
+    
+    try {
+      const client = await supabaseClientService.getClient();
+      const { data, error } = await client
+        .from(this.table)
+        .select(`
+          *,
+          businesses(*),
+          service_categories(*)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        // If not found, don't throw but return null
+        if (error.code === 'PGRST116') {
+          return { data: null, error: null };
+        }
+        throw error;
+      }
+      
+      return { data, error: null };
+    } catch (error) {
+      return { 
+        data: null, 
+        error: error instanceof Error ? error : new Error(String(error)) 
+      };
+    }
+  }
 }
 
 // Export a singleton instance
@@ -363,5 +405,15 @@ export class ServiceServiceStatic extends BaseServiceUtils {
   
   static async getPendingApproval(): Promise<DbService[]> {
     return serviceService.getPendingApproval();
+  }
+
+  static async getByIdWithRelations(id: string): Promise<{
+    data: DbService & { 
+      businesses?: Database['public']['Tables']['businesses']['Row'] | null; 
+      service_categories?: Database['public']['Tables']['service_categories']['Row'] | null;
+    } | null;
+    error: Error | null;
+  }> {
+    return serviceService.getByIdWithRelations(id);
   }
 } 

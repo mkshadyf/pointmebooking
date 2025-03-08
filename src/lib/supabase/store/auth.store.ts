@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Authentication Store
  * 
@@ -10,6 +12,9 @@ import { Session, User } from '@supabase/supabase-js';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authService } from '../services';
+
+// Add isClient helper at the top of the file
+const isClient = typeof window !== 'undefined';
 
 // Define a simple DbProfile type locally to avoid import issues
 interface DbProfile {
@@ -469,8 +474,28 @@ export const useAuthStore = create<AuthState>()(
       name: 'auth-storage',
       partialize: (state) => ({
         user: state.user,
-        session: state.session
-      })
+        session: state.session,
+        profile: state.profile,
+      }),
+      storage: {
+        getItem: (name) => {
+          if (isClient) {
+            const str = localStorage.getItem(name);
+            return str ? JSON.parse(str) : null;
+          }
+          return null;
+        },
+        setItem: (name, value) => {
+          if (isClient) {
+            localStorage.setItem(name, JSON.stringify(value));
+          }
+        },
+        removeItem: (name) => {
+          if (isClient) {
+            localStorage.removeItem(name);
+          }
+        },
+      },
     }
   )
 );
@@ -524,5 +549,6 @@ export const selectIsAdmin = (state: AuthState) => state.user?.app_metadata?.rol
 export const selectIsBusiness = (state: AuthState) => state.user?.app_metadata?.role === 'business';
 export const selectIsCustomer = (state: AuthState) => state.user?.app_metadata?.role === 'customer';
 
-// Export the auth slice
-export const authSlice = useAuthStore; 
+// Instead of exporting authSlice = useAuthStore which creates
+// a circular dependency, just export the store 
+// export const authSlice = useAuthStore; 

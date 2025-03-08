@@ -1,9 +1,10 @@
 "use server";
 
-import { createServerSupabaseClient } from "@/lib/supabase/client";
+import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import { businessCategoryService, serviceCategoryService } from '@/lib/supabase/services';
 import { authService } from "@/lib/supabase/services/auth/auth.service";
 import { supabaseClientService } from "@/lib/supabase/services/core/supabase-client.service";
-import { cookies, headers } from "next/headers";
+import { headers } from 'next/headers';
 
 // Define the AuthResponse type that was missing
 interface AuthResponse {
@@ -81,17 +82,19 @@ export const signInAction = async (formData: FormData): Promise<AuthResponse> =>
  */
 export const signInWithGoogleAction = async (): Promise<AuthResponse> => {
   try {
-    // Get the cookie store
-    const cookieStore = await cookies();
-    // Create the server client
-    
-    // Get the referer header for origin
+    // Get the referer header for origin properly with await
     const headersList = await headers();
     const referer = headersList.get("referer");
     const origin = referer ? new URL(referer).origin : "http://localhost:3000";
+    
+    // Create Supabase client
+    const supabase = createBrowserSupabaseClient();
 
-    const { data, error } = await authService.signInWithOAuth("google", {
-      redirectTo: `${origin}/auth/callback?next=${referer}`,
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${origin}/auth/callback`,
+      },
     });
 
     if (error) {
@@ -119,18 +122,8 @@ export const forgotPasswordAction = async (formData: FormData): Promise<AuthResp
   }
 
   try {
-    // Get the cookie store
-    const cookieStore = await cookies();
-    // Create the server client
-    
-    // Get the referer header for origin
-    const headersList = await headers();
-    const referer = headersList.get("referer");
-    const origin = referer ? new URL(referer).origin : "http://localhost:3000";
 
-    const { error } = await authService.resetPassword(email, {
-      redirectTo: `${origin}/reset-password?next=${referer}`,
-    });
+    const { error } = await authService.resetPassword(email);
 
     if (error) {
       return { error: error.message };
@@ -156,13 +149,10 @@ export const resetPasswordAction = async (formData: FormData): Promise<AuthRespo
   }
 
   try {
-    // Get the cookie store
-    const cookieStore = await cookies();
-    // Create the server client
+    // Create supabase client
+    const supabase = createBrowserSupabaseClient();
 
-    const { error } = await authService.updateUser({
-      password,
-    });
+    const { error } = await supabase.auth.updateUser({ password });
 
     if (error) {
       return { error: error.message };
@@ -206,11 +196,11 @@ export const verifyEmailAction = async (token: string): Promise<AuthResponse> =>
   
   try {
     // Get the cookie store
-    const cookieStore = await cookies();
     // Create the server client
     
     // Get the user session
-    const { data: session } = await authService.getSession();
+    const { data: sessionResult } = await authService.getSession();
+    const session = sessionResult;
     
     if (!session?.user?.email) {
       return { error: "User session not found. Please sign in again." };
@@ -246,17 +236,22 @@ export const createBusinessProfileAction = async (formData: FormData): Promise<A
     const client = await supabaseClientService.getBrowserClient();
     
     // Get the current session
-    const { data: session } = await client.auth.getSession();
+    const { data: sessionData, error: sessionError } = await authService.getSession();
+    if (sessionError || !sessionData) {
+      return { error: sessionError?.message || "Session not found" };
+    }
     
-    if (!session) {
-      return { error: "You must be logged in to create a business profile" };
+    // Extract user from session data correctly based on the return type
+    const user = sessionData?.user;
+    if (!user) {
+      return { error: "User not found in session" };
     }
     
     // Get the user's profile
     const { data: profile, error: profileError } = await client
       .from('profiles')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .single();
       
     if (profileError) {
@@ -281,20 +276,20 @@ export const createBusinessProfileAction = async (formData: FormData): Promise<A
       return { error: "All fields are required" };
     }
     
-    // Create the business profile
+    // Create the business profile with correct field names
     const { data: business, error: businessError } = await client
       .from('businesses')
       .insert({
-        owner_profile_id: profile.id,
+        owner_id: profile.id,
         name,
         description,
-        business_category: businessCategoryId,
+        category_id: businessCategoryId,
         business_type: businessTypeId,
         address,
         city,
         state,
-        postal_code: zip,
-        contact_number: phone,
+        zip_code: zip,
+        phone,
         website: website || null,
       })
       .select()
@@ -324,21 +319,14 @@ export const createBusinessProfileAction = async (formData: FormData): Promise<A
   }
 };
 
-// Add a helper action for fetching business categories
+// Update the getBusinessCategoriesAction to use the service
 export const getBusinessCategoriesAction = async (): Promise<{ 
   data?: any[]; 
   error?: string; 
 }> => {
   try {
-    const cookieStore = await cookies();
-    const supabase = await createServerSupabaseClient(cookieStore);
-    
-    const { data, error } = await supabase
-      .from('business_categories')
-      .select('*')
-      .order('name');
-    
-    if (error) throw error;
+    // Use the business category service instead of direct Supabase calls
+    const data = await businessCategoryService.getAll();
     
     return { data };
   } catch (error) {
@@ -348,22 +336,14 @@ export const getBusinessCategoriesAction = async (): Promise<{
   }
 };
 
-// Add a helper action for fetching service categories by business category
+// Update the getServiceCategoriesAction to use the service
 export const getServiceCategoriesAction = async (businessCategoryId: string): Promise<{
   data?: any[];
   error?: string;
 }> => {
   try {
-    const cookieStore = await cookies();
-    const supabase = await createServerSupabaseClient(cookieStore);
-    
-    const { data, error } = await supabase
-      .from('service_categories')
-      .select('*')
-      .eq('business_category_id', businessCategoryId)
-      .order('name');
-    
-    if (error) throw error;
+    // Use the service category service instead of direct Supabase calls
+    const data = await serviceCategoryService.getByBusinessCategory(businessCategoryId);
     
     return { data };
   } catch (error) {

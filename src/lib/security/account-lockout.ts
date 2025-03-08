@@ -183,11 +183,16 @@ export async function getLockedAccounts(): Promise<Array<{
       return [];
     }
     
-    return data.map(record => ({
+    return data.map((record: {
+      user_id?: string;
+      failed_attempts?: number;
+      updated_at?: string;
+      locked_until?: string;
+    }) => ({
       identifier: record.user_id || '',
       failedAttempts: record.failed_attempts || 0,
       lastFailedAttempt: record.updated_at ? new Date(record.updated_at).getTime() : Date.now(),
-      lockedUntil: record.locked_until ? new Date(record.locked_until).getTime() : Date.now()
+      lockedUntil: record.locked_until ? new Date(record.locked_until).getTime() : null
     }));
   } catch (error) {
     console.error('Error getting locked accounts:', error);

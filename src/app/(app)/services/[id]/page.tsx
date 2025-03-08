@@ -7,16 +7,16 @@ import { useToast } from '@/hooks/ui/useToast';
 import { useAuth } from '@/lib/auth';
 import { ErrorHandler, convertToAppError } from '@/lib/error';
 import { ErrorCategory } from '@/lib/error/error-handler';
-import { supabase } from '@/lib/supabase';
+import { serviceService } from '@/lib/supabase/services';
 import { safeTransform, transformJoinedServiceData } from '@/lib/supabase/utils/transformers';
 import { UIService } from '@/types';
 import {
-    CalendarIcon,
-    ClockIcon,
-    CurrencyDollarIcon,
-    MapPinIcon,
-    PhoneIcon,
-    UserIcon,
+  CalendarIcon,
+  ClockIcon,
+  CurrencyDollarIcon,
+  MapPinIcon,
+  PhoneIcon,
+  UserIcon,
 } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -43,19 +43,11 @@ function ServiceDetails() {
       
       try {
         setLoading(true);
-        // Fetch service with business and category in a single query
-        const { data: serviceData, error: serviceError } = await supabase
-          .from('services')
-          .select(`
-            *,
-            business:profiles(*),
-            category:service_categories(*)
-          `)
-          .eq('id', params.id)
-          .single();
-
+        
+        // Use the service service to fetch the service with relations
+        const { data: serviceData, error: serviceError } = await serviceService.getByIdWithRelations(params.id);
+        
         if (serviceError) {
-          // Use our error handler to get a consistent error
           const appError = convertToAppError(serviceError);
           
           // Set appropriate error message based on error type
@@ -75,10 +67,20 @@ function ServiceDetails() {
           return;
         }
 
+        // Extract related entities from the joined query result
+        const business = serviceData.businesses;
+        const category = serviceData.service_categories;
+
         // Use the transformer to get a properly typed Service object
         const completeServiceData = safeTransform(
           serviceData,
-          (validService) => transformJoinedServiceData(validService, { business, category }),
+          (validService) => {
+            // Use the related data we fetched from the joined query
+            return transformJoinedServiceData(validService, { 
+              business, 
+              category 
+            });
+          },
           null
         );
         
@@ -308,22 +310,12 @@ function ServiceDetails() {
 
 // Wrap the component with ErrorBoundary
 export default function ServiceDetailsPage() {
-  const { showToast } = useToast();
+  useToast();
   
-  const handleError = (error: Error) => {
-    // Use our error handler to get a consistent error
-    const appError = convertToAppError(error);
-    ErrorHandler.logError(ErrorHandler.convertToAppError(appError, 'ServiceDetailsPage'));
-    
-    showToast({
-      type: 'error',
-      message: ErrorHandler.getUserFriendlyMessage(appError)
-    });
-  };
   
   return (
-    <ErrorBoundary 
-      fallback={(error) => <ErrorPage error={error} />}
+    <ErrorBoundary
+      fallback={<div className="p-4 text-red-500">An error occurred loading this service. Please try again.</div>}
     >
       <ServiceDetails />
     </ErrorBoundary>

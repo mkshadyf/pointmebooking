@@ -1,12 +1,19 @@
-export { DashboardHeader } from './Header';
-export { MobileNavigation } from './MobileNavigation';
-export { MobileNavItem } from './MobileNavItem';
-export { NavItem } from './NavItem';
-export { Notifications } from './Notifications';
-export { SearchBar } from './SearchBar';
-export { DashboardSidebar } from './Sidebar';
-export { UserMenu } from './UserMenu';
+import { DashboardHeader } from './Header';
+import { MobileNavigation } from './MobileNavigation';
+import { MobileNavItem } from './MobileNavItem';
+import { NavItem } from './NavItem';
+import { Notifications } from './Notifications';
+import { SearchBar } from './SearchBar';
+import { DashboardSidebar } from './Sidebar';
+import { UserMenu } from './UserMenu';
 
-// Re-export the error components from the consolidated lib
-export { ErrorPage } from '@/lib/error';
+export {
+    DashboardHeader, DashboardSidebar, MobileNavigation,
+    MobileNavItem,
+    NavItem,
+    Notifications,
+    SearchBar, UserMenu
+};
+
+    export { ErrorBoundary, withErrorBoundary } from '@/lib/error';
 

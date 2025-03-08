@@ -1,21 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Explicitly configure to use only the App Router
+  // Configure Next.js options
   experimental: {
-    appDir: true,     // Enable the App Router
+    // Remove deprecated appDir option
     serverActions: {
       bodySizeLimit: '10mb'
     },
+    // Remove deprecated isrMemoryCacheSize option
     // Add optimizeCss for better CSS optimization
     optimizeCss: true,
-    // Enable incremental static regeneration for better caching
-    isrMemoryCacheSize: 50,
     // Optimize page loading
     scrollRestoration: true,
   },
-  // Disable the Pages Router
-  pageExtensions: [], // This effectively disables the Pages Router by not recognizing any page extensions
+  // Set pageExtensions to default values instead of empty array
+  pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
   images: {
     remotePatterns: [
       {

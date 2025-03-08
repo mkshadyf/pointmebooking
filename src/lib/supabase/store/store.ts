@@ -1,3 +1,5 @@
+'use client';
+
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { supabaseClientService } from '../services/core/supabase-client.service';

@@ -65,7 +65,10 @@ export class AdminService extends BaseServiceUtils {
       }
 
       // Add the is_active property to each service
-      const servicesWithIsActive = data.map(service => ({
+      const servicesWithIsActive = data.map((service: {
+        status?: string;
+        [key: string]: any;
+      }) => ({
         ...service,
         is_active: service.status === 'active'
       }));

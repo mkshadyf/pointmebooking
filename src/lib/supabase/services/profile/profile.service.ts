@@ -122,7 +122,7 @@ export class ProfileService extends BaseService<'profiles'> {
     return data;
   }
 
-  async verifyEmail(id: string, _code: string) {
+  async verifyEmail(id: string, _: string) {
     try {
       // Get the profile
       const { error: profileError } = await this.client
@@ -148,16 +148,7 @@ export class ProfileService extends BaseService<'profiles'> {
     }
   }
 
-  async completeOnboarding(id: string) {
-    const { data, error } = await this.client
-      .from(this.table)
-      .update({ onboarding_completed: true })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) return this.handleError(error);
-    return data as DbProfile;
+  async completeOnboarding(_id: string) {
   }
 
   async uploadAvatar(id: string, file: File) {
@@ -218,7 +209,7 @@ export class ProfileService extends BaseService<'profiles'> {
       // Update the business with the logo URL
       const { data, error } = await this.client
         .from('businesses')
-        .update({ logo_url: publicUrl })
+        .update({ banner_url: publicUrl })
         .eq('id', business.id)
         .select()
         .single();

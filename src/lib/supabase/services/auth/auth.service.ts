@@ -159,21 +159,27 @@ export class AuthService extends BaseServiceUtils {
   }
   
   /**
-   * Reset password
-   * @param email The email to send the reset link to
+   * Reset password for a user with optional redirect URL
+   * @param email The email address of the user
+   * @param options Optional parameters including redirectTo URL
    * @returns Success or error
    */
-  public async resetPassword(email: string): Promise<AuthResponse<void>> {
+  public async resetPassword(
+    email: string,
+    options?: { redirectTo?: string }
+  ): Promise<AuthResponse<void>> {
     return supabaseClientService.executeWithRetry(async (client) => {
       try {
-        const { error } = await client.auth.resetPasswordForEmail(email);
+        const { error } = await client.auth.resetPasswordForEmail(email, options);
         
         if (error) {
+          logError(error, undefined, { action: 'resetPassword', email });
           return { data: undefined, error: convertToAuthError(error) };
         }
         
         return { data: undefined, error: null };
       } catch (error) {
+        logError(error, undefined, { action: 'resetPassword', email });
         return { data: undefined, error: convertToAuthError(error) };
       }
     });
@@ -528,6 +534,36 @@ export class AuthService extends BaseServiceUtils {
     
     // Use type assertion to handle type compatibility
     return authProfile as unknown as AuthProfile;
+  }
+
+  /**
+   * Sign in with OAuth provider
+   * @param provider The OAuth provider to use
+   * @param options Additional options for the sign in process
+   * @returns Authentication response
+   */
+  public async signInWithOAuth(
+    provider: 'google' | 'facebook' | 'github', 
+    options?: { redirectTo?: string }
+  ): Promise<AuthResponse<{ url: string } | null>> {
+    return supabaseClientService.executeWithRetry(async (client) => {
+      try {
+        const { data, error } = await client.auth.signInWithOAuth({
+          provider,
+          options
+        });
+        
+        if (error) {
+          logError(error, undefined, { action: 'signInWithOAuth', provider });
+          return { data: null, error: convertToAuthError(error) };
+        }
+        
+        return { data, error: null };
+      } catch (error) {
+        logError(error, undefined, { action: 'signInWithOAuth', provider });
+        return { data: null, error: convertToAuthError(error) };
+      }
+    });
   }
 }
 

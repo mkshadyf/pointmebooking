@@ -1,4 +1,6 @@
-import { BookingStatus } from '@/constants/entities';
+// Define the BookingStatus type directly instead of importing it
+// This will avoid any conflicts with other exports
+export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no-show' | 'rescheduled' | 'in-progress';
 
 export interface Booking {
   id: string;

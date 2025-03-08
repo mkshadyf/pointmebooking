@@ -34,7 +34,7 @@ export function useSupabaseRealtime<T extends Record<string, any>>({
         // Create and subscribe to the channel
         channel = client
           .channel('realtime')
-          .on<T>(
+          .on(
             'postgres_changes' as any,
             {
               event,
@@ -44,50 +44,56 @@ export function useSupabaseRealtime<T extends Record<string, any>>({
             },
             (payload: RealtimePostgresChangesPayload<T>) => {
               if (!isSubscribed) return;
+              
               const newData = payload.new as T;
               setData(newData);
-              onData?.(newData);
+              
+              if (onData) {
+                onData(newData);
+              }
             }
           )
-          .subscribe((status: any) => {
-            if (!isSubscribed) return;
-            if (status === 'SUBSCRIPTION_ERROR') {
-              const subscriptionError = new Error('Realtime subscription error');
-              setError(subscriptionError);
-              onError?.(subscriptionError);
-            }
+          .subscribe((status: string) => {
+            if (status !== 'SUBSCRIBED' || !isSubscribed) return;
+            
+            console.log(`Subscribed to ${table} changes`);
           });
       } catch (err) {
-        if (!isSubscribed) return;
-        const setupError = err instanceof Error ? err : new Error('Failed to setup realtime subscription');
-        setError(setupError);
-        onError?.(setupError);
+        console.error('Error setting up realtime subscription:', err);
+        
+        if (isSubscribed) {
+          const error = err instanceof Error ? err : new Error(String(err));
+          setError(error);
+          
+          if (onError) {
+            onError(error);
+          }
+        }
       }
     };
-
+    
     setupRealtime();
-
-    return () => {
+    
+    const cleanup = () => {
       isSubscribed = false;
       
-      // Clean up the channel if it exists
       if (channel) {
-        const cleanup = async () => {
-          try {
-            const client = await supabaseClientService.getBrowserClient();
-            client.removeChannel(channel);
-          } catch (err) {
-            console.error('Error removing channel:', err);
-          }
-        };
-        
-        cleanup();
+        try {
+          channel.unsubscribe();
+          console.log(`Unsubscribed from ${table} changes`);
+        } catch (err) {
+          console.error('Error unsubscribing from channel:', err);
+        }
       }
     };
+    
+    return cleanup;
   }, [table, event, filter, onData, onError]);
-
+  
   return { data, error };
 }
+
+export default useSupabaseRealtime;
 
 // Example usage:
 // const MyComponent = () => {

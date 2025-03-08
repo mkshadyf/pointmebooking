@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Re-export all slices and selectors from a single entry point
  * 
@@ -7,7 +9,7 @@
 
 // Auth store
 export {
-    authSlice,
+    // authSlice is no longer exported from auth.store.ts
     selectError,
     selectIsAuthenticated,
     selectIsLoading,

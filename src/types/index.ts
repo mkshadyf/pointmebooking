@@ -75,7 +75,6 @@ export type {
         Booking,
         BookingFilters,
         BookingStats,
-        BookingStatus as BookingStatusType,
         PopularService
     } from './booking';
 
@@ -84,10 +83,14 @@ export type {
     Booking,
     BookingFilters,
     BookingStats,
-    // Use BookingStatusType as the type from the booking module
-    BookingStatusType,
     PopularService
 };
+
+// Export types
+    export type {
+        BookingFilters as BookingFiltersType,
+        BookingStats as BookingStatsType, Booking as BookingType, PopularService as PopularServiceType
+    } from './booking';
 
 // Standard type exports
 export type JsonValue =

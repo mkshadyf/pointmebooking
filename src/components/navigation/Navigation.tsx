@@ -1,7 +1,7 @@
 import { signOutAction } from '@/app/actions';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { classNames } from '@/lib/utils';
-import { NAVIGATION, PROTECTED_PATHS, ROUTES } from '@/routes';
+import { NAVIGATION, NavigationItem, PROTECTED_PATHS, ROUTES } from '@/routes';
 import { Disclosure, Menu, Transition } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
@@ -16,8 +16,27 @@ interface NavigationProps {
   type: NavigationType;
 }
 
+// Create a custom type for the dynamic navigation that can include dashboard items
+type DynamicNavigationItem = NavigationItem | {
+  name: 'Dashboard';
+  href: typeof PROTECTED_PATHS.BUSINESS_DASHBOARD | typeof PROTECTED_PATHS.CUSTOMER_DASHBOARD;
+};
+
+// Updated getHrefString function to take the profile as a parameter
+const getHrefString = (
+  href: string | ((role: string) => string), 
+  userProfile: any
+): string => {
+  if (typeof href === 'function') {
+    // Use the passed profile parameter
+    const userRole = userProfile?.role || 'customer';
+    return href(userRole);
+  }
+  return href;
+};
+
 export default function Navigation({ type }: NavigationProps) {
-  const { user, signOut, profile } = useAuth();
+  const { isAuthenticated, profile, signOut, user } = useAuth();
   const pathname = usePathname();
 
   const handleSignOut = async () => {
@@ -34,7 +53,7 @@ export default function Navigation({ type }: NavigationProps) {
   };
 
   // Use the centralized navigation definitions
-  const mainNavigation = [...NAVIGATION.MAIN];
+  const mainNavigation: DynamicNavigationItem[] = [...NAVIGATION.MAIN];
   
   // Add dashboard link if user is logged in
   if (profile?.role) {
@@ -96,7 +115,7 @@ export default function Navigation({ type }: NavigationProps) {
                   {navigation.map((item) => (
                     <Link
                       key={item.name}
-                      href={item.href}
+                      href={getHrefString(item.href, profile)}
                       className={clsx(
                         pathname === item.href
                           ? 'border-primary text-gray-900'
@@ -111,7 +130,7 @@ export default function Navigation({ type }: NavigationProps) {
               </div>
               
               <div className="hidden sm:ml-6 sm:flex sm:items-center">
-                {type === 'main' && !user ? (
+                {type === 'main' && !isAuthenticated ? (
                   <div className="flex items-center space-x-4">
                     <Link
                       href={ROUTES.login.path}
@@ -170,7 +189,7 @@ export default function Navigation({ type }: NavigationProps) {
                               <Menu.Item key={item.name}>
                                 {({ active }) => (
                                   <Link
-                                    href={item.href}
+                                    href={getHrefString(item.href, profile)}
                                     className={classNames(
                                       active ? 'bg-gray-100' : '',
                                       'block px-4 py-2 text-sm text-gray-700'
@@ -222,7 +241,7 @@ export default function Navigation({ type }: NavigationProps) {
                 <Disclosure.Button
                   key={item.name}
                   as={Link}
-                  href={item.href}
+                  href={getHrefString(item.href, profile)}
                   className={clsx(
                     pathname === item.href
                       ? 'bg-primary/5 border-primary text-primary'
@@ -235,7 +254,7 @@ export default function Navigation({ type }: NavigationProps) {
               ))}
             </div>
             {type === 'main' ? (
-              user ? (
+              isAuthenticated ? (
                 <div className="border-t border-gray-200 pb-3 pt-4">
                   <div className="flex items-center px-4">
                     <div className="flex-shrink-0">
@@ -257,7 +276,7 @@ export default function Navigation({ type }: NavigationProps) {
                       <Disclosure.Button
                         key={item.name}
                         as={Link}
-                        href={item.href}
+                        href={getHrefString(item.href, profile)}
                         className="block px-4 py-2 text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800"
                       >
                         {item.name}

@@ -3,43 +3,51 @@
  * Exports all services for easy access
  */
 
-// Export auth services
-export { AuthService, authService } from './auth/auth.service';
+/**
+ * Central export point for all service singletons
+ * Use these exported instances throughout the application
+ */
 
-// Export profile services
-export { ProfileService, profileService } from './profile/profile.service';
+// Auth service
+export { authService } from './auth';
 
-// Export booking services
+// Profile service
+export { profileService } from './profile/profile.service';
+
+// Business services
+export { BusinessOnboardingService, businessOnboardingService } from './business';
+
+// Booking services
 export { bookingService } from './booking.service';
 export { scheduleService } from './booking/schedule.service';
 
-// Export business services
-export {
-    BusinessOnboardingService, businessCategoryService,
-    businessOnboardingService
-} from './business';
-
-// Export service-related services
-export { serviceCategoryService } from './categories/service-category.service';
-export { serviceService } from './service/service.service';
-
-// Export admin services
+// Admin services
 export { AdminService, adminService } from './admin/admin.service';
 
-// Export search services
+// Search services
 export { searchService } from './search/search.service';
 
-// Export session services
+// Session services
 export { sessionService } from './session/session.service';
 
-// Export email services
+// Email services
 export { EmailService } from './email/email.service';
 
-// Export core services
+// Core services
 export { supabaseClientService } from './core/supabase-client.service';
 
-// Export analytics services
+// Import and export singletons that need to be created from getInstance()
+import { BusinessCategoryService } from './categories/business-category.service';
+import { ServiceCategoryService } from './categories/service-category.service';
+import { ServiceService } from './service/service.service';
+
+// Analytics service
 export { analyticsService } from './analytics/analytics.service';
+
+// Service singletons
+export const serviceService = ServiceService.getInstance();
+export const businessCategoryService = BusinessCategoryService.getInstance();
+export const serviceCategoryService = ServiceCategoryService.getInstance();
 
 // Note: Other services should be imported directly from their domain-specific locations
 // to avoid naming conflicts and circular dependencies.

@@ -1,11 +1,16 @@
+'use client';
+
 import { handleClientError } from '@/lib/error/error-handler';
-import { SearchService } from '@/lib/supabase/services/search.service';
+import { searchService } from '@/lib/supabase/services/search/search.service';
 import { ServiceServiceStatic as ServiceService } from '@/lib/supabase/services/service/service.service';
 import { BusinessCategory, BusinessProfile, Category, ServiceCategory, ServiceStatus, UIService } from '@/types';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { authSlice } from './auth.store';
+// Remove the import of authSlice to avoid circular dependency
+// import { authSlice } from './auth.store';
 
+// Export auth store directly
+export { authActions, useAuthStore } from './auth.store';
 
 // Base state without actions
 interface BaseState {
@@ -105,7 +110,7 @@ export const useStore = create<StoreState>()(
       fetchFeaturedServices: async () => {
         set({ isLoading: true, error: null });
         try {
-          const services = await SearchService.getFeaturedServices();
+          const services = await searchService.getFeaturedServices();
           if (!services) {
             throw new Error('No services returned');
           }
@@ -259,5 +264,3 @@ export const useStore = create<StoreState>()(
   )
 );
 
-// Create auth store separately
-export const useAuthStore = create(authSlice);

@@ -191,23 +191,14 @@ const ROLE_PERMISSIONS: RolePermissions = {
     Permission.UPDATE_BOOKING,
     Permission.DELETE_BOOKING,
   ],
-  // Adding staff role to match the database enum
-  // staff: [
-    // Staff permissions
-    // Permission.VIEW_PROFILE,
-    // Permission.UPDATE_PROFILE,
-    
-    // Business viewing permissions
-    // Permission.VIEW_BUSINESS,
-    
-    // Service permissions
-    // Permission.VIEW_SERVICE,
-    // Permission.UPDATE_SERVICE,
-    
-    // Booking permissions
-    // Permission.VIEW_BOOKING,
-    // Permission.UPDATE_BOOKING,
-  // ]
+  staff: [
+    Permission.VIEW_PROFILE,
+    Permission.UPDATE_PROFILE,
+    Permission.VIEW_BUSINESS,
+    Permission.VIEW_SERVICE,
+    Permission.VIEW_BOOKING,
+    Permission.UPDATE_BOOKING
+  ]
 };
 
 /**
@@ -331,7 +322,7 @@ export class AuthorizationService {
    */
   static getRolesWithPermission(permission: Permission): AuthRole[] {
     return Object.entries(ROLE_PERMISSIONS)
-      .filter(([_, permissions]) => permissions.includes(permission))
+      .filter(([_role, permissions]) => permissions.includes(permission))
       .map(([role]) => role as AuthRole);
   }
 

@@ -40,13 +40,13 @@ export default function AdminDashboardPage() {
           
           if (usersData) {
             // Map to UserData type
-            const typedUsers: UserData[] = usersData.map(user => ({
+            const typedUsers: UserData[] = usersData.map((user: any) => ({
               id: user.id,
               email: user.email,
               name: user.full_name || '',
-              role: user.role,
-              created_at: user.created_at || new Date().toISOString(),
-              status: user.status || 'active'
+              role: user.role || 'customer',
+              status: user.status || 'active',
+              created_at: user.created_at || '',
             }));
             setUsers(typedUsers);
           }

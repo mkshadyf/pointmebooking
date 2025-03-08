@@ -108,7 +108,7 @@ export abstract class BaseService<T extends TableWithId> extends BaseServiceUtil
         .select('*');
 
       if (error) throw error;
-      return data as Row<T>[];
+      return data as unknown as Row<T>[];
     } catch (error) {
       return this.handleError(error);
     }
@@ -120,11 +120,11 @@ export abstract class BaseService<T extends TableWithId> extends BaseServiceUtil
       const { data, error } = await this.client
         .from(this.table)
         .select('*')
-        .eq('id', id)
+        .eq('id' as any, id)
         .single();
 
       if (error) throw error;
-      return data as Row<T>;
+      return data as unknown as Row<T>;
     } catch (error) {
       return this.handleError(error);
     }
@@ -132,15 +132,14 @@ export abstract class BaseService<T extends TableWithId> extends BaseServiceUtil
 
   async create(data: Insert<T>): Promise<Row<T>> {
     try {
-      // Using a more type-safe approach
-      const { data: created, error } = await this.client
+      const { data: result, error } = await this.client
         .from(this.table)
-        .insert(data)
+        .insert(data as any)
         .select()
         .single();
 
       if (error) throw error;
-      return created as Row<T>;
+      return result as unknown as Row<T>;
     } catch (error) {
       return this.handleError(error);
     }
@@ -148,16 +147,15 @@ export abstract class BaseService<T extends TableWithId> extends BaseServiceUtil
 
   async update(id: string, data: Update<T>): Promise<Row<T>> {
     try {
-      // Using a more type-safe approach
-      const { data: updated, error } = await this.client
+      const { data: result, error } = await this.client
         .from(this.table)
-        .update(data)
-        .eq('id', id)
+        .update(data as any)
+        .eq('id' as any, id)
         .select()
         .single();
 
       if (error) throw error;
-      return updated as Row<T>;
+      return result as unknown as Row<T>;
     } catch (error) {
       return this.handleError(error);
     }
@@ -165,11 +163,10 @@ export abstract class BaseService<T extends TableWithId> extends BaseServiceUtil
 
   async delete(id: string): Promise<boolean> {
     try {
-      // Using a more type-safe approach
       const { error } = await this.client
         .from(this.table)
         .delete()
-        .eq('id', id);
+        .eq('id' as any, id);
 
       if (error) throw error;
       return true;
@@ -180,14 +177,21 @@ export abstract class BaseService<T extends TableWithId> extends BaseServiceUtil
 
   protected async exists(id: string): Promise<boolean> {
     try {
-      // Using a more type-safe approach
-      const { count, error } = await this.client
+      const { data, error } = await this.client
         .from(this.table)
-        .select('*', { count: 'exact', head: true })
-        .eq('id', id);
+        .select('id')
+        // Use type assertion for the id column
+        .eq('id' as any, id)
+        .single();
 
-      if (error) throw error;
-      return (count ?? 0) > 0;
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return false;
+        }
+        throw error;
+      }
+
+      return !!data;
     } catch (error) {
       return this.handleError(error);
     }

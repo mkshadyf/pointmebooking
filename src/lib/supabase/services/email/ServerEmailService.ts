@@ -14,9 +14,6 @@ class ServerEmailHandler extends BaseEmailService {
 }
 
 // Helper function to render code
-function renderCode(code: string): string {
-  return `<p><strong>${code}</strong></p>`;
-}
 
 // Helper function to render booking details
 function renderBookingDetails(booking: {
@@ -42,16 +39,50 @@ function renderButton(text: string, link: string): string {
 
 // Export async functions using the public wrapper
 
-export async function sendVerificationEmail(email: string, code: string) {
-  const content = `
-    <p>Thank you for signing up. Please verify your email address by entering this code:</p>
-    ${renderCode(code)}
-    <p>If you didn't sign up for PointMe, you can safely ignore this email.</p>
-  `;
-  return ServerEmailHandler.handleSendEmail(email, 'Verify your email address', {
-    title: 'Welcome to PointMe!',
-    content,
-  });
+/**
+ * Server Email Service for sending emails from server components
+ * This is separate from the regular EmailService to avoid client-side imports
+ */
+
+/**
+ * Send verification email to the user
+ * @param email The email address to send to
+ * @param code The verification code
+ */
+export async function sendVerificationEmail(email: string, code: string): Promise<void> {
+  try {
+    // Construct the verification link
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const verificationLink = `${baseUrl}/verify-email?code=${code}&email=${encodeURIComponent(email)}`;
+    
+    // Send the email using server API
+    const response = await fetch(`${baseUrl}/api/email/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: email,
+        subject: 'Verify your email address',
+        html: `
+          <h1>Email Verification</h1>
+          <p>Thank you for registering with our service. Please verify your email by clicking the link below:</p>
+          <a href="${verificationLink}">Verify Email</a>
+          <p>Or enter the following code: <strong>${code}</strong></p>
+          <p>This link will expire in 24 hours.</p>
+        `,
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to send email: ${response.statusText}`);
+    }
+    
+    console.log(`Verification email sent to ${email}`);
+  } catch (error) {
+    console.error('Error sending verification email:', error);
+    throw error;
+  }
 }
 
 export async function sendBookingConfirmation(

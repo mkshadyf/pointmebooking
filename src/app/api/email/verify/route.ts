@@ -1,4 +1,4 @@
-import { sendVerificationEmail } from '@/lib/supabase/services/ServerEmailService';
+import { sendVerificationEmail } from '@/lib/supabase/services/email/ServerEmailService';
 import { NextResponse } from 'next/server';
 import { API_ERRORS } from '../../../../constants/api';
 

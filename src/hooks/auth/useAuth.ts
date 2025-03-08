@@ -1,3 +1,5 @@
+'use client';
+
 import { useToast } from '@/hooks/ui/useToast';
 import { sessionManager } from '@/lib/auth/session-manager';
 import { convertToAuthError } from '@/lib/error/auth-error-converter';
@@ -20,7 +22,7 @@ export interface UseAuthOptions {
 /**
  * Return type for the useAuth hook
  */
-interface UseAuthReturn {
+export interface UseAuthReturn {
   // User state
   user: User | null;
   profile: AuthProfile | null;
@@ -49,32 +51,23 @@ const safelyConvertProfile = (profileData: any): AuthProfile | null => {
   if (!profileData) return null;
   
   try {
-    // Create a compatible profile object with all required fields
+    // Basic validation of required fields
+    if (!profileData.id || !profileData.email) {
+      console.warn('Profile data missing required fields:', profileData);
+      return null;
+    }
+    
+    // Use the original data with null/undefined handling for optional fields
     return {
-      id: profileData.id || '',
-      user_id: profileData.user_id || profileData.id || '',
-      email: profileData.email || '',
-      first_name: profileData.first_name || '',
-      last_name: profileData.last_name || '',
-      role: profileData.role || 'customer',
-      status: profileData.status || 'active',
+      ...profileData,
+      full_name: profileData.full_name || '',
       avatar_url: profileData.avatar_url || null,
-      phone_number: profileData.phone || profileData.phone_number || null,
-      created_at: profileData.created_at || new Date().toISOString(),
-      updated_at: profileData.updated_at || new Date().toISOString(),
-      
-      // Auth-specific fields
-      is_verified: Boolean(profileData.is_verified) || true,
-      is_email_verified: Boolean(profileData.email_verified || profileData.is_email_verified) || false,
-      last_login: profileData.last_login || null,
-      login_count: profileData.login_count || 0,
-      failed_login_attempts: profileData.failed_login_attempts || 0,
-      last_failed_login: profileData.last_failed_login || null,
-      password_reset_token: profileData.password_reset_token || null,
-      password_reset_expires: profileData.password_reset_expires || null,
+      // Ensure boolean fields are properly typed
+      email_verified: profileData.email_verified === true,
+      onboarding_completed: profileData.onboarding_completed === true
     } as AuthProfile;
   } catch (error) {
-    console.error('Error converting profile:', error);
+    console.error('Error converting profile data:', error);
     return null;
   }
 };
