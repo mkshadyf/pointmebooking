@@ -1,4 +1,7 @@
+import { useToast } from '@/hooks/ui/useToast';
+import { sessionManager } from '@/lib/auth/session-manager';
 import { convertToAuthError } from '@/lib/error/auth-error-converter';
+import { logError } from '@/lib/error/error-logger';
 import { authService } from '@/lib/supabase/services/auth/auth.service';
 import { AuthProfile } from '@/types/auth';
 import { AuthError } from '@/types/database/auth';
@@ -92,6 +95,8 @@ export function useAuth({
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<AuthProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [sessionWarningShown, setSessionWarningShown] = useState<boolean>(false);
+  const { toast } = useToast();
   
   // Initialize auth state on mount
   useEffect(() => {
@@ -105,6 +110,16 @@ export function useAuth({
         if (sessionData?.user) {
           setUser(sessionData.user);
           
+          // Start session monitoring if we have a session
+          if (sessionData.expires_at) {
+            // Convert to ISO string if it's a number (timestamp)
+            const expiresAtString = typeof sessionData.expires_at === 'number' 
+              ? new Date(sessionData.expires_at * 1000).toISOString() 
+              : sessionData.expires_at;
+            
+            sessionManager.startSessionMonitoring(expiresAtString);
+          }
+          
           try {
             // Get the user profile
             const { data: profileData } = await authService.getProfile();
@@ -113,6 +128,7 @@ export function useAuth({
             }
           } catch (profileErr) {
             console.error('Error fetching profile:', profileErr);
+            logError(profileErr, sessionData.user.id, { action: 'fetchProfile' });
           }
         }
       } catch (err) {
@@ -120,6 +136,7 @@ export function useAuth({
         // Use setState with a function to avoid type issues
         setError(() => customError);
         if (onError) onError(customError as any);
+        logError(err, user?.id, { action: 'initAuth' });
       } finally {
         setIsLoading(false);
       }
@@ -135,6 +152,18 @@ export function useAuth({
         setSession(newSession);
         setUser(newSession?.user || null);
         
+        // Start or stop session monitoring based on session state
+        if (newSession?.expires_at) {
+          // Convert to ISO string if it's a number (timestamp)
+          const expiresAtString = typeof newSession.expires_at === 'number' 
+            ? new Date(newSession.expires_at * 1000).toISOString() 
+            : newSession.expires_at;
+          
+          sessionManager.startSessionMonitoring(expiresAtString);
+        } else {
+          sessionManager.stopSessionMonitoring();
+        }
+        
         if (newSession?.user) {
           authService.getProfile()
             .then(({ data: profileData }) => {
@@ -142,7 +171,10 @@ export function useAuth({
                 setProfile(safelyConvertProfile(profileData));
               }
             })
-            .catch(err => console.error('Error fetching profile:', err));
+            .catch(err => {
+              console.error('Error fetching profile:', err);
+              logError(err, newSession.user.id, { action: 'fetchProfileOnAuthChange' });
+            });
         } else {
           setProfile(null);
         }
@@ -174,11 +206,34 @@ export function useAuth({
         }
       }
       
+      // Set up session expiration warning listener
+      const removeExpirationListener = sessionManager.onSessionExpiringSoon(() => {
+        if (!sessionWarningShown) {
+          toast.warning("Your session will expire soon. Click here to stay logged in.", {
+            action: {
+              label: "Stay Logged In",
+              onClick: () => refreshSession()
+            },
+            duration: 10000 // 10 seconds
+          });
+          setSessionWarningShown(true);
+        }
+      });
+      
+      // Set up session refresh listener
+      const removeRefreshListener = sessionManager.onSessionRefreshed(() => {
+        setSessionWarningShown(false);
+      });
+      
       return () => {
         unsubscribe();
+        removeExpirationListener();
+        removeRefreshListener();
+        sessionManager.stopSessionMonitoring();
       };
     } catch (err) {
       console.error('Error setting up auth state change listener:', err);
+      logError(err, user?.id, { action: 'setupAuthListener' });
       return () => {};
     }
   }, [onAuthStateChange, onError]);
@@ -362,30 +417,34 @@ export function useAuth({
     setIsLoading(true);
     setError(null);
     try {
-      // This method might need to be implemented in authService
-      if (typeof authService.refreshSession === 'function') {
-        const { data: refreshedSession } = await authService.refreshSession();
-        if (refreshedSession) {
-          setSession(refreshedSession);
-          setUser(refreshedSession.user);
-          
-          const { data: profileData } = await authService.getProfile();
-          if (profileData) {
-            setProfile(safelyConvertProfile(profileData));
-          }
+      // Use the session manager to refresh the session
+      await sessionManager.refreshSession();
+      
+      // Get the updated session
+      const { data: refreshedSession } = await authService.getSession();
+      if (refreshedSession) {
+        setSession(refreshedSession);
+        setUser(refreshedSession.user);
+        
+        // Reset the session warning flag
+        setSessionWarningShown(false);
+        
+        // Get the updated profile
+        const { data: profileData } = await authService.getProfile();
+        if (profileData) {
+          setProfile(safelyConvertProfile(profileData));
         }
-      } else {
-        console.warn('refreshSession not implemented in authService');
       }
     } catch (err) {
       const customError = convertToAuthError(err);
       // Use setState with a function to avoid type issues
       setError(() => customError);
       if (onError) onError(customError as any);
+      logError(err, user?.id, { action: 'refreshSession' });
     } finally {
       setIsLoading(false);
     }
-  }, [onError]);
+  }, [onError, user?.id]);
   
   return {
     // User state

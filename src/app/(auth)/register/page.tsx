@@ -51,6 +51,7 @@ export default function RegisterPage() {
     setError(null);
     
     try {
+      // Step 1: Register the user
       const { data: authData, error: authError } = await authService.register({
         email: formData.email,
         password: formData.password,
@@ -62,48 +63,75 @@ export default function RegisterPage() {
       if (authData?.user) {
         const client = await supabaseClientService.getBrowserClient();
         
-        // First check if a profile already exists
-        const { data: existingProfile } = await client
-          .from('profiles')
-          .select('id')
-          .eq('user_id', authData.user.id)
-          .single();
-          
-        // If profile exists, update it
-        if (existingProfile) {
-          const { error: profileError } = await client
+        try {
+          // Step 2: First check if a profile already exists
+          const { data: existingProfile } = await client
             .from('profiles')
-            .update({
-              first_name: formData.first_name,
-              last_name: formData.last_name,
-              phone: formData.phone,
-              role: formData.role,
-              full_name: `${formData.first_name} ${formData.last_name}`.trim()
-            })
-            .eq('id', existingProfile.id);
+            .select('id')
+            .eq('user_id', authData.user.id)
+            .single();
+            
+          // Step 3: If profile exists, update it
+          if (existingProfile) {
+            const { error: profileError } = await client
+              .from('profiles')
+              .update({
+                first_name: formData.first_name,
+                last_name: formData.last_name,
+                phone: formData.phone,
+                role: formData.role,
+                full_name: `${formData.first_name} ${formData.last_name}`.trim()
+              })
+              .eq('id', existingProfile.id);
+            
+            if (profileError) throw profileError;
+          } else {
+            // Step 4: If no profile exists, create one
+            const { error: profileError } = await client
+              .from('profiles')
+              .insert({
+                user_id: authData.user.id,
+                email: formData.email,
+                first_name: formData.first_name,
+                last_name: formData.last_name,
+                phone: formData.phone,
+                role: formData.role,
+                full_name: `${formData.first_name} ${formData.last_name}`.trim()
+              });
+            
+            if (profileError) throw profileError;
+          }
+        } catch (profileErr: any) {
+          // Log the profile error but don't fail the registration
+          console.error('Profile creation/update error:', profileErr);
           
-          if (profileError) throw profileError;
-        } else {
-          // If no profile exists, create one
-          const { error: profileError } = await client
-            .from('profiles')
-            .insert({
-              user_id: authData.user.id,
-              email: formData.email,
-              first_name: formData.first_name,
-              last_name: formData.last_name,
-              phone: formData.phone,
-              role: formData.role,
-              full_name: `${formData.first_name} ${formData.last_name}`.trim()
-            });
+          // Import the error logger
+          const { logError } = await import('@/lib/error/error-logger');
+          await logError(profileErr, authData.user.id, {
+            action: 'register',
+            step: 'profile_creation',
+            email: formData.email,
+            role: formData.role
+          });
           
-          if (profileError) throw profileError;
+          // Show a warning toast but continue
+          toast.success('Account created, but profile setup had an issue. You can update your profile later.');
+          router.push('/login');
+          return;
         }
       }
       
       toast.success('Account created successfully! Please check your email to verify your account.');
       router.push('/login');
     } catch (err: any) {
+      // Import the error logger
+      const { logError } = await import('@/lib/error/error-logger');
+      await logError(err, undefined, {
+        action: 'register',
+        email: formData.email,
+        role: formData.role
+      });
+      
       setError(err.message || 'An unexpected error occurred');
       toast.error(err.message || 'Failed to create account');
     } finally {

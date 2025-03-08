@@ -1,10 +1,19 @@
 /**
  * Error Module
- * 
+ *
  * This module provides comprehensive error handling features.
  * It includes error types, error handling utilities, error boundary components,
  * and error conversion utilities.
  */
+
+// Export error handler utilities
+export * from './error-handler';
+
+// Export error logger
+export * from './error-logger';
+
+// Export try-catch utilities
+export * from './try-catch';
 
 // Error Types
 export enum ErrorType {
@@ -44,23 +53,21 @@ export enum ErrorCategory {
 
 // Error Classes
 export {
-  convertToAppError, createAppError,
-  ErrorCode, ErrorHandler,
-  handleApiError, handleError, isAppError
+    ErrorCode, ErrorHandler, convertToAppError, createAppError, handleApiError, handleError, isAppError
 } from './error-handler';
 export type { AppError } from './error-handler';
 
 // Error Boundary Components
 export {
-  ErrorBoundary, ErrorPage, withErrorBoundary
-} from './error-boundary';
+    ErrorBoundary, withErrorBoundary
+} from '../../components/error/ErrorBoundary';
 
 // Auth Error Utilities
 export {
-  appErrorToAuthError,
-  authErrorToAppError,
-  convertToAuthError,
-  toAuthError
+    appErrorToAuthError,
+    authErrorToAppError,
+    convertToAuthError,
+    toAuthError
 } from './auth-error-utils';
 
 // Error Interfaces

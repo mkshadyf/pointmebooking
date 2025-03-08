@@ -1,4 +1,6 @@
 import { routeHandler } from '@/lib/api/route-handler';
+import { apiErrorHandler } from '@/lib/error/error-handler';
+import { logError } from '@/lib/error/error-logger';
 import { bookingService } from '@/lib/supabase/services/booking.service';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -17,11 +19,12 @@ export const GET = routeHandler({
       
       return NextResponse.json({ data });
     } catch (error) {
-      console.error('Error fetching bookings:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch bookings' },
-        { status: 500 }
-      );
+      await logError(error, undefined, { 
+        route: 'GET /api/bookings',
+        requestParams: url.searchParams.toString()
+      });
+      const { body, status } = apiErrorHandler(error);
+      return NextResponse.json(body, { status });
     }
   }
 });
@@ -34,11 +37,12 @@ export const POST = routeHandler({
       
       return NextResponse.json({ data });
     } catch (error) {
-      console.error('Error creating booking:', error);
-      return NextResponse.json(
-        { error: 'Failed to create booking' },
-        { status: 500 }
-      );
+      await logError(error, undefined, { 
+        route: 'POST /api/bookings',
+        requestBody: await req.clone().text().catch(() => 'Could not read body')
+      });
+      const { body, status } = apiErrorHandler(error);
+      return NextResponse.json(body, { status });
     }
   }
 });
@@ -60,11 +64,12 @@ export const PUT = routeHandler({
       
       return NextResponse.json({ data });
     } catch (error) {
-      console.error('Error updating booking:', error);
-      return NextResponse.json(
-        { error: 'Failed to update booking' },
-        { status: 500 }
-      );
+      await logError(error, undefined, { 
+        route: 'PUT /api/bookings',
+        requestBody: await req.clone().text().catch(() => 'Could not read body')
+      });
+      const { body, status } = apiErrorHandler(error);
+      return NextResponse.json(body, { status });
     }
   }
 });
@@ -87,17 +92,22 @@ export const DELETE = routeHandler({
       if (success) {
         return NextResponse.json({ success: true });
       } else {
+        await logError(new Error('Failed to delete booking'), undefined, {
+          route: 'DELETE /api/bookings',
+          bookingId: id
+        });
         return NextResponse.json(
           { error: 'Failed to delete booking' },
           { status: 500 }
         );
       }
     } catch (error) {
-      console.error('Error deleting booking:', error);
-      return NextResponse.json(
-        { error: 'Failed to delete booking' },
-        { status: 500 }
-      );
+      await logError(error, undefined, { 
+        route: 'DELETE /api/bookings',
+        requestParams: url.searchParams.toString()
+      });
+      const { body, status } = apiErrorHandler(error);
+      return NextResponse.json(body, { status });
     }
   }
 }); 

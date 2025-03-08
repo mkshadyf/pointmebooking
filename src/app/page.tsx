@@ -59,6 +59,9 @@ export default function Home() {
   }, []);
 
   const fetchFeaturedServices = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
       const { data, error } = await supabase
         .from('services')
@@ -102,6 +105,11 @@ export default function Home() {
       setFeaturedServices(transformedData);
     } catch (err) {
       console.error('Error fetching services:', err);
+      
+      // Import the error logger
+      const { logError } = await import('@/lib/error/error-logger');
+      await logError(err, undefined, { action: 'fetchFeaturedServices' });
+      
       // Try to extract more information from the error
       setError(
         err instanceof Error
@@ -129,6 +137,9 @@ export default function Home() {
     
     // Debounced search function
     const searchServices = async () => {
+      setLoading(true);
+      setError(null);
+      
       try {
         const { data, error } = await supabase
           .from('services')
@@ -212,6 +223,11 @@ export default function Home() {
         setSearchResults(transformedData);
       } catch (err) {
         console.error('Error searching services:', err);
+        
+        // Import the error logger
+        const { logError } = await import('@/lib/error/error-logger');
+        await logError(err, undefined, { action: 'searchServices', query });
+        
         setError(
           err instanceof Error
             ? `Search error: ${err.message}`
