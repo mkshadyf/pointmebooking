@@ -200,81 +200,75 @@ export type Database = {
       businesses: {
         Row: {
           address: string | null
-          avatar_url: string | null
-          business_category: string | null
+          banner_url: string | null
           business_type: string | null
+          category_id: string | null
           city: string | null
-          contact_email: string | null
-          contact_number: string | null
-          cover_image_url: string | null
           created_at: string | null
           description: string | null
+          email: string | null
           id: string
-          logo_url: string | null
           name: string
-          owner_profile_id: string
-          postal_code: string | null
+          owner_id: string
+          phone: string | null
           state: string | null
           status: Database["public"]["Enums"]["user_status"]
           updated_at: string | null
           website: string | null
           working_hours: Json | null
+          zip_code: string | null
         }
         Insert: {
           address?: string | null
-          avatar_url?: string | null
-          business_category?: string | null
+          banner_url?: string | null
           business_type?: string | null
+          category_id?: string | null
           city?: string | null
-          contact_email?: string | null
-          contact_number?: string | null
-          cover_image_url?: string | null
           created_at?: string | null
           description?: string | null
+          email?: string | null
           id?: string
-          logo_url?: string | null
           name: string
-          owner_profile_id: string
-          postal_code?: string | null
+          owner_id: string
+          phone?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string | null
           website?: string | null
           working_hours?: Json | null
+          zip_code?: string | null
         }
         Update: {
           address?: string | null
-          avatar_url?: string | null
-          business_category?: string | null
+          banner_url?: string | null
           business_type?: string | null
+          category_id?: string | null
           city?: string | null
-          contact_email?: string | null
-          contact_number?: string | null
-          cover_image_url?: string | null
           created_at?: string | null
           description?: string | null
+          email?: string | null
           id?: string
-          logo_url?: string | null
           name?: string
-          owner_profile_id?: string
-          postal_code?: string | null
+          owner_id?: string
+          phone?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string | null
           website?: string | null
           working_hours?: Json | null
+          zip_code?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "businesses_business_category_fkey"
-            columns: ["business_category"]
+            columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "business_categories"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "businesses_owner_profile_id_fkey"
-            columns: ["owner_profile_id"]
+            columns: ["owner_id"]
             isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -649,6 +643,7 @@ export type Database = {
           created_at: string | null
           id: string
           role: string
+          services: string[] | null
           status: Database["public"]["Enums"]["user_status"] | null
           updated_at: string | null
           user_id: string
@@ -658,6 +653,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           role: string
+          services?: string[] | null
           status?: Database["public"]["Enums"]["user_status"] | null
           updated_at?: string | null
           user_id: string
@@ -667,6 +663,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           role?: string
+          services?: string[] | null
           status?: Database["public"]["Enums"]["user_status"] | null
           updated_at?: string | null
           user_id?: string
@@ -790,10 +787,17 @@ export type Database = {
     }
     Enums: {
       approval_status: "pending" | "approved" | "rejected"
-      booking_status: "pending" | "confirmed" | "cancelled" | "completed"
-      service_status: "active" | "inactive" | "deleted"
-      user_role: "customer" | "business" | "admin"
-      user_status: "active" | "inactive" | "suspended"
+      booking_status:
+        | "pending"
+        | "confirmed"
+        | "cancelled"
+        | "completed"
+        | "no-show"
+        | "rescheduled"
+        | "in-progress"
+      service_status: "active" | "inactive" | "deleted" | "draft" | "archived"
+      user_role: "customer" | "business" | "admin" | "staff"
+      user_status: "active" | "inactive" | "suspended" | "pending"
     }
     CompositeTypes: {
       [_ in never]: never

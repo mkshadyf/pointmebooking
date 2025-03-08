@@ -301,10 +301,27 @@ export const NAVIGATION = {
     { name: 'About', href: PUBLIC_PATHS.ABOUT },
     { name: 'Contact', href: PUBLIC_PATHS.CONTACT },
   ],
+  BUSINESS_DASHBOARD: [
+    { name: 'Overview', href: PROTECTED_PATHS.BUSINESS_DASHBOARD, icon: 'home' },
+    { name: 'Bookings', href: `${PROTECTED_PATHS.BUSINESS_DASHBOARD}/appointments`, icon: 'calendar' },
+    { name: 'Services', href: `${PROTECTED_PATHS.BUSINESS_DASHBOARD}/services`, icon: 'services' },
+    { name: 'Analytics', href: `${PROTECTED_PATHS.BUSINESS_DASHBOARD}/analytics`, icon: 'chart' },
+    { name: 'Settings', href: `${PROTECTED_PATHS.BUSINESS_DASHBOARD}/settings`, icon: 'settings' },
+  ],
+  CUSTOMER_DASHBOARD: [
+    { name: 'Overview', href: PROTECTED_PATHS.CUSTOMER_DASHBOARD, icon: 'home' },
+    { name: 'My Bookings', href: PROTECTED_PATHS.CUSTOMER_APPOINTMENTS, icon: 'calendar' },
+    { name: 'Favorites', href: PROTECTED_PATHS.CUSTOMER_FAVORITES, icon: 'heart' },
+    { name: 'Settings', href: PROTECTED_PATHS.CUSTOMER_SETTINGS, icon: 'settings' },
+  ],
   FOOTER: [
     { name: 'Terms', href: PUBLIC_PATHS.TERMS },
     { name: 'Privacy', href: PUBLIC_PATHS.PRIVACY },
     { name: 'Contact', href: PUBLIC_PATHS.CONTACT },
+  ],
+  USER_MENU: [
+    { name: 'Your Profile', href: (role: string) => `/dashboard/${role}` },
+    { name: 'Settings', href: (role: string) => `/dashboard/${role}/settings` },
   ],
 } as const;
 
@@ -397,41 +414,3 @@ export function getRouteByRole(role: string): string {
   }
 }
 
-// Define the application routes
-export const routes = {
-  home: '/',
-  login: '/login',
-  register: '/register',
-  dashboard: '/dashboard',
-  profile: '/profile',
-  services: '/services',
-  bookings: '/bookings',
-  settings: '/settings',
-  admin: '/admin',
-  business: '/business',
-  onboarding: '/onboarding'
-};
-
-// Define navigation items
-export const navigationItems: NavigationItem[] = [
-  {
-    name: 'Home',
-    href: routes.home
-  },
-  {
-    name: 'Services',
-    href: routes.services
-  },
-  {
-    name: 'Bookings',
-    href: routes.bookings
-  },
-  {
-    name: 'Profile',
-    href: routes.profile
-  },
-  {
-    name: 'Settings',
-    href: routes.settings
-  }
-]; 

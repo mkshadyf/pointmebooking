@@ -6,13 +6,21 @@
  */
 
 // User roles allowed in the system
-export const USER_ROLES = ['customer', 'business', 'admin'] as const;
+export const USER_ROLES = ['customer', 'business', 'admin', 'staff'] as const;
 
 // User status values
-export const USER_STATUSES = ['active', 'inactive', 'suspended'] as const;
+export const USER_STATUSES = ['active', 'inactive', 'suspended', 'pending'] as const;
 
 // Booking status values
-export const BOOKING_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed'] as const;
+export const BOOKING_STATUSES = [
+  'pending', 
+  'confirmed', 
+  'cancelled', 
+  'completed',
+  'no-show',
+  'rescheduled',
+  'in-progress'
+] as const;
 
 // Service status values 
 export const SERVICE_STATUSES = ['active', 'inactive', 'draft', 'archived'] as const;

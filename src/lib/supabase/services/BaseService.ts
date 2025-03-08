@@ -6,6 +6,11 @@ type Row<T extends TableName> = Database['public']['Tables'][T]['Row'];
 type Insert<T extends TableName> = Database['public']['Tables'][T]['Insert'];
 type Update<T extends TableName> = Database['public']['Tables'][T]['Update'];
 
+// Define a type for tables with an 'id' column
+type TableWithId = {
+  [K in TableName]: 'id' extends keyof Database['public']['Tables'][K]['Row'] ? K : never
+}[TableName];
+
 // Base utility class for retry logic that doesn't require a generic parameter
 export class BaseServiceUtils {
   // Add retry mechanism for network operations
@@ -72,8 +77,8 @@ export class BaseServiceUtils {
       }
       
       // Check for HTTP status codes that indicate retryable errors
-      if ('status' in error && typeof (error as any).status === 'number') {
-        const status = (error as any).status;
+      if ('status' in error && typeof error.status === 'number') {
+        const status = error.status;
         // 408 Request Timeout, 429 Too Many Requests, 5xx Server Errors
         return status === 408 || status === 429 || (status >= 500 && status < 600);
       }
@@ -83,7 +88,7 @@ export class BaseServiceUtils {
   }
 }
 
-export abstract class BaseService<T extends TableName> extends BaseServiceUtils {
+export abstract class BaseService<T extends TableWithId> extends BaseServiceUtils {
   constructor(
     protected readonly client: SupabaseClient<Database>,
     protected readonly table: T
@@ -103,7 +108,7 @@ export abstract class BaseService<T extends TableName> extends BaseServiceUtils 
         .select('*');
 
       if (error) throw error;
-      return data as unknown as Row<T>[];
+      return data as Row<T>[];
     } catch (error) {
       return this.handleError(error);
     }
@@ -111,16 +116,15 @@ export abstract class BaseService<T extends TableName> extends BaseServiceUtils 
 
   async getById(id: string): Promise<Row<T>> {
     try {
-      // Using 'any' here is necessary due to TypeScript constraints with generic table field access
-      // Supabase's types expect specific table names but we're using generics
+      // Using a type-safe approach for the id column
       const { data, error } = await this.client
         .from(this.table)
         .select('*')
-        .eq('id', id as any)
+        .eq('id', id)
         .single();
 
       if (error) throw error;
-      return data as unknown as Row<T>;
+      return data as Row<T>;
     } catch (error) {
       return this.handleError(error);
     }
@@ -128,16 +132,15 @@ export abstract class BaseService<T extends TableName> extends BaseServiceUtils 
 
   async create(data: Insert<T>): Promise<Row<T>> {
     try {
-      // Using 'any' is required due to type incompatibility between the generic 
-      // Insert<T> type and Supabase's expected table-specific types
+      // Using a more type-safe approach
       const { data: created, error } = await this.client
         .from(this.table)
-        .insert(data as any)
+        .insert(data)
         .select()
         .single();
 
       if (error) throw error;
-      return created as unknown as Row<T>;
+      return created as Row<T>;
     } catch (error) {
       return this.handleError(error);
     }
@@ -145,17 +148,16 @@ export abstract class BaseService<T extends TableName> extends BaseServiceUtils 
 
   async update(id: string, data: Update<T>): Promise<Row<T>> {
     try {
-      // Using 'any' due to TypeScript constraints with generic table operations
-      // Supabase requires specific table types, but we're using generics
+      // Using a more type-safe approach
       const { data: updated, error } = await this.client
         .from(this.table)
-        .update(data as any)
-        .eq('id', id as any)
+        .update(data)
+        .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-      return updated as unknown as Row<T>;
+      return updated as Row<T>;
     } catch (error) {
       return this.handleError(error);
     }
@@ -163,11 +165,11 @@ export abstract class BaseService<T extends TableName> extends BaseServiceUtils 
 
   async delete(id: string): Promise<boolean> {
     try {
-      // Using 'any' for type compatibility with Supabase's column filtering
+      // Using a more type-safe approach
       const { error } = await this.client
         .from(this.table)
         .delete()
-        .eq('id', id as any);
+        .eq('id', id);
 
       if (error) throw error;
       return true;
@@ -178,11 +180,11 @@ export abstract class BaseService<T extends TableName> extends BaseServiceUtils 
 
   protected async exists(id: string): Promise<boolean> {
     try {
-      // Using 'any' for type compatibility with Supabase's column filtering
+      // Using a more type-safe approach
       const { count, error } = await this.client
         .from(this.table)
         .select('*', { count: 'exact', head: true })
-        .eq('id', id as any);
+        .eq('id', id);
 
       if (error) throw error;
       return (count ?? 0) > 0;

@@ -1,7 +1,7 @@
 import { signOutAction } from '@/app/actions';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { classNames } from '@/lib/utils';
-import { PROTECTED_PATHS, PUBLIC_PATHS, ROUTES } from '@/routes';
+import { NAVIGATION, PROTECTED_PATHS, ROUTES } from '@/routes';
 import { Disclosure, Menu, Transition } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
@@ -33,36 +33,36 @@ export default function Navigation({ type }: NavigationProps) {
     }
   };
 
-  const mainNavigation = [
-    { name: 'Home', href: PUBLIC_PATHS.HOME },
-    { name: 'Services', href: PUBLIC_PATHS.SERVICES },
-    { name: 'Businesses', href: PUBLIC_PATHS.BUSINESSES },
-    ...(profile?.role === 'business'
-      ? [{ name: 'Dashboard', href: PROTECTED_PATHS.BUSINESS_DASHBOARD }]
-      : profile?.role === 'customer'
-      ? [{ name: 'Dashboard', href: PROTECTED_PATHS.CUSTOMER_DASHBOARD }]
-      : []),
-  ];
+  // Use the centralized navigation definitions
+  const mainNavigation = [...NAVIGATION.MAIN];
+  
+  // Add dashboard link if user is logged in
+  if (profile?.role) {
+    mainNavigation.push({
+      name: 'Dashboard',
+      href: profile.role === 'business' 
+        ? PROTECTED_PATHS.BUSINESS_DASHBOARD 
+        : PROTECTED_PATHS.CUSTOMER_DASHBOARD
+    });
+  }
 
+  // Use the centralized dashboard navigation based on user role
   const dashboardNavigation = profile?.role === 'business'
-    ? [
-        { name: 'Dashboard', href: PROTECTED_PATHS.BUSINESS_DASHBOARD },
-        { name: 'Appointments', href: PROTECTED_PATHS.BUSINESS_DASHBOARD + '/appointments' },
-        { name: 'Services', href: PROTECTED_PATHS.BUSINESS_DASHBOARD + '/services' },
-        { name: 'Settings', href: PROTECTED_PATHS.BUSINESS_DASHBOARD + '/settings' },
-      ]
-    : [
-        { name: 'Dashboard', href: PROTECTED_PATHS.CUSTOMER_DASHBOARD },
-        { name: 'My Appointments', href: PROTECTED_PATHS.CUSTOMER_APPOINTMENTS },
-        { name: 'Favorites', href: PROTECTED_PATHS.CUSTOMER_FAVORITES },
-        { name: 'Settings', href: PROTECTED_PATHS.CUSTOMER_SETTINGS },
-      ];
+    ? NAVIGATION.BUSINESS_DASHBOARD.map(item => ({ name: item.name, href: item.href }))
+    : NAVIGATION.CUSTOMER_DASHBOARD.map(item => ({ name: item.name, href: item.href }));
 
   const navigation = type === 'main' ? mainNavigation : dashboardNavigation;
-  const userNavigation = [
-    { name: 'Your Profile', href: `/dashboard/${profile?.role}` },
-    { name: 'Settings', href: `/dashboard/${profile?.role}/settings` },
-  ];
+  
+  // Generate user navigation items using the function from NAVIGATION.USER_MENU
+  const userNavigation = NAVIGATION.USER_MENU.map(item => {
+    if (typeof item.href === 'function' && profile?.role) {
+      return {
+        name: item.name,
+        href: item.href(profile.role)
+      };
+    }
+    return item;
+  });
 
   return (
     <Disclosure as="nav" className={clsx(

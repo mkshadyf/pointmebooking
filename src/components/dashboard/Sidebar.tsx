@@ -1,24 +1,18 @@
 'use client';
 
 import { useAuth } from '@/hooks/auth/useAuth';
+import { NAVIGATION } from '@/routes';
 import { usePathname } from 'next/navigation';
 import { NavItem } from './NavItem';
+
 export function DashboardSidebar() {
   const { profile } = useAuth();
   const pathname = usePathname();
 
-  const navigation = profile?.role === 'business' ? [
-    { name: 'Overview', href: '/dashboard', icon: 'home' },
-    { name: 'Bookings', href: '/dashboard/bookings', icon: 'calendar' },
-    { name: 'Services', href: '/dashboard/services', icon: 'services' },
-    { name: 'Analytics', href: '/dashboard/analytics', icon: 'chart' },
-    { name: 'Settings', href: '/dashboard/settings', icon: 'settings' },
-  ] : [
-    { name: 'Overview', href: '/dashboard', icon: 'home' },
-    { name: 'My Bookings', href: '/dashboard/bookings', icon: 'calendar' },
-    { name: 'Favorites', href: '/dashboard/favorites', icon: 'heart' },
-    { name: 'Settings', href: '/dashboard/settings', icon: 'settings' },
-  ];
+  // Select navigation based on user role
+  const navigation = profile?.role === 'business' 
+    ? NAVIGATION.BUSINESS_DASHBOARD 
+    : NAVIGATION.CUSTOMER_DASHBOARD;
 
   return (
     <aside className="hidden md:flex md:flex-shrink-0">

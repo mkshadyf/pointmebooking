@@ -104,12 +104,20 @@ export const Calendar = ({ user, onDateSelectAction, onBookingSelectAction }: Ca
 function getStatusColor(status: string): string {
     switch (status) {
         case 'confirmed':
-            return '#4CAF50';
+            return '#4CAF50'; // Green
         case 'pending':
-            return '#FFC107';
+            return '#FFC107'; // Amber
         case 'cancelled':
-            return '#F44336';
+            return '#F44336'; // Red
+        case 'completed':
+            return '#3F51B5'; // Indigo
+        case 'no-show':
+            return '#9C27B0'; // Purple
+        case 'rescheduled':
+            return '#FF9800'; // Orange
+        case 'in-progress':
+            return '#03A9F4'; // Light Blue
         default:
-            return '#2196F3';
+            return '#2196F3'; // Blue
     }
 }

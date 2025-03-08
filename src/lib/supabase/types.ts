@@ -497,11 +497,11 @@ export interface Database {
       [_ in never]: never
     }
     Enums: {
-      booking_status: "pending" | "confirmed" | "cancelled" | "completed"
-      business_status: "active" | "inactive" | "suspended"
+      booking_status: "pending" | "confirmed" | "cancelled" | "completed" | "no-show" | "rescheduled" | "in-progress"
+      business_status: "active" | "inactive" | "suspended" | "pending"
       payment_status: "pending" | "paid" | "refunded" | "failed"
-      profile_status: "active" | "inactive" | "suspended"
-      service_status: "active" | "inactive"
+      profile_status: "active" | "inactive" | "suspended" | "pending"
+      service_status: "active" | "inactive" | "draft" | "archived"
       staff_role: "admin" | "manager" | "staff"
       user_role: "user" | "business" | "admin" | "staff"
     }

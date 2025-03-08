@@ -1,11 +1,10 @@
-import { ApprovalStatus, Booking, Business, Category, ServiceStatus, UIService } from '@/types';
+import { ApprovalStatus, Business, Category, ServiceStatus, UIService } from '@/types';
 import { Database } from '@generated.types';
 
 // Type aliases for better readability
 type DbService = Database['public']['Tables']['services']['Row'];
 type DbProfile = Database['public']['Tables']['profiles']['Row'];
 type DbCategory = Database['public']['Tables']['service_categories']['Row'];
-type DbBooking = Database['public']['Tables']['bookings']['Row'];
 type DbBusiness = Database['public']['Tables']['businesses']['Row'];
 
 // Extended interfaces for transformations
@@ -19,7 +18,6 @@ interface ExtendedBusiness extends Business {
   category?: Category;
 }
 
-
 /**
  * EntityTransformer provides consistent entity transformation logic
  * for converting database entities to UI/domain entities
@@ -28,57 +26,63 @@ export class EntityTransformer {
   /**
    * Transforms a database service record into a UIService object
    * @param serviceData Database service record
-   * @param includeRelations Optional related data (business, category)
+   * @param includeRelations Optional related data to include
    * @returns Fully typed UIService object
    */
   static transformService(
     serviceData: DbService | null | undefined, 
     includeRelations?: {
-      business?: DbProfile | null | undefined;
+      business?: DbBusiness | null | undefined;
       category?: DbCategory | null | undefined;
     }
   ): UIService | null {
     if (!serviceData) return null;
-
+    
     try {
-      // Transform business data if available
+      // Extract related data if provided
       const business = includeRelations?.business 
-        ? this.transformBusinessData(includeRelations.business) 
+        ? this.transformBusiness(includeRelations.business)
         : undefined;
       
-      // Transform category data if available
-      const category = includeRelations?.category 
-        ? this.transformCategoryData(includeRelations.category) 
+      const category = includeRelations?.category
+        ? this.transformCategoryData(includeRelations.category)
         : undefined;
 
-      // Create the service object with all required fields
+      // Create a properly typed UIService object
       return {
         id: serviceData.id,
         business_id: serviceData.business_id,
         name: serviceData.name,
-        description: serviceData.description,
+        description: serviceData.description || '',
         price: serviceData.price,
         duration: serviceData.duration,
-        image_url: serviceData.image_url,
+        image_url: serviceData.image_url || '',
         is_available: serviceData.is_available === null ? true : serviceData.is_available,
         status: (serviceData.status as ServiceStatus) || 'active',
         category_id: serviceData.category_id,
         created_at: serviceData.created_at || new Date().toISOString(),
         updated_at: serviceData.updated_at || new Date().toISOString(),
-        // Fields that might not be in the database schema
-        max_capacity: (serviceData as any).max_capacity || 1,
-        location: (serviceData as any).location || '',
-        // Extended fields with fallbacks
-        created_by_id: (serviceData as any).created_by_id || null,
-        approved_by_id: (serviceData as any).approved_by_id || null,
-        approved_at: (serviceData as any).approved_at || null,
-        featured: Boolean((serviceData as any).featured),
-        featured_order: (serviceData as any).featured_order || null,
-        approval_status: ((serviceData as any).approval_status as ApprovalStatus) || 'pending',
-        admin_notes: (serviceData as any).admin_notes || null,
-        // Include related data if available
-        business,
-        category
+        // Add additional fields required by UIService
+        max_capacity: 1, // Default value
+        location: '', // Default value
+        created_by_id: serviceData.created_by_id || null,
+        approved_by_id: serviceData.approved_by_id || null,
+        approved_at: serviceData.approved_at || null,
+        featured: serviceData.featured || false,
+        featured_order: serviceData.featured_order || null,
+        approval_status: (serviceData.approval_status as ApprovalStatus) || 'pending',
+        admin_notes: serviceData.admin_notes || null,
+        // Add related entities if available
+        business: business ? {
+          id: business.id,
+          name: business.name,
+          logo_url: business.logo_url || ''
+        } : undefined,
+        category: category ? {
+          id: category.id,
+          name: category.name,
+          icon: category.icon
+        } : undefined
       };
     } catch (error) {
       console.error('Error transforming service:', error);
@@ -95,19 +99,17 @@ export class EntityTransformer {
     if (!profileData) return undefined;
     
     try {
-      // Use type assertion to handle properties that might not be in the database schema
-      const profileWithExtras = profileData as any;
-      
+      // Create a business object using only the fields from DbProfile that are needed for Business
       return {
         id: profileData.id,
-        name: profileWithExtras.business_name || profileData.full_name || '',
-        description: profileWithExtras.description || '',
-        address: profileWithExtras.address || '',
-        city: profileWithExtras.city || '',
-        state: profileWithExtras.state || '',
-        phone: profileWithExtras.phone || profileWithExtras.contact_number || '',
-        email: profileData.email || profileWithExtras.contact_email || '',
-        logo_url: profileWithExtras.logo_url || profileData.avatar_url || ''
+        name: profileData.full_name || '',
+        description: '', // Default value as Business expects this field
+        address: '', // Default value as Business expects this field
+        city: '', // Default value as Business expects this field
+        state: '', // Default value as Business expects this field
+        phone: '', // Default value as Business expects this field
+        email: profileData.email || '',
+        logo_url: profileData.avatar_url || ''
       };
     } catch (error) {
       console.error('Error transforming business data:', error);
@@ -127,7 +129,8 @@ export class EntityTransformer {
       return {
         id: categoryData.id,
         name: categoryData.name,
-        icon: categoryData.icon ? String(categoryData.icon) : undefined
+        description: categoryData.description || '',
+        icon: categoryData.icon || ''
       };
     } catch (error) {
       console.error('Error transforming category data:', error);
@@ -136,34 +139,10 @@ export class EntityTransformer {
   }
 
   /**
-   * Transforms a joined service result into a UIService object
-   * @param joinResult Joined service result from Supabase
-   * @returns Fully typed UIService object
-   */
-  static transformJoinedServiceData(joinResult: any): UIService | null {
-    if (!joinResult) return null;
-    
-    try {
-      // Extract the main service data
-      const serviceData = joinResult as DbService;
-      
-      // Extract related data
-      const business = joinResult.business as DbProfile;
-      const category = joinResult.category as DbCategory;
-      
-      // Use the main transformer with relations
-      return this.transformService(serviceData, { business, category });
-    } catch (error) {
-      console.error('Error transforming joined service data:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Transforms a database business record with relations
+   * Transforms a database business record with relations into an ExtendedBusiness object
    * @param businessData Database business record
-   * @param includeRelations Optional related data
-   * @returns Fully typed Business object with relations
+   * @param includeRelations Optional related data to include
+   * @returns Fully typed ExtendedBusiness object
    */
   static transformBusinessWithRelations(
     businessData: DbBusiness | null | undefined,
@@ -172,81 +151,44 @@ export class EntityTransformer {
       services?: DbService[] | null | undefined;
       category?: DbCategory | null | undefined;
     }
-  ): ExtendedBusiness | null {
-    if (!businessData) return null;
+  ): ExtendedBusiness | undefined {
+    if (!businessData) return undefined;
     
     try {
-      // Transform the basic business information
-      const business: ExtendedBusiness = {
-        id: businessData.id,
-        name: businessData.name,
-        description: businessData.description || undefined,
-        address: businessData.address || undefined,
-        city: businessData.city || undefined,
-        state: businessData.state || undefined,
-        phone: businessData.contact_number || undefined,
-        email: businessData.contact_email || undefined,
-        logo_url: businessData.logo_url || undefined
+      // Transform the base business data
+      const business = this.transformBusiness(businessData);
+      if (!business) return undefined;
+      
+      // Create an extended business object with relations
+      const extendedBusiness: ExtendedBusiness = {
+        ...business
       };
       
-      // Add owner information if available
+      // Add owner if provided
       if (includeRelations?.owner) {
-        business.owner = {
+        extendedBusiness.owner = {
           id: includeRelations.owner.id,
           name: includeRelations.owner.full_name || '',
-          email: includeRelations.owner.email
+          email: includeRelations.owner.email || ''
         };
       }
       
-      // Add services if available
-      if (includeRelations?.services && Array.isArray(includeRelations.services)) {
-        business.services = includeRelations.services
+      // Add services if provided
+      if (includeRelations?.services && includeRelations.services.length > 0) {
+        extendedBusiness.services = includeRelations.services
           .map(service => this.transformService(service))
-          .filter((service): service is UIService => Boolean(service)) as UIService[];
+          .filter(Boolean) as UIService[];
       }
       
-      // Add category if available
+      // Add category if provided
       if (includeRelations?.category) {
-        business.category = this.transformCategoryData(includeRelations.category);
+        extendedBusiness.category = this.transformCategoryData(includeRelations.category);
       }
       
-      return business;
+      return extendedBusiness;
     } catch (error) {
       console.error('Error transforming business with relations:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Transforms a database booking record into a Booking object
-   * @param bookingData Database booking record
-   * @returns Fully typed Booking object
-   */
-  static transformBooking(bookingData: DbBooking | null | undefined): Booking | null {
-    if (!bookingData) return null;
-    
-    try {
-      // Create a booking object with all required fields
-      const booking: Partial<Booking> = {
-        id: bookingData.id,
-        customer_id: bookingData.customer_id,
-        service_id: bookingData.service_id,
-        business_id: bookingData.business_id,
-        scheduled_at: bookingData.date,
-        start_time: bookingData.start_time,
-        end_time: bookingData.end_time,
-        status: bookingData.status,
-        created_at: bookingData.created_at || new Date().toISOString(),
-        updated_at: bookingData.updated_at || new Date().toISOString(),
-        notes: bookingData.notes || undefined,
-        customer_name: bookingData.customer_name || '',
-        total_amount: bookingData.total_amount || 0
-      };
-      
-      return booking as Booking;
-    } catch (error) {
-      console.error('Error transforming booking:', error);
-      return null;
+      return undefined;
     }
   }
 
@@ -259,9 +201,6 @@ export class EntityTransformer {
     if (!businessData) return undefined;
     
     try {
-      // Use type assertion to handle properties that might not be in the database schema
-      const businessWithExtras = businessData as any;
-      
       return {
         id: businessData.id,
         name: businessData.name,
@@ -269,9 +208,9 @@ export class EntityTransformer {
         address: businessData.address || '',
         city: businessData.city || '',
         state: businessData.state || '',
-        phone: businessWithExtras.phone || businessData.contact_number || '',
-        email: businessWithExtras.email || businessData.contact_email || '',
-        logo_url: businessData.logo_url || businessData.avatar_url || ''
+        phone: businessData.phone || '',
+        email: businessData.email || '',
+        logo_url: businessData.banner_url || '' // Using banner_url as logo_url
       };
     } catch (error) {
       console.error('Error transforming business:', error);
@@ -284,63 +223,50 @@ export class EntityTransformer {
 export const transformServiceData = EntityTransformer.transformService.bind(EntityTransformer);
 export const transformBusinessData = EntityTransformer.transformBusinessData.bind(EntityTransformer);
 export const transformCategoryData = EntityTransformer.transformCategoryData.bind(EntityTransformer);
-export const transformJoinedServiceData = EntityTransformer.transformJoinedServiceData.bind(EntityTransformer);
+export const transformJoinedServiceData = EntityTransformer.transformService.bind(EntityTransformer);
 
-// Fix the toUIService function to use type assertions
-export function toUIService(service: any): UIService {
-  // Use type assertion to avoid property access errors
-  // First cast to unknown, then to UIService to avoid type checking
-  const result: UIService = {
+/**
+ * @deprecated Use EntityTransformer.transformService instead
+ */
+export function toUIService(service: DbService): UIService {
+  return EntityTransformer.transformService(service) || {
     id: service.id,
     business_id: service.business_id,
     name: service.name,
-    description: service.description,
+    description: service.description || '',
     price: service.price,
     duration: service.duration,
-    image_url: service.image_url,
-    is_available: service.is_available,
+    image_url: service.image_url || '',
+    is_available: service.is_available === null ? true : service.is_available,
+    status: (service.status as ServiceStatus) || 'active',
+    category_id: service.category_id,
     created_at: service.created_at || new Date().toISOString(),
     updated_at: service.updated_at || new Date().toISOString(),
-    category_id: service.category_id,
-    // Use optional chaining for nested properties
-    category: service.category?.name || '',
-    // Add missing properties with default values
-    max_capacity: service.max_capacity || 1,
-    location: service.location || '',
-    // Add required properties from UIService interface
-    status: service.status || 'active',
-    created_by_id: service.created_by_id || null,
-    approved_by_id: service.approved_by_id || null,
-    approved_at: service.approved_at || null,
-    featured: service.featured || false,
-    featured_order: service.featured_order || null,
-    approval_status: service.approval_status || 'pending',
-    admin_notes: service.admin_notes || null,
-    business: {
-      id: service.business?.id || '',
-      name: service.business?.name || '',
-      logo_url: service.business?.avatar_url || ''
-    }
+    max_capacity: 1,
+    location: '',
+    created_by_id: null,
+    approved_by_id: null,
+    approved_at: null,
+    featured: false,
+    featured_order: null,
+    approval_status: 'pending',
+    admin_notes: null
   };
-  
-  return result;
 }
 
-// Fix the toUIBusiness function to use type assertions
-export function toUIBusiness(profile: any): Business {
-  // Use type assertion to avoid property access errors
-  // First cast to unknown, then to Business to avoid type checking
-  const result: Business = {
-    id: profile.id,
-    name: profile.business_name || profile.full_name || '',
-    description: profile.description || '',
-    address: profile.address || '',
-    city: profile.city || '',
-    state: profile.state || '',
-    phone: profile.phone || profile.contact_number || '',
-    email: profile.email || profile.contact_email || '',
-    logo_url: profile.logo_url || profile.avatar_url || ''
+/**
+ * @deprecated Use EntityTransformer.transformBusiness instead
+ */
+export function toUIBusiness(business: DbBusiness): Business {
+  return {
+    id: business.id,
+    name: business.name,
+    description: business.description || '',
+    address: business.address || '',
+    city: business.city || '',
+    state: business.state || '',
+    phone: business.phone || '',
+    email: business.email || '',
+    logo_url: business.banner_url || ''
   };
-  
-  return result;
 } 

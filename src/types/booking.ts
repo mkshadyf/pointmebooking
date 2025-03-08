@@ -1,4 +1,4 @@
- export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
+import { BookingStatus } from '@/constants/entities';
 
 export interface Booking {
   id: string;
