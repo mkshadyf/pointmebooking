@@ -164,24 +164,10 @@ export class AuthService extends BaseServiceUtils {
    * @param options Optional parameters including redirectTo URL
    * @returns Success or error
    */
-  public async resetPassword(
-    email: string,
-    options?: { redirectTo?: string }
-  ): Promise<AuthResponse<void>> {
-    return supabaseClientService.executeWithRetry(async (client) => {
-      try {
-        const { error } = await client.auth.resetPasswordForEmail(email, options);
-        
-        if (error) {
-          logError(error, undefined, { action: 'resetPassword', email });
-          return { data: undefined, error: convertToAuthError(error) };
-        }
-        
-        return { data: undefined, error: null };
-      } catch (error) {
-        logError(error, undefined, { action: 'resetPassword', email });
-        return { data: undefined, error: convertToAuthError(error) };
-      }
+  public async resetPassword(email: string): Promise<AuthResponse<void>> {
+    const client = await supabaseClientService.getBrowserClient();
+    return await client.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/update-password`,
     });
   }
   
@@ -562,6 +548,17 @@ export class AuthService extends BaseServiceUtils {
       } catch (error) {
         logError(error, undefined, { action: 'signInWithOAuth', provider });
         return { data: null, error: convertToAuthError(error) };
+      }
+    });
+  }
+
+  async sendEmailVerification(email: string) {
+    const client = await supabaseClientService.getBrowserClient();
+    return await client.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       }
     });
   }

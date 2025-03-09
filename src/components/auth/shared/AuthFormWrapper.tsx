@@ -7,19 +7,19 @@ import { ReactNode } from 'react';
 interface AuthFormWrapperProps {
   title: string;
   description: string;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmitAction: (e: React.FormEvent) => void;
   children: ReactNode;
 }
 
 export function AuthFormWrapper({
   title,
   description,
-  onSubmit,
+  onSubmitAction,
   children
 }: AuthFormWrapperProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-2xl md:max-w-3xl">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex flex-col justify-center py-12 px-4 sm:px-26 lg:px-2">
+      <div className="sm:mx-auto sm:w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl">
         <div className="flex justify-center">
           <Link href="/" className="inline-flex items-center">
             <span className="sr-only">PointMe</span>
@@ -40,17 +40,17 @@ export function AuthFormWrapper({
         </p>
       </div>
 
-      <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-2xl md:max-w-3xl">
+      <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl">
         <div className="bg-white py-12 px-8 sm:px-12 md:px-16 shadow-lg sm:rounded-xl transition-shadow duration-300 hover:shadow-xl">
-          <form className="space-y-6" onSubmit={onSubmit}>
+          <form className="space-y-6" onSubmit={onSubmitAction}>
             {children}
           </form>
         </div>
       </div>
-      
+
       <div className="mt-10 text-center text-xs text-gray-500">
         <p>© {new Date().getFullYear()} PointMe. All rights reserved.</p>
       </div>
     </div>
   );
-} 
+}

@@ -31,7 +31,7 @@ export const AuthForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-16">
       <input
         type="email"
         placeholder="Email"

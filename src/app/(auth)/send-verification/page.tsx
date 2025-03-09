@@ -13,25 +13,25 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { z } from 'zod';
 
-// Create a schema specific for the reset password form
-const resetPasswordSchema = z.object({
+// Create a schema for email verification
+const emailVerificationSchema = z.object({
   email: emailSchema,
 });
 
-interface ResetPasswordFormValues {
+interface EmailVerificationFormValues {
   email: string;
 }
 
-export default function ResetPasswordPage() {
+export default function SendVerificationPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const { values, handleChange, handleSubmit, errors } = useForm<ResetPasswordFormValues>({
+  const { values, handleChange, handleSubmit, errors } = useForm<EmailVerificationFormValues>({
     initialValues: {
       email: '',
     },
-    validationSchema: resetPasswordSchema,
-    onSubmit: handleResetPassword
+    validationSchema: emailVerificationSchema,
+    onSubmit: handleSendVerification
   });
 
   const formSubmitHandler = (e: React.FormEvent) => {
@@ -41,30 +41,30 @@ export default function ResetPasswordPage() {
     handleSubmit(e);
   };
 
-  async function handleResetPassword(formData: ResetPasswordFormValues) {
+  async function handleSendVerification(formData: EmailVerificationFormValues) {
     try {
       await withAuthFeedback(
-        'reset-password',
+        'send-verification',
         async () => {
-          const { error: resetError } = await authService.resetPassword(formData.email);
-          if (resetError) throw resetError;
+          const { error: verificationError } = await authService.sendEmailVerification(formData.email);
+          if (verificationError) throw verificationError;
 
-          // No need to set success message as withAuthFeedback will show toast
-          setSuccess('Password reset instructions have been sent to your email.');
+          // Update UI with success message even though toast will also show
+          setSuccess('Verification email has been sent. Please check your inbox.');
           return { success: true };
         },
-        'Password reset instructions have been sent to your email.'
+        'Verification email has been sent. Please check your inbox.'
       );
     } catch (err: any) {
-      setError(err.message || 'Failed to process password reset request');
+      setError(err.message || 'Failed to send verification email');
     }
   }
 
   return (
     <>
       <AuthFormWrapper
-        title="Reset Your Password"
-        description="Enter your email address and we'll send you a link to reset your password"
+        title="Verify Your Email"
+        description="Enter your email address and we'll send you a verification link"
         onSubmitAction={formSubmitHandler}
       >
         {error && <AuthErrorMessage error={{ message: error, name: 'AuthError' }} className="mb-4" />}
@@ -116,13 +116,13 @@ export default function ResetPasswordPage() {
               className="w-full"
               size="lg"
             >
-              Send Reset Link
+              Send Verification Link
             </Button>
           </div>
 
           <div className="mt-4 text-center">
             <span className="text-sm text-gray-600">
-              Remember your password?{' '}
+              Already verified?{' '}
               <Link href="/login" className="text-primary hover:underline">
                 Sign in
               </Link>
@@ -135,4 +135,4 @@ export default function ResetPasswordPage() {
       <AuthLoadingOverlay />
     </>
   );
-}
+} 

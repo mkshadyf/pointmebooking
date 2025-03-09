@@ -1,10 +1,10 @@
 'use client';
 
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/ui';
 import { Button } from '@/components/ui/Button';
 import { Column } from '@/components/ui/DataTable';
