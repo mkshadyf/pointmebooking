@@ -1,7 +1,7 @@
 'use client';
 
-import { logError } from '@/lib/error/error-logger';
 import { create } from 'zustand';
+import { logError } from '../error/error-logger';
 
 // Define ToastType to match the useToast hook
 type ToastType = 'success' | 'error' | 'warning' | 'info' | 'loading';

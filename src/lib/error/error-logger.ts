@@ -5,7 +5,7 @@
  * It logs errors to both the console and the database for tracking and analysis.
  */
 
-import { supabaseClientService } from '@/lib/supabase/services/core/supabase-client.service';
+import { supabaseClientService } from '../supabase/services/core/supabase-client.service';
 import { createAppError, ErrorCategory, ErrorCode, ErrorSeverity, isAppError } from './error-handler';
 
 /**

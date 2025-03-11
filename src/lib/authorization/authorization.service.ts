@@ -1,4 +1,4 @@
-import { convertToAppError } from '@/lib/error';
+import { ErrorCategory, convertToAppError } from '@/lib/error';
 import {
     Action,
     AuthorizationContext,
@@ -254,7 +254,7 @@ export class AuthorizationService {
       return { isAuthorized: true };
     } catch (error) {
       // Using the correct ErrorHandler options
-      convertToAppError(error, 'AuthorizationService.hasPermission');
+      convertToAppError(error, ErrorCategory.AUTH);
       
       return {
         isAuthorized: false,

@@ -1,144 +1,104 @@
 'use client';
 
+import { AuthLoadingOverlay } from '@/components/auth/AuthLoadingOverlay';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/hooks/auth/useAuth';
-import { EmailService } from '@/lib/supabase/services/email/email.service';
-import { NotificationService } from '@/lib/supabase/services/notifications';
-import { ROUTES } from '@/routes';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function VerifyEmailPage() {
-  const [code, setCode] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
   const router = useRouter();
-  const { user } = useAuth();
-
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!code) return;
-
-    setLoading(true);
-    try {
-      const response = await fetch('/api/verify-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
-      });
-
-      const data = await response.json();
-
-      // Check for specific error responses (expired or invalid code)
-      if (!response.ok) {
-        const errMsg = data.error ? data.error.toLowerCase() : '';
-        if (errMsg.includes("expired") || errMsg.includes("invalid")) {
-          throw new Error("The verification code is invalid or has expired. Please request a new code.");
+  const searchParams = useSearchParams();
+  const [verifying, setVerifying] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const auth = useAuth();
+  
+  useEffect(() => {
+    const verifyEmail = async () => {
+      try {
+        // Get the token from the URL
+        const token = searchParams.get('token');
+        
+        if (!token) {
+          setError('Verification token is missing. Please check your email link and try again.');
+          setVerifying(false);
+          return;
         }
-        throw new Error(data.error || 'Failed to verify email');
+        
+        // Use the auth service to verify the email
+        try {
+          await auth.verifyEmail(token);
+          setSuccess(true);
+          setVerifying(false);
+          
+          // Redirect to login page after a delay
+          setTimeout(() => {
+            router.push('/login');
+          }, 3000);
+        } catch (verifyError: any) {
+          setError(verifyError?.message || 'Failed to verify your email. The link may have expired or is invalid.');
+          setVerifying(false);
+        }
+      } catch (error) {
+        setError('Failed to verify your email. The link may have expired or is invalid.');
+        setVerifying(false);
       }
-
-      NotificationService.success('EMAIL_VERIFICATION_SUCCESS');
-      router.push(ROUTES.customerDashboard.path);
-    } catch (error) {
-      NotificationService.error('EMAIL_VERIFICATION_FAILED', { error: error as Error });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResend = async () => {
-    if (!user?.email) return;
-
-    setResending(true);
-    try {
-      // Generate a 6-digit verification code
-      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-      
-      // Store the code in session storage for verification
-      sessionStorage.setItem('emailVerificationCode', verificationCode);
-      
-      await EmailService.sendVerificationEmail(user.email, verificationCode);
-      NotificationService.success('EMAIL_VERIFICATION_SENT');
-    } catch (error) {
-      NotificationService.error('EMAIL_VERIFICATION_FAILED', { error: error as Error });
-    } finally {
-      setResending(false);
-    }
-  };
-
+    };
+    
+    verifyEmail();
+  }, [router, searchParams, auth]);
+  
   return (
-    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Verify your email
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          We sent a verification code to your email.
-          Please enter it below to verify your account.
-        </p>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleVerify}>
-            <div>
-              <label htmlFor="code" className="block text-sm font-medium text-gray-700">
-                Verification Code
-              </label>
-              <div className="mt-1">
-                <Input
-                  id="code"
-                  name="code"
-                  type="text"
-                  required
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  className="uppercase"
-                  placeholder="Enter verification code"
-                  maxLength={6}
-                />
+    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <AuthLoadingOverlay />
+      
+      <div className="w-full max-w-md space-y-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold">Email Verification</h1>
+          <p className="mt-2 text-sm text-gray-600">
+            {verifying ? 'Verifying your email...' : success ? 'Your email has been verified!' : 'Email verification failed'}
+          </p>
+        </div>
+        
+        {error && (
+          <div className="rounded-md bg-red-50 p-4">
+            <div className="flex">
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Error</h3>
+                <div className="mt-2 text-sm text-red-700">{error}</div>
               </div>
-            </div>
-
-            <div>
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={loading || !code}
-                loading={loading}
-              >
-                Verify Email
-              </Button>
-            </div>
-          </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
-                  Didn't receive the code?
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={handleResend}
-                disabled={resending}
-                loading={resending}
-              >
-                Resend Code
-              </Button>
             </div>
           </div>
+        )}
+        
+        {success && (
+          <div className="rounded-md bg-green-50 p-4">
+            <div className="flex">
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-green-800">Success</h3>
+                <div className="mt-2 text-sm text-green-700">
+                  Your email has been successfully verified. You will be redirected to the login page shortly.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <div className="space-y-4">
+          {!verifying && (
+            <div className="text-center">
+              <Link href="/login">
+                <Button
+                  type="button"
+                  className="w-full"
+                >
+                  Go to Login
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>

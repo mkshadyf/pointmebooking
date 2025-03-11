@@ -1,10 +1,11 @@
 'use client';
 
-import { useToast } from '@/hooks/ui/useToast';
 import { sessionManager } from '@/lib/auth/session-manager';
-import { convertToAuthError } from '@/lib/error/auth-error-converter';
-import { logError } from '@/lib/error/error-logger';
+import { ErrorService } from '@/lib/core/error';
+import { ToastService } from '@/lib/core/toast';
+import { convertToAuthError } from '@/lib/error/auth-error-utils';
 import { authService } from '@/lib/supabase/services/auth/auth.service';
+import { supabaseClientService } from '@/lib/supabase/services/core/supabase-client.service';
 import { AuthProfile } from '@/types/auth';
 import { AuthError } from '@/types/database/auth';
 import { Session, User } from '@supabase/supabase-js';
@@ -37,13 +38,19 @@ export interface UseAuthReturn {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, role: string) => Promise<void>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (newPassword: string) => Promise<void>;
   verifyEmail: (code: string) => Promise<void>;
   resendVerification: () => Promise<void>;
   updateProfile: (data: Partial<AuthProfile>) => Promise<void>;
   refreshSession: () => Promise<void>;
   validateSession: () => Promise<boolean>;
+  
+  // Additional methods for compatibility with updated components
+  signInWithEmail: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signUpWithEmail: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signInWithGoogle: () => Promise<{ error: AuthError | null }>;
+  updatePasswordWithToken: (token: string, newPassword: string) => Promise<{ error: AuthError | null }>;
 }
 
 // Utility function to safely convert profile data
@@ -90,7 +97,7 @@ export function useAuth({
   const [profile, setProfile] = useState<AuthProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [sessionWarningShown, setSessionWarningShown] = useState<boolean>(false);
-  const { toast } = useToast();
+  const [sessionExpiryWarningTime, setSessionExpiryWarningTime] = useState<number | null>(null);
   
   // Initialize auth state on mount
   useEffect(() => {
@@ -122,7 +129,7 @@ export function useAuth({
             }
           } catch (profileErr) {
             console.error('Error fetching profile:', profileErr);
-            logError(profileErr, sessionData.user.id, { action: 'fetchProfile' });
+            ErrorService.handleError(profileErr, { context: 'Auth', additionalData: { userId: sessionData.user.id, action: 'fetchProfile' } });
           }
         }
       } catch (err) {
@@ -130,7 +137,7 @@ export function useAuth({
         // Use setState with a function to avoid type issues
         setError(() => customError);
         if (onError) onError(customError as any);
-        logError(err, user?.id, { action: 'initAuth' });
+        ErrorService.handleError(err, { context: 'Auth', additionalData: { userId: user?.id, action: 'initAuth' } });
       } finally {
         setIsLoading(false);
       }
@@ -167,7 +174,7 @@ export function useAuth({
             })
             .catch(err => {
               console.error('Error fetching profile:', err);
-              logError(err, newSession.user.id, { action: 'fetchProfileOnAuthChange' });
+              ErrorService.handleError(err, { context: 'Auth', additionalData: { userId: newSession.user.id, action: 'fetchProfileOnAuthChange' } });
             });
         } else {
           setProfile(null);
@@ -203,7 +210,7 @@ export function useAuth({
       // Set up session expiration warning listener
       const removeExpirationListener = sessionManager.onSessionExpiringSoon(() => {
         if (!sessionWarningShown) {
-          toast.warning("Your session will expire soon. Click here to stay logged in.", {
+          ToastService.warning("Your session will expire soon. Click here to stay logged in.", {
             action: {
               label: "Stay Logged In",
               onClick: () => refreshSession()
@@ -227,7 +234,7 @@ export function useAuth({
       };
     } catch (err) {
       console.error('Error setting up auth state change listener:', err);
-      logError(err, user?.id, { action: 'setupAuthListener' });
+      ErrorService.handleError(err, { context: 'Auth', additionalData: { userId: user?.id, action: 'setupAuthListener' } });
       return () => {};
     }
   }, [onAuthStateChange, onError]);
@@ -242,7 +249,7 @@ export function useAuth({
         await authService.verifySessionIntegrity(user, session);
       } catch (err) {
         console.error('Initial session validation failed:', err);
-        logError(err, user?.id, { context: 'useAuth', action: 'validateInitialSession' });
+        ErrorService.handleError(err, { context: 'useAuth', additionalData: { action: 'validateInitialSession' } });
       } finally {
         setIsLoading(false);
       }
@@ -252,7 +259,7 @@ export function useAuth({
   }, []);
   
   // Derived state
-  const isAuthenticated = !!user;
+  const isAuthenticated = !!session;
   
   // Method to handle login
   const login = useCallback(async (email: string, password: string) => {
@@ -317,12 +324,13 @@ export function useAuth({
     setError(null);
     try {
       await authService.resetPassword(email);
+      return { error: null };
     } catch (err) {
       const customError = convertToAuthError(err);
       // Use setState with a function to avoid type issues
       setError(() => customError);
       if (onError) onError(customError as any);
-      throw customError;
+      return { error: customError };
     } finally {
       setIsLoading(false);
     }
@@ -453,7 +461,7 @@ export function useAuth({
       // Use setState with a function to avoid type issues
       setError(() => customError);
       if (onError) onError(customError as any);
-      logError(err, user?.id, { action: 'refreshSession' });
+      ErrorService.handleError(err, { context: 'Auth', additionalData: { userId: user?.id, action: 'refreshSession' } });
     } finally {
       setIsLoading(false);
     }
@@ -505,6 +513,24 @@ export function useAuth({
     }
   }, [user, session, onError]);
   
+  // Show session expiry warning
+  useEffect(() => {
+    if (sessionExpiryWarningTime && Date.now() > sessionExpiryWarningTime) {
+      // Show warning toast
+      ToastService.warning("Your session will expire soon. Click here to stay logged in.", {
+        title: "Session Expiring",
+        duration: 0, // Don't auto-dismiss
+        action: {
+          label: "Extend Session",
+          onClick: () => refreshSession()
+        }
+      });
+      
+      // Clear the warning time so we don't show it again
+      setSessionExpiryWarningTime(null);
+    }
+  }, [sessionExpiryWarningTime]);
+  
   return {
     // User state
     user,
@@ -527,5 +553,84 @@ export function useAuth({
     updateProfile,
     refreshSession,
     validateSession,
+    
+    // Additional methods for compatibility with updated components
+    signInWithEmail: async (email: string, password: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await login(email, password);
+        return { error: null };
+      } catch (err) {
+        const customError = convertToAuthError(err);
+        setError(() => customError);
+        if (onError) onError(customError as any);
+        return { error: customError };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    signUpWithEmail: async (email: string, password: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        // Default to 'user' role when not specified
+        await register(email, password, 'user');
+        return { error: null };
+      } catch (err) {
+        const customError = convertToAuthError(err);
+        setError(() => customError);
+        if (onError) onError(customError as any);
+        return { error: customError };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    signInWithGoogle: async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        // Call the appropriate method in authService
+        await authService.signInWithOAuth('google');
+        return { error: null };
+      } catch (err) {
+        const customError = convertToAuthError(err);
+        setError(() => customError);
+        if (onError) onError(customError as any);
+        return { error: customError };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    updatePasswordWithToken: async (_token: string, newPassword: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        // Since there's no direct method for this in authService,
+        // we'll use the Supabase client directly
+        const client = await supabaseClientService.getClient();
+        const { error } = await client.auth.updateUser({
+          password: newPassword
+        }, {
+          emailRedirectTo: window.location.origin
+        });
+        
+        if (error) {
+          const customError = convertToAuthError(error);
+          setError(() => customError);
+          if (onError) onError(customError as any);
+          return { error: customError };
+        }
+        
+        return { error: null };
+      } catch (err) {
+        const customError = convertToAuthError(err);
+        setError(() => customError);
+        if (onError) onError(customError as any);
+        return { error: customError };
+      } finally {
+        setIsLoading(false);
+      }
+    },
   };
 } 

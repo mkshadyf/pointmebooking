@@ -1,49 +1,205 @@
 ---
 description: PointMe Error Debugging Context
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 ---
 description: PointMe Error Debugging Context
 globs: ["**/*"]
 alwaysApply: true
-priority: 1
+priority: 4
 ---
 
-### Active Crisis Points
+# PointMe Error Debugging Context
+
+This document provides current debugging context for the PointMe project, highlighting active issues and critical areas that need attention.
+
+## Active Crisis Points
 ```mermaid
-graph LR
-    A[Auth Store] --> B[Session Mismatch]
-    C[Transformers] --> D[Type Assertions]
-    E[Component Casing] --> F[TextArea vs Textarea]
+graph TD
+    A[Registration Flow] --> B[Auth Service Duplication]
+    B --> C[Core vs Supabase]
+    D[Onboarding Process] --> E[Data Persistence]
+    E --> F[Step Validation]
+    G[Component Casing] --> H[TextArea vs Textarea]
+    I[Documentation] --> J[API Documentation]
+    K[Error Handling] --> L[Centralization]
 ```
 
-### Real-Time File Tree
-```text
+## Current Implementation Status
+
+### 1. Registration and Auth Flow
+- **Issue**: Fragmented authentication implementation with duplication
+  - `src/lib/core/auth/auth-service.ts` (simplified)
+  - `src/lib/supabase/services/auth/auth.service.ts` (comprehensive)
+- **Status**: High priority consolidation needed
+- **Functional Issues**:
+  - OAuth callback handling lacks proper error handling
+  - Registration doesn't properly redirect to onboarding for business users
+  - Email verification flow has inconsistent error messages
+
+### 2. Business Onboarding Process
+- **Issue**: Incomplete data validation and persistence
+- **Status**: Requires immediate attention
+- **Functional Issues**:
+  - Local storage persistence can lead to data loss
+  - Step validation is inconsistent across forms
+  - No server-side validation for submitted data
+  - Missing error handling for API failures
+
+### 3. Component Casing Standardization
+- **Issue**: Inconsistent component naming (TextArea vs Textarea)
+- **Status**: In progress but not critical
+- **Current Implementation**:
+  - File is named `TextArea.tsx`
+  - Exports both `Textarea` (preferred) and `TextArea` (deprecated)
+  - Imports still use inconsistent casing
+
+### 4. Documentation Requirements
+- **Status**: Needs implementation
+- **Required Documentation**:
+  - API documentation using OpenAPI/Swagger
+  - Code docstrings for all public functions and classes
+  - README files for all directories
+  - Barrel exports (index.ts) for all modules
+
+### 5. Automation Opportunities
+- **Status**: Not implemented
+- **Potential Tools**:
+  - TypeDoc for API documentation generation
+  - ESLint rules for enforcing documentation standards
+  - Husky pre-commit hooks for documentation validation
+  - Automated barrel file generation
+
+## File Structure Reference
+```
 src/
-├── lib/supabase/
-│   ├── services/[!auth]*.ts     # Non-auth services
-│   ├── services/auth/           # Auth implementations
-│   │   └── auth.service.ts      # Current auth service
-│   ├── store/auth.store.ts      # Zustand store (active issue)
-│   └── utils/transformers.ts    # Data conversions
+├── app/
+│   ├── (auth)/
+│   │   ├── register/
+│   │   │   └── page.tsx           # Registration page
+│   │   └── login/
+│   │       └── page.tsx           # Login page
+│   ├── (app)/
+│   │   └── onboarding/
+│   │       └── business/
+│   │           └── page.tsx       # Business onboarding page
+│   └── auth/
+│       └── callback/
+│           └── route.ts           # OAuth callback handler
 ├── components/
-│   └── ui/                      # UI component casing issues
-│       ├── Select.tsx           # Fixed
-│       └── TextArea.tsx         # Needs standardization
+│   ├── onboarding/
+│   │   ├── BusinessOnboardingWizard.tsx  # Main wizard component
+│   │   ├── steps/                 # Onboarding step components
+│   │   └── README.md              # Onboarding documentation
+│   └── ui/
+│       ├── TextArea.tsx           # Casing issue
+│       └── index.ts               # Exports both variants
+├── hooks/
+│   ├── auth/
+│   │   ├── useAuth.ts             # Auth state hook
+│   │   └── useAuthService.ts      # Auth service hook
+│   └── business/
+│       └── useBusinessOnboarding.ts  # Onboarding state hook
+├── lib/
+│   ├── core/
+│   │   ├── auth/
+│   │   │   ├── auth-service.ts    # Simplified auth service
+│   │   │   └── index.ts
+│   │   └── toast/
+│   │       ├── toast-service.ts   # Recently refactored
+│   │       └── index.ts
+│   └── supabase/
+│       ├── services/
+│       │   ├── auth/
+│       │   │   ├── auth.service.ts # Comprehensive auth service
+│       │   │   └── index.ts
+│       │   └── business/
+│       │       └── business-onboarding-service.ts # Onboarding service
+│       └── utils/
+│           ├── transformers.ts    # Type assertion issues
+│           └── validators.ts
 ```
 
-### Change Detection
-```timestamp
-Last TypeScript Check: 2024-03-07T14:30:00Z
-File Hashes:
-- auth.store.ts: 3d5f8a2b
-- transformers.ts: 7c1e9f04
-- auth.service.ts: d82a1b3c (conflict)
+## Priority Tasks
+
+### 1. Fix Registration and Onboarding Flow
+- [ ] Audit complete registration flow from signup to onboarding completion
+- [ ] Fix OAuth callback to properly redirect business users to onboarding
+- [ ] Implement server-side validation for onboarding data
+- [ ] Add proper error handling for API failures during onboarding
+- [ ] Improve data persistence with server-side storage
+
+### 2. Auth Service Consolidation
+- [ ] Determine primary implementation (supabase/services/auth)
+- [ ] Create migration plan for dependent components
+- [ ] Update imports across the codebase
+
+### 3. Documentation Implementation
+- [ ] Set up OpenAPI/Swagger for API documentation
+- [ ] Implement JSDoc/TSDoc standards for code documentation
+- [ ] Create README files for all major directories
+- [ ] Implement barrel exports for all modules
+
+### 4. Automation Setup
+- [ ] Configure TypeDoc for API documentation generation
+- [ ] Set up ESLint rules for enforcing documentation standards
+- [ ] Implement Husky pre-commit hooks for validation
+- [ ] Create scripts for automated barrel file generation
+
+## Testing Focus Areas
+- Registration flow with different user types
+- OAuth authentication and callback handling
+- Business onboarding with various data inputs
+- Error handling during registration and onboarding
+- Data persistence across page refreshes
+
+## Documentation Standards
+
+### Code Documentation
+```typescript
+/**
+ * Function/class description
+ * 
+ * @param paramName - Description of the parameter
+ * @returns Description of the return value
+ * @throws Description of potential errors
+ * @example
+ * // Example usage
+ * const result = myFunction('example');
+ */
 ```
 
-### Automatic Context Updates
-This rule auto-updates with:
-1. File changes in critical paths
-2. New TypeScript errors
-3. Service layer modifications
+### Directory README Structure
+```markdown
+# Module Name
+
+Brief description of the module's purpose.
+
+## Components/Functions
+
+- `ComponentName`: Description of the component
+- `functionName`: Description of the function
+
+## Usage
+
+```typescript
+// Example usage code
+```
+
+## Integration Points
+
+- List of other modules this integrates with
+```
+
+### Barrel Export Pattern
+```typescript
+// index.ts
+export * from './component1';
+export * from './component2';
+// Re-export with specific names if needed
+export { default as SpecificName } from './specific';
+```
+
+## Last Updated
+2024-03-11

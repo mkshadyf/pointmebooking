@@ -21,6 +21,15 @@ export interface BusinessOnboardingStepResponse<T> {
   error: string | null;
 }
 
+// Define onboarding progress interface
+export interface OnboardingProgress {
+  id?: string;
+  business_id: string;
+  step_number: number;
+  data: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
+}
 
 /**
  * Business Onboarding Service
@@ -373,6 +382,213 @@ export class BusinessOnboardingService extends BaseServiceUtils {
       }
     });
   }
+
+  /**
+   * Save onboarding progress data for a specific step
+   * @param businessId The business ID
+   * @param stepNumber The step number
+   * @param data The step data to save
+   * @returns The saved onboarding progress
+   */
+  async saveOnboardingProgress(
+    businessId: string,
+    stepNumber: number,
+    data: Record<string, any>
+  ): Promise<BusinessOnboardingStepResponse<OnboardingProgress>> {
+    return supabaseClientService.executeWithRetry(async (client) => {
+      try {
+        // Use a type assertion with unknown as an intermediate step
+        const supabase = client as unknown as {
+          from(table: string): {
+            upsert(data: any, options?: { onConflict: string }): {
+              select(columns: string): {
+                single(): {
+                  data: any;
+                  error: { message: string } | null;
+                }
+              }
+            }
+          }
+        };
+        
+        const now = new Date().toISOString();
+        
+        // Check if progress already exists
+        const { data: existingData } = await client
+          .from('onboarding_progress')
+          .select('*')
+          .eq('business_id', businessId)
+          .eq('step_number', stepNumber)
+          .single();
+        
+        // Prepare the data to upsert
+        const progressData = {
+          business_id: businessId,
+          step_number: stepNumber,
+          data,
+          updated_at: now,
+        };
+        
+        // If no existing data, add created_at
+        if (!existingData) {
+          (progressData as any).created_at = now;
+        }
+        
+        // Upsert the progress data
+        const { data: savedData, error } = await supabase
+          .from('onboarding_progress')
+          .upsert(progressData, { onConflict: 'business_id,step_number' })
+          .select('*')
+          .single();
+
+        if (error) {
+          return { data: null, error: error.message };
+        }
+
+        return { data: savedData as OnboardingProgress, error: null };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return { data: null, error: errorMessage };
+      }
+    });
+  }
+
+  /**
+   * Get onboarding progress data for a specific step
+   * @param businessId The business ID
+   * @param stepNumber The step number
+   * @returns The onboarding progress data
+   */
+  async getOnboardingProgressForStep(
+    businessId: string,
+    stepNumber: number
+  ): Promise<BusinessOnboardingStepResponse<OnboardingProgress>> {
+    return supabaseClientService.executeWithRetry(async (client) => {
+      try {
+        // Use a type assertion with unknown as an intermediate step
+        const supabase = client as unknown as {
+          from(table: string): {
+            select(columns: string): {
+              eq(column: string, value: string | number): {
+                eq(column: string, value: string | number): {
+                  single(): {
+                    data: any;
+                    error: { message: string } | null;
+                  }
+                }
+              }
+            }
+          }
+        };
+        
+        const { data, error } = await supabase
+          .from('onboarding_progress')
+          .select('*')
+          .eq('business_id', businessId)
+          .eq('step_number', stepNumber)
+          .single();
+
+        if (error) {
+          // If no data found, return null without error
+          if (error.message.includes('No rows found')) {
+            return { data: null, error: null };
+          }
+          return { data: null, error: error.message };
+        }
+
+        return { data: data as OnboardingProgress, error: null };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return { data: null, error: errorMessage };
+      }
+    });
+  }
+
+  /**
+   * Get all onboarding progress data for a business
+   * @param businessId The business ID
+   * @returns All onboarding progress data
+   */
+  async getAllOnboardingProgress(
+    businessId: string
+  ): Promise<BusinessOnboardingStepResponse<OnboardingProgress[]>> {
+    return supabaseClientService.executeWithRetry(async (client) => {
+      try {
+        // Use a type assertion with unknown as an intermediate step
+        const supabase = client as unknown as {
+          from(table: string): {
+            select(columns: string): {
+              eq(column: string, value: string): {
+                order(column: string, options: { ascending: boolean }): {
+                  data: any;
+                  error: { message: string } | null;
+                }
+              }
+            }
+          }
+        };
+        
+        const { data, error } = await supabase
+          .from('onboarding_progress')
+          .select('*')
+          .eq('business_id', businessId)
+          .order('step_number', { ascending: true });
+
+        if (error) {
+          return { data: null, error: error.message };
+        }
+
+        return { data: data as OnboardingProgress[], error: null };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return { data: null, error: errorMessage };
+      }
+    });
+  }
+
+  /**
+   * Delete onboarding progress data for a specific step
+   * @param businessId The business ID
+   * @param stepNumber The step number
+   * @returns Success or error
+   */
+  async deleteOnboardingProgress(
+    businessId: string,
+    stepNumber: number
+  ): Promise<BusinessOnboardingStepResponse<void>> {
+    return supabaseClientService.executeWithRetry(async (client) => {
+      try {
+        // Use a type assertion with unknown as an intermediate step
+        const supabase = client as unknown as {
+          from(table: string): {
+            delete(): {
+              eq(column: string, value: string | number): {
+                eq(column: string, value: string | number): {
+                  data: any;
+                  error: { message: string } | null;
+                }
+              }
+            }
+          }
+        };
+        
+        const { error } = await supabase
+          .from('onboarding_progress')
+          .delete()
+          .eq('business_id', businessId)
+          .eq('step_number', stepNumber);
+
+        if (error) {
+          return { data: null, error: error.message };
+        }
+
+        return { data: undefined, error: null };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return { data: null, error: errorMessage };
+      }
+    });
+  }
 }
 
 // Export the singleton instance
@@ -397,6 +613,22 @@ export function completeOnboardingStep(businessId: string, stepNumber: number) {
 
 export function getOnboardingStatus(businessId: string) {
   return BusinessOnboardingService.getInstance().getOnboardingStatus(businessId);
+}
+
+export function saveOnboardingProgress(businessId: string, stepNumber: number, data: Record<string, any>) {
+  return BusinessOnboardingService.getInstance().saveOnboardingProgress(businessId, stepNumber, data);
+}
+
+export function getOnboardingProgressForStep(businessId: string, stepNumber: number) {
+  return BusinessOnboardingService.getInstance().getOnboardingProgressForStep(businessId, stepNumber);
+}
+
+export function getAllOnboardingProgress(businessId: string) {
+  return BusinessOnboardingService.getInstance().getAllOnboardingProgress(businessId);
+}
+
+export function deleteOnboardingProgress(businessId: string, stepNumber: number) {
+  return BusinessOnboardingService.getInstance().deleteOnboardingProgress(businessId, stepNumber);
 }
 
 // Static wrapper for backward compatibility
@@ -436,5 +668,33 @@ export class BusinessOnboardingServiceStatic {
   
   static async getServiceCategoriesByBusinessCategory(businessCategoryId: string): Promise<BusinessOnboardingStepResponse<any[]>> {
     return businessOnboardingService.getServiceCategoriesByBusinessCategory(businessCategoryId);
+  }
+
+  static async saveOnboardingProgress(
+    businessId: string,
+    stepNumber: number,
+    data: Record<string, any>
+  ): Promise<BusinessOnboardingStepResponse<OnboardingProgress>> {
+    return businessOnboardingService.saveOnboardingProgress(businessId, stepNumber, data);
+  }
+
+  static async getOnboardingProgressForStep(
+    businessId: string,
+    stepNumber: number
+  ): Promise<BusinessOnboardingStepResponse<OnboardingProgress>> {
+    return businessOnboardingService.getOnboardingProgressForStep(businessId, stepNumber);
+  }
+
+  static async getAllOnboardingProgress(
+    businessId: string
+  ): Promise<BusinessOnboardingStepResponse<OnboardingProgress[]>> {
+    return businessOnboardingService.getAllOnboardingProgress(businessId);
+  }
+
+  static async deleteOnboardingProgress(
+    businessId: string,
+    stepNumber: number
+  ): Promise<BusinessOnboardingStepResponse<void>> {
+    return businessOnboardingService.deleteOnboardingProgress(businessId, stepNumber);
   }
 } 

@@ -1,5 +1,6 @@
 import ToastHost from '@/components/ToastHost';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
+import { ToastProvider } from '@/components/providers/ToastProvider';
 import { AuthProvider } from '@/lib/auth/context/AuthContext';
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
@@ -88,12 +89,14 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       </head>
       <body className="h-full antialiased">
-        <ErrorBoundary>
-          <AuthProvider>
-            {children}
-            <ToastHost />
-          </AuthProvider>
-        </ErrorBoundary>
+        <ToastProvider>
+          <ErrorBoundary>
+            <AuthProvider>
+              {children}
+              <ToastHost />
+            </AuthProvider>
+          </ErrorBoundary>
+        </ToastProvider>
       </body>
     </html>
   );

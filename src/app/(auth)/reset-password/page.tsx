@@ -1,138 +1,188 @@
 'use client';
 
-import AuthErrorMessage from '@/components/auth/AuthErrorMessage';
 import { AuthLoadingOverlay } from '@/components/auth/AuthLoadingOverlay';
-import { AuthFormWrapper } from '@/components/auth/shared/AuthFormWrapper';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useForm } from '@/hooks/core/useForm';
-import { withAuthFeedback } from '@/lib/auth/authFeedback';
-import { authService } from '@/lib/supabase/services/auth/auth.service';
-import { emailSchema } from '@/lib/validation/schemas';
+import { useAuth } from '@/hooks/auth/useAuth';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
-import { z } from 'zod';
+import { useForm } from 'react-hook-form';
 
-// Create a schema specific for the reset password form
-const resetPasswordSchema = z.object({
-  email: emailSchema,
-});
-
-interface ResetPasswordFormValues {
-  email: string;
+interface ResetPasswordFormData {
+  password: string;
+  confirmPassword: string;
 }
 
 export default function ResetPasswordPage() {
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  const { values, handleChange, handleSubmit, errors } = useForm<ResetPasswordFormValues>({
-    initialValues: {
-      email: '',
-    },
-    validationSchema: resetPasswordSchema,
-    onSubmit: handleResetPassword
-  });
-
-  const formSubmitHandler = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-    handleSubmit(e);
-  };
-
-  async function handleResetPassword(formData: ResetPasswordFormValues) {
-    try {
-      await withAuthFeedback(
-        'reset-password',
-        async () => {
-          const { error: resetError } = await authService.resetPassword(formData.email);
-          if (resetError) throw resetError;
-
-          // No need to set success message as withAuthFeedback will show toast
-          setSuccess('Password reset instructions have been sent to your email.');
-          return { success: true };
-        },
-        'Password reset instructions have been sent to your email.'
-      );
-    } catch (err: any) {
-      setError(err.message || 'Failed to process password reset request');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { register, handleSubmit, formState: { errors }, watch } = useForm<ResetPasswordFormData>({
+    defaultValues: {
+      password: '',
+      confirmPassword: ''
     }
-  }
-
-  return (
-    <>
-      <AuthFormWrapper
-        title="Reset Your Password"
-        description="Enter your email address and we'll send you a link to reset your password"
-        onSubmitAction={formSubmitHandler}
-      >
-        {error && <AuthErrorMessage error={{ message: error, name: 'AuthError' }} className="mb-4" />}
+  });
+  
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const auth = useAuth();
+  
+  const password = watch('password');
+  
+  const onSubmit = async (data: ResetPasswordFormData) => {
+    // Clear any previous messages
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setIsSubmitting(true);
+    
+    // Check if passwords match
+    if (data.password !== data.confirmPassword) {
+      setErrorMessage('Passwords do not match');
+      setIsSubmitting(false);
+      return;
+    }
+    
+    try {
+      // Get the token from the URL
+      const token = searchParams.get('token');
+      
+      if (!token) {
+        setErrorMessage('Password reset token is missing. Please try again or request a new reset link.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Use the auth service to update the password
+      const { error } = await auth.updatePasswordWithToken(token, data.password);
+      
+      if (!error) {
+        setSuccessMessage('Your password has been reset successfully');
         
-        {success && (
-          <div className="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded-md text-sm mb-6 animate-fadeIn">
-            <div className="flex items-center">
-              <svg className="h-5 w-5 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>{success}</span>
+        // Redirect to login page after a delay
+        setTimeout(() => {
+          router.push('/login');
+        }, 2000);
+      } else {
+        setErrorMessage(error.message || 'Failed to reset password. Please try again.');
+      }
+    } catch (error) {
+      setErrorMessage('Failed to reset password. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <AuthLoadingOverlay />
+      
+      <div className="w-full max-w-md space-y-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold">Reset your password</h1>
+          <p className="mt-2 text-sm text-gray-600">
+            Enter your new password below
+          </p>
+        </div>
+        
+        {errorMessage && (
+          <div className="rounded-md bg-red-50 p-4">
+            <div className="flex">
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Error</h3>
+                <div className="mt-2 text-sm text-red-700">{errorMessage}</div>
+              </div>
             </div>
           </div>
         )}
-
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email Address
-            </label>
-            <div className="relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                  <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                </svg>
+        
+        {successMessage && (
+          <div className="rounded-md bg-green-50 p-4">
+            <div className="flex">
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-green-800">Success</h3>
+                <div className="mt-2 text-sm text-green-700">{successMessage}</div>
               </div>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                required
-                autoComplete="email"
-                value={values.email}
-                onChange={(e) => handleChange('email', e.target.value)}
-                className="pl-10 w-full"
-                placeholder="you@example.com"
-                inputSize="lg"
-              />
             </div>
-            {errors.email && (
-              <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-            )}
           </div>
-
-          <div>
+        )}
+        
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                New Password
+              </label>
+              <div className="mt-1 relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  {...register('password', { 
+                    required: 'Password is required',
+                    minLength: {
+                      value: 8,
+                      message: 'Password must be at least 8 characters'
+                    }
+                  })}
+                  className={errors.password ? 'border-red-500' : ''}
+                />
+                {errors.password && (
+                  <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+                )}
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+            </div>
+            
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                Confirm Password
+              </label>
+              <div className="mt-1">
+                <Input
+                  id="confirmPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  {...register('confirmPassword', { 
+                    required: 'Please confirm your password',
+                    validate: value => value === password || 'Passwords do not match'
+                  })}
+                  className={errors.confirmPassword ? 'border-red-500' : ''}
+                />
+                {errors.confirmPassword && (
+                  <p className="mt-1 text-sm text-red-600">{errors.confirmPassword.message}</p>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
             <Button
               type="submit"
               className="w-full"
-              size="lg"
+              disabled={auth.isLoading || isSubmitting}
             >
-              Send Reset Link
+              Reset Password
             </Button>
-          </div>
-
-          <div className="mt-4 text-center">
-            <span className="text-sm text-gray-600">
-              Remember your password?{' '}
-              <Link href="/login" className="text-primary hover:underline">
-                Sign in
+            
+            <div className="text-center">
+              <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
+                Back to login
               </Link>
-            </span>
+            </div>
           </div>
-        </div>
-      </AuthFormWrapper>
-      
-      {/* Loading Overlay */}
-      <AuthLoadingOverlay />
-    </>
+        </form>
+      </div>
+    </div>
   );
 }

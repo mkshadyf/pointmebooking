@@ -1,0 +1,244 @@
+---
+description: PointMe Documentation and Automation Standards
+globs: 
+alwaysApply: true
+---
+ ---
+description: PointMe Documentation and Automation Standards
+globs: ["**/*"]
+alwaysApply: true
+priority: 2
+---
+
+# PointMe Documentation and Automation Standards
+
+This document outlines the documentation standards and automation requirements for the PointMe project.
+
+## Documentation Requirements
+
+### 1. Code Documentation
+
+All code must be documented using JSDoc/TSDoc standards:
+
+```typescript
+/**
+ * Function/class description that explains its purpose
+ * 
+ * @param paramName - Description of the parameter
+ * @returns Description of the return value
+ * @throws Description of potential errors
+ * @example
+ * // Example usage
+ * const result = myFunction('example');
+ */
+function myFunction(paramName: string): string {
+  // Implementation
+}
+```
+
+#### Required Tags
+
+- `@param` - For all function parameters
+- `@returns` - For all return values
+- `@throws` - For all potential errors
+- `@example` - For usage examples
+- `@deprecated` - For deprecated functions/classes with migration path
+
+### 2. API Documentation
+
+All API endpoints must be documented using OpenAPI/Swagger:
+
+```typescript
+/**
+ * @swagger
+ * /api/endpoint:
+ *   get:
+ *     summary: Endpoint description
+ *     parameters:
+ *       - name: paramName
+ *         in: query
+ *         description: Parameter description
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success response
+ *       400:
+ *         description: Bad request
+ */
+export async function GET(request: Request) {
+  // Implementation
+}
+```
+
+### 3. Directory Documentation
+
+Each directory must have a README.md file that explains:
+
+1. Purpose of the module
+2. Components/functions contained
+3. Usage examples
+4. Integration points with other modules
+
+Example structure:
+
+```markdown
+# Module Name
+
+Brief description of the module's purpose.
+
+## Components/Functions
+
+- `ComponentName`: Description of the component
+- `functionName`: Description of the function
+
+## Usage
+
+```typescript
+// Example usage code
+```
+
+## Integration Points
+
+- List of other modules this integrates with
+```
+
+### 4. Barrel Exports
+
+All directories should use barrel exports (index.ts) to simplify imports:
+
+```typescript
+// index.ts
+export * from './component1';
+export * from './component2';
+// Re-export with specific names if needed
+export { default as SpecificName } from './specific';
+```
+
+## Automation Requirements
+
+### 1. Documentation Generation
+
+TypeDoc should be used to generate API documentation:
+
+```json
+// typedoc.json
+{
+  "entryPoints": ["src"],
+  "out": "docs",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "theme": "default"
+}
+```
+
+### 2. Linting Rules
+
+ESLint should enforce documentation standards:
+
+```json
+// .eslintrc.json
+{
+  "plugins": ["jsdoc"],
+  "rules": {
+    "jsdoc/require-jsdoc": ["error", {
+      "publicOnly": true,
+      "require": {
+        "FunctionDeclaration": true,
+        "MethodDefinition": true,
+        "ClassDeclaration": true
+      }
+    }],
+    "jsdoc/require-param": "error",
+    "jsdoc/require-returns": "error"
+  }
+}
+```
+
+### 3. Pre-commit Hooks
+
+Husky should be used to enforce standards before commits:
+
+```json
+// .husky/pre-commit
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+npm run lint:docs
+npm run test
+```
+
+### 4. Automated Barrel Generation
+
+A script should be used to generate barrel files:
+
+```typescript
+// scripts/generate-barrels.js
+const fs = require('fs');
+const path = require('path');
+
+function generateBarrel(dirPath) {
+  const files = fs.readdirSync(dirPath);
+  const exports = [];
+  
+  files.forEach(file => {
+    if (file === 'index.ts') return;
+    if (file.endsWith('.ts') || file.endsWith('.tsx')) {
+      const baseName = path.basename(file, path.extname(file));
+      exports.push(`export * from './${baseName}';`);
+    }
+  });
+  
+  fs.writeFileSync(path.join(dirPath, 'index.ts'), exports.join('\n'));
+}
+
+// Usage: node generate-barrels.js src/components
+```
+
+## Implementation Guidelines
+
+### For New Code
+
+All new code must follow these standards from the start:
+
+1. Add complete JSDoc/TSDoc comments
+2. Create README.md for new directories
+3. Implement barrel exports
+4. Document API endpoints with OpenAPI/Swagger
+
+### For Existing Code
+
+When modifying existing code:
+
+1. Add documentation to functions you modify
+2. Create README.md for directories you work in
+3. Add barrel exports if missing
+4. Document API endpoints you modify
+
+## Validation Process
+
+1. **Automated Checks**:
+   - ESLint rules for documentation
+   - TypeDoc generation without errors
+   - Pre-commit hooks for validation
+
+2. **Manual Review**:
+   - Code reviewers should verify documentation quality
+   - README.md files should be reviewed for completeness
+   - API documentation should be tested for accuracy
+
+## Tools and Resources
+
+1. **Documentation**:
+   - [JSDoc Documentation](mdc:https:/jsdoc.app)
+   - [TypeDoc Documentation](mdc:https:/typedoc.org)
+   - [OpenAPI/Swagger](mdc:https:/swagger.io/docs)
+
+2. **Automation**:
+   - [ESLint JSDoc Plugin](mdc:https:/github.com/gajus/eslint-plugin-jsdoc)
+   - [Husky](mdc:https:/typicode.github.io/husky)
+   - [TypeDoc](mdc:https:/typedoc.org/guides/installation)
+
+## Last Updated
+2024-03-11

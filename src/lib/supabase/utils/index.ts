@@ -3,10 +3,10 @@
 // export * from './errors';
 
 // Import and re-export ErrorMessageMap from the error module
-import { ErrorCode } from '@/lib/error';
+import { ErrorCode } from '@/lib/core/compat/error-compat';
 
 // Define ErrorMessageMap for backward compatibility
-export const ErrorMessageMap: Record<ErrorCode, string> = {
+export const ErrorMessageMap: Record<string, string> = {
   [ErrorCode.AUTH_INVALID_CREDENTIALS]: 'Invalid email or password',
   [ErrorCode.AUTH_EMAIL_IN_USE]: 'Email is already in use',
   [ErrorCode.AUTH_WEAK_PASSWORD]: 'Password is too weak',
@@ -41,7 +41,22 @@ export const ErrorMessageMap: Record<ErrorCode, string> = {
   [ErrorCode.VALIDATION_REQUIRED]: 'Required field missing',
   [ErrorCode.VALIDATION_ERROR]: 'Validation error',
 
-  [ErrorCode.UNKNOWN_ERROR]: 'An unknown error occurred'
+  [ErrorCode.UNKNOWN_ERROR]: 'An unknown error occurred',
+  
+  // Add the general error codes for completeness
+  [ErrorCode.AUTHENTICATION_ERROR]: 'Authentication error',
+  [ErrorCode.AUTHORIZATION_ERROR]: 'Authorization error',
+  [ErrorCode.NOT_FOUND_ERROR]: 'Resource not found',
+  [ErrorCode.CONFLICT_ERROR]: 'Conflict error',
+  [ErrorCode.EXTERNAL_ERROR]: 'External service error',
+  [ErrorCode.DATABASE_ERROR]: 'Database error',
+  [ErrorCode.NETWORK_ERROR]: 'Network error',
+  [ErrorCode.RATE_LIMIT_ERROR]: 'Rate limit exceeded',
+  [ErrorCode.UNEXPECTED_ERROR]: 'Unexpected error',
+  [ErrorCode.INPUT_ERROR]: 'Input error',
+  [ErrorCode.RESOURCE_ERROR]: 'Resource error',
+  [ErrorCode.SERVER_ERROR]: 'Server error',
+  [ErrorCode.BUSINESS_LOGIC_ERROR]: 'Business logic error'
 };
 
 // Validation

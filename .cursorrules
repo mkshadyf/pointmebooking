@@ -1,0 +1,61 @@
+---
+description: PointMe Project Implementation Guidelines
+globs: ["**/*"]
+alwaysApply: true
+priority: 1
+---
+
+### Project Overview
+PointMe is a Next.js application with TypeScript that provides a platform for connecting businesses with customers through location-based services. The application uses Supabase for backend services and follows a service-oriented architecture.
+
+### Architectural Patterns
+```mermaid
+graph TD
+    A[Service Layer] --> B[React Components]
+    C[Hooks] --> B
+    D[API Routes] --> A
+    E[Toast Service] --> B
+    F[Auth Service] --> B
+```
+
+### Code Standards
+- Use PascalCase for component names (e.g., TextArea not Textarea)
+- Use camelCase for variables, functions, and file names
+- Prefer functional components with hooks over class components
+- Implement proper type definitions (avoid 'any' types)
+- Use index files for clean exports
+- Follow singleton pattern for service implementations
+
+### File Organization
+- src/app: Next.js app router pages and layouts
+- src/components: UI components and providers
+- src/hooks: Custom React hooks
+- src/lib: Core services and utilities
+  - src/lib/core: Core functionality (auth, toast, etc.)
+  - src/lib/supabase: Supabase client and services
+- src/types: TypeScript type definitions
+- src/constants: Application constants
+
+### Critical Considerations
+- Toast notifications use ToastService directly (e.g., ToastService.success, not ToastService.toast.success)
+- Authentication uses centralized AuthService
+- Error handling follows centralized pattern
+- Component casing must be consistent (TextArea, not Textarea)
+- Type safety is a priority (currently at 92% compliance)
+
+### Active Issues
+- Component casing standardization in progress
+- Type assertions in transformers.ts need improvement
+- Error handling centralization at 78% compliance
+- Auth service duplication (high priority)
+
+### Progress Tracking
+- Update PROGRESS.md after each development session
+- Update IMPLEMENTATION_ROADMAP.md for timeline changes
+- Create session summaries in COMPOSER_SESSION_SUMMARY.md
+
+### AI Assistance Guidelines
+- Provide detailed context when requesting AI assistance
+- Include file paths and expected outputs in queries
+- Review and test AI-generated code thoroughly
+- Document AI contributions in session summaries 

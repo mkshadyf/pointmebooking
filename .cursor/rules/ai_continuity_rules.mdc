@@ -1,0 +1,89 @@
+---
+description: PointMe AI Continuity Rules
+globs: 
+alwaysApply: true
+---
+ ---
+description: PointMe AI Continuity Rules
+globs: ["**/*"]
+alwaysApply: true
+priority: 2
+---
+
+# PointMe AI Continuity Rules
+
+These rules ensure continuity across AI-assisted development sessions for the PointMe project.
+
+## Session Continuity Protocol
+
+### 1. Documentation First
+Before writing any code, AI assistants should:
+- Review `PROGRESS.md` for current status
+- Check `IMPLEMENTATION_ROADMAP.md` for project direction
+- Understand active issues from debugging rules
+
+### 2. Context Preservation
+AI assistants should maintain awareness of:
+- Previous session decisions and rationale
+- Current implementation patterns
+- Project-specific conventions
+- Active refactoring efforts
+
+### 3. Implementation Consistency
+When implementing or suggesting code:
+- Follow established patterns in similar components/services
+- Maintain consistent error handling approaches
+- Use established naming conventions
+- Preserve architectural decisions
+
+## Project Memory
+
+### Current Focus Areas
+```mermaid
+graph TD
+    A[Component Standardization] --> B[TextArea vs Textarea]
+    C[Type Safety] --> D[transformers.ts]
+    E[Error Handling] --> F[Centralization]
+    G[Auth Service] --> H[Duplication]
+```
+
+### Recent Changes
+- ToastService API refactored to remove redundant `.toast` property
+- Authentication error handling improved
+- Project management documentation enhanced
+
+### Pending Tasks
+- Component casing standardization
+- Type assertions improvement in transformers.ts
+- Error handling centralization
+- Auth service duplication resolution
+
+## AI Interaction Guidelines
+
+### 1. Query Formulation
+- Include file paths in queries
+- Specify expected outcomes
+- Reference existing patterns
+- Provide context from documentation
+
+### 2. Code Review
+- Verify logic before implementing
+- Test thoroughly
+- Document any issues or patterns
+
+### 3. Documentation Updates
+- Track AI contributions
+- Note learning points
+- Update progress tracking
+
+## Learning Repository
+
+### Effective Patterns
+- Providing file context improves code generation quality
+- Pattern-based refactoring tasks yield good results
+- Clear project structure documentation helps AI understanding
+
+### Improvement Areas
+- Complex type assertions require careful review
+- Component naming standardization needs manual verification
+- Authentication error handling needs thorough testing

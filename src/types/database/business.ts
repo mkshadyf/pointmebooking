@@ -50,4 +50,20 @@ export interface BusinessOnboardingStatus {
   completedSteps: number;
   currentStep: number;
   progress: number;
+}
+
+// Onboarding progress interface
+export interface OnboardingProgress {
+  id: string;
+  business_id: string;
+  step_number: number;
+  data: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+// Onboarding progress response interface
+export interface OnboardingProgressResponse {
+  data: OnboardingProgress | OnboardingProgress[] | null;
+  error: string | null;
 } 

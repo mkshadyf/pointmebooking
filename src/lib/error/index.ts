@@ -1,110 +1,40 @@
 /**
- * Error Module
- *
- * This module provides comprehensive error handling features.
- * It includes error types, error handling utilities, error boundary components,
- * and error conversion utilities.
+ * Error handling utilities
+ * 
+ * @deprecated This module is being replaced by the new core error service.
+ * Please use @/lib/core/error instead.
  */
 
-// Export error handler utilities
-export * from './error-handler';
+// Re-export the new error service
+export { ErrorService } from '@/lib/core/error';
 
-// Export error logger
-export * from './error-logger';
+// Export the compatibility layer for backward compatibility
+export { logError } from '@/lib/core/compat/error-compat';
 
-// Export try-catch utilities
-export * from './try-catch';
-
-// Error Types
-export enum ErrorType {
-  VALIDATION = 'validation',
-  AUTHENTICATION = 'authentication',
-  AUTHORIZATION = 'authorization',
-  NOT_FOUND = 'not_found',
-  CONFLICT = 'conflict',
-  EXTERNAL = 'external',
-  DATABASE = 'database',
-  NETWORK = 'network',
-  RATE_LIMIT = 'rate_limit',
-  UNEXPECTED = 'unexpected',
-  INPUT = 'input',
-  RESOURCE = 'resource',
-  SERVER = 'server',
-  BUSINESS_LOGIC = 'business_logic'
-}
-
-export enum ErrorSeverity {
-  LOW = 'low',
-  MEDIUM = 'medium',
-  HIGH = 'high',
-  CRITICAL = 'critical'
-}
-
-export enum ErrorCategory {
-  UI = 'ui',
-  FORM = 'form',
-  API = 'api',
-  AUTH = 'auth',
-  DATA = 'data',
-  SYSTEM = 'system',
-  SECURITY = 'security',
-  BUSINESS = 'business'
-}
-
-// Error Classes
+// Export types from the error-logger for backward compatibility
 export {
-    ErrorCode, ErrorHandler, convertToAppError, createAppError, handleApiError, handleError, isAppError
-} from './error-handler';
-export type { AppError } from './error-handler';
+    ErrorCategory,
+    ErrorCode,
+    ErrorHandler, ErrorSeverity, ErrorType, convertToAppError,
+    isAppError
+} from '@/lib/core/compat/error-compat';
 
-// Error Boundary Components
-export {
-    ErrorBoundary, withErrorBoundary
-} from '../../components/error/ErrorBoundary';
+// Export the try-catch utility
+export { tryCatch, tryCatchWithRetry } from './try-catch';
 
-// Auth Error Utilities
+// Export the auth error utilities
 export {
     appErrorToAuthError,
-    authErrorToAppError,
-    convertToAuthError,
+    authErrorToAppError, convertToAuthError,
     toAuthError
 } from './auth-error-utils';
 
-// Error Interfaces
-export interface ApiErrorResponse {
-  error: {
-    code: string;
-    message: string;
-    details?: Record<string, any>;
-  };
-  status: number;
-}
+// Export the error boundary
+// Note: If error-boundary.tsx exports a class component, use this:
+export * from './error-boundary';
 
-export interface FormErrorResponse {
-  fieldErrors: Record<string, string[]>;
-  formErrors: string[];
-}
+// Export other utilities
+// Note: This is redundant now that we're exporting everything from auth-error-utils above
+// Keeping it for now to avoid breaking changes
+// export * from './auth-error-utils';
 
-export interface AppErrorOptions {
-  cause?: Error | unknown;
-  context?: string;
-  category?: ErrorCategory;
-  severity?: ErrorSeverity;
-  details?: Record<string, any>;
-}
-
-export interface AppErrorMetadata {
-  timestamp: string;
-  requestId?: string;
-  userId?: string;
-  path?: string;
-  ip?: string;
-  userAgent?: string;
-}
-
-export interface FormError {
-  field: string;
-  message: string;
-}
-
-export type FormErrors = FormError[];

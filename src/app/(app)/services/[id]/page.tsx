@@ -6,17 +6,16 @@ import { Button } from '@/components/ui/Button';
 import { useToast } from '@/hooks/ui/useToast';
 import { useAuth } from '@/lib/auth';
 import { ErrorHandler, convertToAppError } from '@/lib/error';
-import { ErrorCategory } from '@/lib/error/error-handler';
 import { serviceService } from '@/lib/supabase/services';
 import { safeTransform, transformJoinedServiceData } from '@/lib/supabase/utils/transformers';
 import { UIService } from '@/types';
 import {
-  CalendarIcon,
-  ClockIcon,
-  CurrencyDollarIcon,
-  MapPinIcon,
-  PhoneIcon,
-  UserIcon,
+    CalendarIcon,
+    ClockIcon,
+    CurrencyDollarIcon,
+    MapPinIcon,
+    PhoneIcon,
+    UserIcon,
 } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -48,13 +47,10 @@ function ServiceDetails() {
         const { data: serviceData, error: serviceError } = await serviceService.getByIdWithRelations(params.id);
         
         if (serviceError) {
-          const appError = convertToAppError(serviceError);
-          
-          // Set appropriate error message based on error type
-          if (appError.category === ErrorCategory.NOT_FOUND) {
+          if (serviceError.message?.toLowerCase().includes('not found')) {
             setError('Service not found');
           } else {
-            setError(ErrorHandler.getUserFriendlyMessage(appError));
+            setError(ErrorHandler.getUserFriendlyMessage(serviceError));
           }
           
           setLoading(false);

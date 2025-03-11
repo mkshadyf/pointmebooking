@@ -1,6 +1,6 @@
 import { useAuth } from '@/hooks/auth/useAuth';
-import { useToast } from '@/hooks/ui/useToast';
-import { tryCatch, tryCatchWithRetry } from '@/lib/error/try-catch';
+import { ToastService } from '@/lib/core/toast';
+import { tryCatchWithRetry } from '@/lib/error/try-catch';
 import { businessOnboardingService } from '@/lib/supabase/services/business/business-onboarding-service';
 import {
     BusinessCategory,
@@ -18,10 +18,11 @@ interface OnboardingStatus {
   completedSteps: number;
   currentStep: number;
   progress: number;
+  data?: Record<string, any>;
+  isComplete?: boolean;
 }
 
 export function useBusinessOnboarding(businessId?: string) {
-  const { toast } = useToast();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [steps] = useState<BusinessOnboardingStep[]>([]);
@@ -39,97 +40,176 @@ export function useBusinessOnboarding(businessId?: string) {
 
   // Fetch onboarding status
   const fetchOnboardingStatus = async () => {
-    if (!businessId) return;
-    
-    setLoading(true);
-    
-    const { data, error } = await tryCatch(
-      async () => businessOnboardingService.getOnboardingStatus(businessId),
-      user?.id,
-      { action: 'fetchOnboardingStatus', businessId }
-    );
-    
-    if (error) {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/business/onboarding/status');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch onboarding status');
+      }
+      
+      const data = await response.json();
+      setStatus(data);
+      setCurrentStep(data.currentStep - 1); // Convert from 1-indexed to 0-indexed
+      return data;
+    } catch (error) {
       console.error('Error fetching onboarding status:', error);
-      toast.error('Failed to fetch onboarding status');
+      ToastService.error('Failed to fetch onboarding status');
       setErrors(prev => ({ ...prev, onboardingStatus: 'Failed to fetch onboarding status' }));
-    } else if (data?.data) {
-      // The result.data has the correct shape for OnboardingStatus
-      const statusData: OnboardingStatus = data.data as unknown as OnboardingStatus;
-      setStatus(statusData);
-      // Set current step based on status
-      setCurrentStep(statusData.currentStep - 1); // Convert from 1-indexed to 0-indexed
+      return null;
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   // Fetch business categories
   const fetchBusinessCategories = async () => {
-    setLoading(true);
-    
-    const { data, error } = await tryCatchWithRetry(
-      async () => businessOnboardingService.getBusinessCategories(),
-      2, // retries
-      1000, // delay
-      user?.id,
-      { action: 'fetchBusinessCategories' }
-    );
-    
-    if (error) {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/business/categories');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch business categories');
+      }
+      
+      const data = await response.json();
+      setBusinessCategories(data);
+      return data;
+    } catch (error) {
       console.error('Error fetching business categories:', error);
-      toast.error('Failed to fetch business categories');
+      ToastService.error('Failed to fetch business categories');
       setErrors(prev => ({ ...prev, businessCategories: 'Failed to fetch business categories' }));
-    } else if (data?.data) {
-      setBusinessCategories(data.data);
+      return [];
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
-  // Fetch service categories by business category
+  // Fetch service categories
   const fetchServiceCategories = async (businessCategoryId: string) => {
-    setLoading(true);
-    
-    const { data, error } = await tryCatch(
-      async () => businessOnboardingService.getServiceCategoriesByBusinessCategory(businessCategoryId),
-      user?.id,
-      { action: 'fetchServiceCategories', businessCategoryId }
-    );
-    
-    if (error) {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/business/categories/${businessCategoryId}/services`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch service categories');
+      }
+      
+      const data = await response.json();
+      setServiceCategories(data);
+      return data;
+    } catch (error) {
       console.error('Error fetching service categories:', error);
-      toast.error('Failed to fetch service categories');
+      ToastService.error('Failed to fetch service categories');
       setErrors(prev => ({ ...prev, serviceCategories: 'Failed to fetch service categories' }));
-    } else if (data?.data) {
-      setServiceCategories(data.data);
+      return [];
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
-  // Update a step
-  const updateStep = async (stepNumber: number, updates: any) => {
-    if (!businessId) return;
-    
-    setLoading(true);
-    
-    const { data, error } = await tryCatch(
-      async () => businessOnboardingService.updateOnboardingStep(businessId, stepNumber, updates),
-      user?.id,
-      { action: 'updateStep', businessId, stepNumber, updates }
-    );
-    
-    if (error) {
+  // Update onboarding step
+  const updateStep = async (step: number, data: any) => {
+    try {
+      setLoading(true);
+      
+      // Save to server-side storage
+      if (businessId) {
+        const { error } = await businessOnboardingService.saveOnboardingProgress(
+          businessId,
+          step,
+          data
+        );
+        
+        if (error) {
+          throw new Error(error);
+        }
+      }
+      
+      // Also update the API for backward compatibility
+      const response = await fetch('/api/business/onboarding/step', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ step, data }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update step');
+      }
+      
+      const responseData = await response.json();
+      setStatus(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          currentStep: step,
+          data: { ...(prev.data || {}), ...data }
+        };
+      });
+      return responseData;
+    } catch (error) {
       console.error('Error updating step:', error);
-      toast.error('Failed to update step');
+      ToastService.error('Failed to update step');
       setErrors(prev => ({ ...prev, updateStep: 'Failed to update step' }));
-    } else {
-      // Refresh the status
-      await fetchOnboardingStatus();
+      return null;
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
+  };
+
+  // Complete onboarding
+  const completeOnboarding = async (finalData: any) => {
+    try {
+      setLoading(true);
+      
+      // Save final data to server-side storage
+      if (businessId) {
+        const { error } = await businessOnboardingService.saveOnboardingProgress(
+          businessId,
+          TOTAL_STEPS, // Use the total steps as the final step number
+          finalData
+        );
+        
+        if (error) {
+          throw new Error(error);
+        }
+      }
+      
+      const response = await fetch('/api/business/onboarding/complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(finalData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to complete onboarding');
+      }
+      
+      const data = await response.json();
+      setStatus(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          isComplete: true,
+          currentStep: prev.totalSteps,
+          data: { ...(prev.data || {}), ...finalData }
+        };
+      });
+      
+      ToastService.success('Business onboarding completed successfully');
+      return data;
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      ToastService.error('Failed to complete onboarding');
+      setErrors(prev => ({ ...prev, submitOnboarding: 'Failed to complete onboarding' }));
+      return null;
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Add navigation functions
@@ -153,7 +233,22 @@ export function useBusinessOnboarding(businessId?: string) {
 
   // Add data update function
   const updateStepData = (data: Record<string, any>) => {
-    setStepData(prevData => ({ ...prevData, ...data }));
+    setStepData(prevData => {
+      const newData = { ...prevData, ...data };
+      
+      // Save to server-side storage if businessId is available
+      if (businessId) {
+        businessOnboardingService.saveOnboardingProgress(
+          businessId,
+          currentStep + 1, // Convert to 1-indexed for the server
+          newData
+        ).catch(error => {
+          console.error('Error saving progress to server:', error);
+        });
+      }
+      
+      return newData;
+    });
   };
 
   // Add submit function
@@ -163,7 +258,22 @@ export function useBusinessOnboarding(businessId?: string) {
     setIsSubmitting(true);
     setErrors(prev => ({ ...prev, submitOnboarding: '' }));
     
-    const { data, error } = await tryCatchWithRetry(
+    // Save current step data to server-side storage
+    const saveResult = await businessOnboardingService.saveOnboardingProgress(
+      businessId,
+      currentStep + 1, // Convert to 1-indexed for the server
+      stepData
+    );
+    
+    if (saveResult.error) {
+      console.error('Error saving progress to server:', saveResult.error);
+      ToastService.error('Failed to save progress');
+      setErrors(prev => ({ ...prev, submitOnboarding: 'Failed to save progress' }));
+      setIsSubmitting(false);
+      return false;
+    }
+    
+    const { error } = await tryCatchWithRetry(
       async () => businessOnboardingService.completeOnboardingStep(businessId, currentStep + 1),
       2, // retries
       1000, // delay
@@ -173,15 +283,91 @@ export function useBusinessOnboarding(businessId?: string) {
     
     if (error) {
       console.error('Error submitting onboarding:', error);
-      toast.error('Failed to complete onboarding');
+      ToastService.error('Failed to complete onboarding');
       setErrors(prev => ({ ...prev, submitOnboarding: 'Failed to complete onboarding' }));
       setIsSubmitting(false);
       return false;
     }
     
-    toast.success('Business onboarding completed successfully');
+    ToastService.success('Business onboarding completed successfully');
     setIsSubmitting(false);
     return true;
+  };
+
+  // Save progress to server
+  const saveProgressToServer = async () => {
+    if (!businessId) return false;
+    
+    setLoading(true);
+    
+    try {
+      const { error } = await businessOnboardingService.saveOnboardingProgress(
+        businessId,
+        currentStep + 1, // Convert to 1-indexed for the server
+        stepData
+      );
+      
+      if (error) {
+        throw new Error(error);
+      }
+      
+      ToastService.success('Progress saved successfully');
+      return true;
+    } catch (error) {
+      console.error('Error saving progress to server:', error);
+      ToastService.error('Failed to save progress');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load progress from server
+  const loadProgressFromServer = async () => {
+    if (!businessId) return false;
+    
+    setLoading(true);
+    
+    try {
+      // Get all progress data
+      const { data, error } = await businessOnboardingService.getAllOnboardingProgress(businessId);
+      
+      if (error) {
+        throw new Error(error);
+      }
+      
+      if (!data || data.length === 0) {
+        return false;
+      }
+      
+      // Combine all step data
+      const combinedData: Record<string, any> = {};
+      let maxStep = 0;
+      
+      data.forEach(progress => {
+        Object.assign(combinedData, progress.data);
+        if (progress.step_number > maxStep) {
+          maxStep = progress.step_number;
+        }
+      });
+      
+      // Update state
+      setStepData(combinedData);
+      
+      // Go to the last step that has data
+      if (maxStep > 0) {
+        setCurrentStep(maxStep - 1); // Convert to 0-indexed
+      }
+      
+      ToastService.success('Progress loaded successfully');
+      return true;
+    } catch (error) {
+      console.error('Error loading progress from server:', error);
+      ToastService.error('Failed to load progress');
+      return false;
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Initialize
@@ -189,6 +375,11 @@ export function useBusinessOnboarding(businessId?: string) {
     if (businessId) {
       fetchOnboardingStatus();
       fetchBusinessCategories();
+      
+      // Load progress from server
+      loadProgressFromServer().catch(error => {
+        console.error('Error loading progress from server:', error);
+      });
     }
   }, [businessId]);
 
@@ -215,5 +406,8 @@ export function useBusinessOnboarding(businessId?: string) {
     errors,
     setErrors,
     categories: businessCategories,
+    completeOnboarding,
+    saveProgressToServer,
+    loadProgressFromServer,
   };
 } 

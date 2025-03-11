@@ -1,8 +1,10 @@
 'use client';
 
+import { useAuth } from '@/hooks/auth/useAuth';
 import { useBusinessOnboarding } from '@/hooks/business/useBusinessOnboarding';
 import { useLocalStorage } from '@/hooks/core/useLocalStorage';
-import { useToast } from '@/hooks/ui/useToast';
+import { ToastService } from '@/lib/core/toast';
+import { useRouter } from 'next/router';
 import React, { useCallback, useEffect } from 'react';
 import { Button } from '../ui/Button';
 
@@ -218,21 +220,25 @@ const StepIndicator: React.FC<{ currentStep: number; totalSteps: number }> = ({
 /**
  * Save Progress Button component to allow users to save and exit
  */
-const SaveProgressButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+const SaveProgressButton: React.FC<{ onClick: () => void; loading?: boolean }> = ({ onClick, loading }) => {
   return (
     <Button 
       type="button" 
       variant="outline" 
       className="mr-2"
       onClick={onClick}
+      disabled={loading}
     >
-      Save Progress & Exit
+      {loading ? 'Saving...' : 'Save Progress & Exit'}
     </Button>
   );
 };
 
 // Main component
 const BusinessOnboardingWizard: React.FC = () => {
+  const { profile } = useAuth();
+  const businessId = profile?.id;
+  
   const { 
     loading, 
     currentStep, 
@@ -246,11 +252,14 @@ const BusinessOnboardingWizard: React.FC = () => {
     errors,
     setErrors,
     businessCategories,
-    serviceCategories  } = useBusinessOnboarding();
+    serviceCategories,
+    saveProgressToServer,
+    loadProgressFromServer
+  } = useBusinessOnboarding(businessId);
   
-  const { toast } = useToast();
+  const router = useRouter();
   
-  // Add localStorage for progress persistence
+  // Add localStorage for progress persistence (as fallback)
   const [savedProgress, setSavedProgress] = useLocalStorage<{
     lastStep: number;
     data: Record<string, any>;
@@ -259,47 +268,101 @@ const BusinessOnboardingWizard: React.FC = () => {
   
   // Load saved progress if available
   useEffect(() => {
-    if (savedProgress && !loading) {
-      // Only load if saved data is less than 7 days old
-      const savedDate = new Date(savedProgress.timestamp);
-      const now = new Date();
-      const daysDiff = (now.getTime() - savedDate.getTime()) / (1000 * 60 * 60 * 24);
-      
-      if (daysDiff < 7) {
-        updateStepData(savedProgress.data);
-        if (savedProgress.lastStep < totalSteps) {
-          // Go to the saved step
-          setTimeout(() => {
-            for (let i = 0; i < savedProgress.lastStep; i++) {
-              goToNextStep();
+    if (!loading && businessId) {
+      // First try to load from server
+      loadProgressFromServer().then(success => {
+        // If server load fails, try local storage as fallback
+        if (!success && savedProgress) {
+          // Only load if saved data is less than 7 days old
+          const savedDate = new Date(savedProgress.timestamp);
+          const now = new Date();
+          const daysDiff = (now.getTime() - savedDate.getTime()) / (1000 * 60 * 60 * 24);
+          
+          if (daysDiff < 7) {
+            updateStepData(savedProgress.data);
+            if (savedProgress.lastStep < totalSteps) {
+              // Go to the saved step
+              setTimeout(() => {
+                for (let i = 0; i < savedProgress.lastStep; i++) {
+                  goToNextStep();
+                }
+                ToastService.success("Your previous progress has been loaded from local storage.", {
+                  title: "Progress Restored",
+                  duration: 5000
+                });
+              }, 100);
             }
-            toast.success("Your previous progress has been loaded.", {
-              title: "Progress Restored"
-            });
-          }, 100);
+          } else {
+            // Clear expired progress
+            setSavedProgress(null);
+          }
         }
-      } else {
-        // Clear expired progress
-        setSavedProgress(null);
-      }
+      }).catch(error => {
+        console.error('Error loading progress:', error);
+      });
     }
-  }, [loading]);
+  }, [loading, businessId, savedProgress, totalSteps, updateStepData, goToNextStep, loadProgressFromServer, setSavedProgress]);
   
   // Save progress handler
-  const handleSaveProgress = useCallback(() => {
-    setSavedProgress({
-      lastStep: currentStep,
-      data: stepData,
-      timestamp: new Date().toISOString()
-    });
-    
-    toast.success("You can return later to continue your onboarding.", {
-      title: "Progress Saved"
-    });
+  const handleSaveProgress = useCallback(async () => {
+    // First try to save to server
+    if (businessId) {
+      const success = await saveProgressToServer();
+      
+      // If server save fails, save to local storage as fallback
+      if (!success) {
+        setSavedProgress({
+          lastStep: currentStep,
+          data: stepData,
+          timestamp: new Date().toISOString()
+        });
+        
+        ToastService.info("Progress saved locally. For best results, please ensure you're connected to the internet.", {
+          title: "Progress Saved Locally",
+          duration: 5000
+        });
+      } else {
+        // Clear local storage if server save succeeds
+        setSavedProgress(null);
+      }
+    } else {
+      // If no business ID, save to local storage
+      setSavedProgress({
+        lastStep: currentStep,
+        data: stepData,
+        timestamp: new Date().toISOString()
+      });
+      
+      ToastService.info("Progress saved locally. Please log in to save your progress to the server.", {
+        title: "Progress Saved Locally",
+        duration: 5000
+      });
+    }
     
     // Redirect to dashboard or homepage
-    window.location.href = '/dashboard';
-  }, [currentStep, stepData, setSavedProgress, toast]);
+    router.push('/dashboard');
+  }, [currentStep, stepData, setSavedProgress, router, businessId, saveProgressToServer]);
+
+  // Auto-save progress periodically
+  useEffect(() => {
+    // Only auto-save if we have a business ID
+    if (!businessId) return;
+    
+    // Save progress every 2 minutes
+    const autoSaveInterval = setInterval(() => {
+      if (Object.keys(stepData).length > 0) {
+        saveProgressToServer().then(success => {
+          if (success) {
+            console.log('Auto-saved onboarding progress to server');
+          }
+        }).catch(error => {
+          console.error('Error auto-saving progress:', error);
+        });
+      }
+    }, 2 * 60 * 1000); // 2 minutes
+    
+    return () => clearInterval(autoSaveInterval);
+  }, [stepData, businessId, saveProgressToServer]);
 
   const renderCurrentStep = () => {
     switch (currentStep) {
@@ -384,7 +447,7 @@ const BusinessOnboardingWizard: React.FC = () => {
       
       {/* Add a save progress button at the top */}
       <div className="mb-6 flex justify-end">
-        <SaveProgressButton onClick={handleSaveProgress} />
+        <SaveProgressButton onClick={handleSaveProgress} loading={loading} />
       </div>
       
       {renderCurrentStep()}

@@ -24,12 +24,19 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, role: string) => Promise<void>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (newPassword: string) => Promise<void>;
   verifyEmail: (code: string) => Promise<void>;
   resendVerification: () => Promise<void>;
   updateProfile: (data: Partial<AuthProfile>) => Promise<void>;
   refreshSession: () => Promise<void>;
+  validateSession: () => Promise<boolean>;
+  
+  // Additional methods for compatibility with updated components
+  signInWithEmail: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signUpWithEmail: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signInWithGoogle: () => Promise<{ error: AuthError | null }>;
+  updatePasswordWithToken: (token: string, newPassword: string) => Promise<{ error: AuthError | null }>;
 }
 
 /**

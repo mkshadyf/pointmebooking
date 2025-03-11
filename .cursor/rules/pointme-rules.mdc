@@ -1,41 +1,102 @@
 ---
 description: PointMe Project Implementation Guidelines
-globs: 
-alwaysApply: false
+globs: src/components/**/*.tsx, src/hooks/**/
+alwaysApply: true
 ---
 ---
 description: PointMe Project Implementation Guidelines
 globs: ["**/*"]
 alwaysApply: true
-priority: 2
+priority: 3
 ---
 
-### Architectural Enforcement
+# PointMe Project Implementation Guidelines
+
+## Architectural Enforcement
 ```mermaid
 graph TD
-    A[YOLO Mode] --> B[Speed Focus]
-    A --> C[Mobile First]
-    D[Singleton Pattern] --> E[Service Layer]
-    F[Type Safety] --> G[Generated Types]
+    A[Service Layer] --> B[React Components]
+    C[Hooks] --> B
+    D[API Routes] --> A
+    E[Toast Service] --> B
+    F[Auth Service] --> B
+    G[Error Handling] --> H[Centralized Pattern]
 ```
 
-### Code Validation Matrix
+## Code Validation Matrix
 | Category        | Standard                  | Current Compliance |
-|-----------------|---------------------------|--------------------|
-| TypeScript      | Zero Any Types            | 92%                |
-| Supabase        | SSR Package Only          | 100%               |
-| Component Reuse | Existing Before New       | 85%                |
-| Error Handling  | Centralized Pattern       | 78%                |
+|-----------------|---------------------------|-------------------|
+| TypeScript      | Zero Any Types            | 92%               |
+| Supabase        | SSR Package Only          | 100%              |
+| Component Reuse | Existing Before New       | 85%               |
+| Error Handling  | Centralized Pattern       | 78%               |
+| Component Casing| PascalCase Consistency    | In Progress       |
 
-### Automated Checks
-```validation
-- [x] Auth service singleton enforcement
-- [ ] Transformer type assertions
-- [ ] Component casing consistency
-- [x] Supabase client initialization
+## File Structure
+```
+src/
+├── app/                # Next.js app router pages
+├── components/         # UI components
+│   ├── providers/      # Context providers
+│   └── ui/             # Reusable UI components
+├── hooks/              # Custom React hooks
+│   ├── auth/           # Authentication hooks
+│   ├── business/       # Business logic hooks
+│   └── ui/             # UI-related hooks
+├── lib/                # Core services and utilities
+│   ├── core/           # Core functionality
+│   │   ├── auth/       # Authentication services
+│   │   └── toast/      # Toast notification service
+│   └── supabase/       # Supabase client and services
+└── types/              # TypeScript type definitions
 ```
 
-### Priority Stack
+## Coding Standards
+- Use PascalCase for component names (e.g., TextArea not Textarea)
+- Use camelCase for variables, functions, and file names
+- Prefer functional components with hooks over class components
+- Implement proper type definitions (avoid 'any' types)
+- Use index files for clean exports
+- Follow singleton pattern for service implementations
+
+## Critical Services
+
+### Toast Service
+```typescript
+// Correct usage
+ToastService.success('Operation completed successfully');
+ToastService.error('Something went wrong');
+
+// Incorrect usage (deprecated)
+ToastService.toast.success('Operation completed successfully');
+```
+
+### Auth Service
+```typescript
+// Correct usage
+import { AuthService } from '@/lib/core/auth';
+
+// For authentication operations
+await AuthService.signIn(email, password);
+
+// For error handling
+try {
+  await AuthService.signUp(email, password);
+} catch (error) {
+  // Use centralized error handling
+  ErrorService.handleAuthError(error);
+}
+```
+
+## Priority Stack
 1. ![](https://img.icons8.com/color/16/000000/high-priority.png) Auth Service Duplication
-2. ![](https://img.icons8.com/color/16/000000/medium-priority.png) Type Assertions
-3. ![](https://img.icons8.com/color/16/000000/low-priority.png) Component Casing
+2. ![](https://img.icons8.com/color/16/000000/medium-priority.png) Type Assertions in transformers.ts
+3. ![](https://img.icons8.com/color/16/000000/medium-priority.png) Component Casing Standardization
+4. ![](https://img.icons8.com/color/16/000000/low-priority.png) Error Handling Centralization
+
+## Documentation Requirements
+- Update `PROGRESS.md` after each development session
+- Update `IMPLEMENTATION_ROADMAP.md` for timeline changes
+- Create session summaries in `COMPOSER_SESSION_SUMMARY.md`
+- Document AI contributions and learning points
+- Use the `AI_SESSION_TEMPLATE.md` for new AI-assisted sessions

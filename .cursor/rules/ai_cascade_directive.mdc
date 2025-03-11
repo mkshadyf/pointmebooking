@@ -1,0 +1,70 @@
+---
+description: PointMe AI Cascade Directive
+globs: 
+alwaysApply: true
+---
+ ---
+description: PointMe AI Cascade Directive
+globs: ["**/*"]
+alwaysApply: true
+priority: 1
+---
+
+# PointMe AI Cascade Directive
+
+This directive provides guidelines for AI assistants to maintain continuity and consistency across development sessions in the PointMe project.
+
+## Project Context
+
+PointMe is a Next.js application with TypeScript that provides a platform for connecting businesses with customers through location-based services. The application uses Supabase for backend services and follows a service-oriented architecture.
+
+## Cascade Principles
+
+1. **Continuity**: Each AI interaction should build upon previous sessions
+2. **Consistency**: Maintain consistent coding patterns and architectural decisions
+3. **Context-Awareness**: Consider the full project context when making suggestions
+4. **Documentation**: Update documentation to reflect changes and decisions
+
+## Development Workflow
+
+### 1. Session Start
+- Review current status in `PROGRESS.md`
+- Check next steps in `IMPLEMENTATION_ROADMAP.md`
+- Understand active issues and priorities
+
+### 2. During Development
+- Follow established coding standards and patterns
+- Maintain type safety (avoid 'any' types)
+- Use singleton pattern for services
+- Follow component naming conventions (PascalCase)
+
+### 3. Session End
+- Update progress tracking documents
+- Document AI contributions
+- Note any learning points or challenges
+
+## Critical Areas
+
+### Toast Service
+- Use direct methods: `ToastService.success()` not `ToastService.toast.success()`
+- Ensure proper error handling with toast notifications
+
+### Authentication
+- Use centralized AuthService
+- Handle authentication errors consistently
+- Provide clear user feedback for auth operations
+
+### Component Standardization
+- Use consistent casing (TextArea, not Textarea)
+- Follow established component patterns
+
+### Type Safety
+- Prioritize improving type assertions in transformers.ts
+- Work toward eliminating 'any' types (current compliance: 92%)
+
+## Documentation Requirements
+
+- Update `PROGRESS.md` after each session
+- Update `IMPLEMENTATION_ROADMAP.md` for timeline changes
+- Create session summaries in `COMPOSER_SESSION_SUMMARY.md`
+- Document AI contributions and learning points
