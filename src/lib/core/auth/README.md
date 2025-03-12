@@ -2,15 +2,15 @@
 
 ## Important Notice: Auth Service Consolidation
 
-> **DEPRECATED**: The simplified auth service (`auth-service.ts`) is deprecated and will be removed in a future version. Please use the comprehensive auth service from `@/lib/supabase/services/auth/auth.service.ts` instead.
+> **REMOVED**: The simplified auth service (`auth-service.ts`) has been removed. Please use the comprehensive auth service from `@/lib/supabase/services/auth/auth.service.ts` instead.
 
-This directory contains a compatibility layer for the authentication service that forwards calls to the comprehensive auth service. This approach allows for a gradual migration without breaking existing code.
+This directory now contains only a compatibility layer that re-exports the comprehensive auth service. All functionality has been moved to the comprehensive auth service.
 
 ## Migration Guide
 
 ### For Component Usage
 
-**Old approach (deprecated):**
+**Old approach (no longer available):**
 ```tsx
 import { useAuthService } from '@/hooks/auth/useAuthService';
 
@@ -48,7 +48,7 @@ function LoginForm() {
 
 ### For Direct Service Usage
 
-**Old approach (deprecated):**
+**Old approach (no longer available):**
 ```tsx
 import { AuthService } from '@/lib/core/auth/auth-service';
 
@@ -64,9 +64,17 @@ import { authService } from '@/lib/supabase/services/auth/auth.service';
 await authService.login({ email, password });
 ```
 
+**Compatibility layer (temporary):**
+```tsx
+import { AuthService } from '@/lib/core/auth';
+
+// Usage - this still works but is deprecated
+await AuthService.signInWithEmail(email, password);
+```
+
 ## Method Mapping
 
-| Deprecated Method (AuthService) | Recommended Method (authService) |
+| Old Method (AuthService) | New Method (authService) |
 |--------------------------------|--------------------------------|
 | `signInWithEmail(email, password)` | `login({ email, password })` |
 | `signUpWithEmail(email, password)` | `register({ email, password, role })` |
@@ -74,9 +82,9 @@ await authService.login({ email, password });
 | `signOut()` | `logout()` |
 | `resetPassword(email)` | `resetPassword(email)` |
 
-## Additional Features in Comprehensive Auth Service
+## Features in Comprehensive Auth Service
 
-The comprehensive auth service provides additional functionality not available in the simplified version:
+The comprehensive auth service provides extensive functionality:
 
 1. **Profile Management**
    - `getProfile()` - Get the user profile
@@ -98,8 +106,8 @@ The comprehensive auth service provides additional functionality not available i
 
 ## Implementation Details
 
-The simplified auth service now forwards all calls to the comprehensive auth service, ensuring backward compatibility while encouraging migration to the new service.
+The compatibility layer in this directory now simply re-exports the comprehensive auth service, ensuring backward compatibility while encouraging migration to the new service directly.
 
 ## Future Plans
 
-In a future release, the simplified auth service will be fully removed. All code should migrate to using the comprehensive auth service directly. 
+In a future release, this compatibility layer will also be removed. All code should migrate to importing the comprehensive auth service directly from `@/lib/supabase/services/auth/auth.service.ts`. 

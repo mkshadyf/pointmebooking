@@ -1,8 +1,24 @@
 'use client';
 
 import { Button } from '@/components/ui/Button';
+import { interceptError, isEmptyError } from '@/lib/error/error-interceptor';
 import { logError } from '@/lib/error/error-logger';
 import { Component, ErrorInfo, ReactNode } from 'react';
+
+// Custom interface to match our intercepted errors
+interface InterceptedError extends Error {
+  __intercepted?: boolean;
+  __source?: string;
+  __timestamp?: string;
+  __context?: Record<string, any>;
+  __diagnostics?: {
+    originalType: string;
+    hasMessage: boolean;
+    hasStack: boolean;
+    intercepted: boolean;
+    wasEmpty?: boolean;
+  };
+}
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -27,15 +43,36 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    // Intercept empty errors before updating state
+    if (isEmptyError(error)) {
+      error = interceptError(error, 'ErrorBoundary.getDerivedStateFromError', {
+        location: typeof window !== 'undefined' ? window.location.href : 'SSR'
+      });
+    }
+    
     // Update state so the next render will show the fallback UI
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    // Intercept empty errors before logging
+    if (isEmptyError(error)) {
+      console.warn('[ErrorBoundary] Empty error caught in componentDidCatch', {
+        componentStack: errorInfo.componentStack,
+        location: typeof window !== 'undefined' ? window.location.href : 'SSR',
+        timestamp: new Date().toISOString()
+      });
+      
+      error = interceptError(error, 'ErrorBoundary.componentDidCatch', {
+        componentStack: errorInfo.componentStack,
+        location: typeof window !== 'undefined' ? window.location.href : 'SSR'
+      });
+    }
+    
     // Log the error to our error logging service
     logError(error, undefined, {
       componentStack: errorInfo.componentStack,
-      location: window.location.href
+      location: typeof window !== 'undefined' ? window.location.href : 'SSR'
     });
   }
 
@@ -58,6 +95,11 @@ interface ErrorFallbackProps {
  * Default fallback UI for the ErrorBoundary
  */
 function DefaultErrorFallback({ error, reset }: ErrorFallbackProps): JSX.Element {
+  // Handle the case where error is empty but somehow slipped through
+  const errorMessage = error && error.message
+    ? error.message
+    : 'An unknown error occurred. Our team has been notified.';
+  
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] p-6 bg-white rounded-lg shadow-sm border border-gray-100">
       <div className="w-full max-w-md text-center">
@@ -71,11 +113,14 @@ function DefaultErrorFallback({ error, reset }: ErrorFallbackProps): JSX.Element
           <p className="text-gray-600 mb-4">
             We've encountered an unexpected error. Our team has been notified and is working to fix the issue.
           </p>
-          {error && (
-            <div className="p-3 bg-gray-50 rounded-md text-sm text-left mb-4 overflow-auto max-h-[150px]">
-              <p className="font-mono text-red-600">{error.message}</p>
-            </div>
-          )}
+          <div className="p-3 bg-gray-50 rounded-md text-sm text-left mb-4 overflow-auto max-h-[150px]">
+            <p className="font-mono text-red-600">{errorMessage}</p>
+            {error && error.__intercepted && (
+              <p className="font-mono text-gray-500 text-xs mt-2">
+                Error intercepted from: {error.__source || 'unknown source'}
+              </p>
+            )}
+          </div>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button onClick={reset} variant="default">
               Try Again

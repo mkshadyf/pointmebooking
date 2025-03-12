@@ -1,0 +1,88 @@
+name: Commit Tracking
+
+on:
+  push:
+    branches: [ '**' ]
+
+jobs:
+  track-commits:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Log commit details
+        run: |
+          echo "Commit by: ${{ github.actor }}"
+          echo "Commit message: ${{ github.event.head_commit.message }}"
+          echo "Commit timestamp: ${{ github.event.head_commit.timestamp }}"
+          echo "Files changed:"
+          git diff-tree --no-commit-id --name-only -r ${{ github.sha }}
+
+      - name: Update commit history file
+        run: |
+          mkdir -p .github/commit-history
+          COMMIT_DATE=$(date +"%Y-%m-%d")
+          COMMIT_FILE=".github/commit-history/commits-$COMMIT_DATE.md"
+          
+          echo "## Commit on $(date)" >> $COMMIT_FILE
+          echo "- Author: ${{ github.actor }}" >> $COMMIT_FILE
+          echo "- Message: ${{ github.event.head_commit.message }}" >> $COMMIT_FILE
+          echo "- Files changed:" >> $COMMIT_FILE
+          git diff-tree --no-commit-id --name-only -r ${{ github.sha }} | sed 's/^/  - /' >> $COMMIT_FILE
+          echo "" >> $COMMIT_FILE
+          
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add $COMMIT_FILE
+          git commit -m "docs(commit-history): update commit history [skip ci]"
+          git push
+
+      - name: Generate commit statistics
+        run: |
+          mkdir -p .github/commit-stats
+          
+          # Daily stats
+          DAILY_STATS=".github/commit-stats/daily-stats-$(date +"%Y-%m-%d").json"
+          echo "{" > $DAILY_STATS
+          echo "  \"date\": \"$(date +"%Y-%m-%d")\"," >> $DAILY_STATS
+          echo "  \"total_commits\": $(git rev-list --count --since="00:00" --until="23:59" HEAD)," >> $DAILY_STATS
+          echo "  \"authors\": {" >> $DAILY_STATS
+          git shortlog -sne --since="00:00" --until="23:59" | sed 's/^\s*\([0-9]*\)\s*\(.*\)$/    "\2": \1,/' >> $DAILY_STATS
+          echo "    \"end\": 0" >> $DAILY_STATS
+          echo "  }," >> $DAILY_STATS
+          echo "  \"files_changed\": $(git diff-tree --no-commit-id --name-only -r ${{ github.sha }} | wc -l)" >> $DAILY_STATS
+          echo "}" >> $DAILY_STATS
+          
+          git add $DAILY_STATS
+          git commit -m "docs(commit-stats): update daily commit statistics [skip ci]"
+          git push
+
+      - name: Check for AI assistance
+        run: |
+          if [[ "${{ github.event.head_commit.message }}" == *"[AI-assisted]"* ]]; then
+            mkdir -p .github/ai-contributions
+            AI_CONTRIB_FILE=".github/ai-contributions/ai-contrib-$(date +"%Y-%m-%d").md"
+            
+            echo "## AI-Assisted Commit on $(date)" >> $AI_CONTRIB_FILE
+            echo "- Author: ${{ github.actor }}" >> $AI_CONTRIB_FILE
+            echo "- Message: ${{ github.event.head_commit.message }}" >> $AI_CONTRIB_FILE
+            echo "- Files changed:" >> $AI_CONTRIB_FILE
+            git diff-tree --no-commit-id --name-only -r ${{ github.sha }} | sed 's/^/  - /' >> $AI_CONTRIB_FILE
+            echo "" >> $AI_CONTRIB_FILE
+            
+            git add $AI_CONTRIB_FILE
+            git commit -m "docs(ai-contributions): update AI contribution log [skip ci]"
+            git push
+          fi 

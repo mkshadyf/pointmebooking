@@ -47,10 +47,33 @@ src/
 │   ├── (auth)/            # Authentication routes
 │   └── api/               # API routes
 ├── components/            # Reusable components
-├── context/              # React context
-├── lib/                  # Utilities and store
-└── types/               # TypeScript types
+├── context/               # React context
+├── hooks/                 # Custom React hooks
+│   ├── auth/              # Authentication hooks
+│   └── ...                # Other hooks
+├── lib/                   # Utilities and store
+│   ├── core/              # Core functionality
+│   ├── error/             # Error handling utilities
+│   ├── supabase/          # Supabase services
+│   └── ...                # Other utilities
+└── types/                 # TypeScript types
 ```
+
+## Authentication System
+
+The project uses a comprehensive authentication system built on top of Supabase Auth:
+
+- **Authentication Hooks**: 
+  - `useAuth`: The main hook for all authentication operations
+  - Backward compatibility maintained for legacy code
+
+- **Error Handling**:
+  - Consistent error handling across all authentication flows
+  - User-friendly error messages
+
+- **Loading States**:
+  - Visual feedback during authentication operations
+  - Operation-specific loading messages
 
 ## Contributing
 
@@ -59,6 +82,13 @@ src/
 3. Commit your changes
 4. Push to the branch
 5. Open a Pull Request
+
+## Development Practices
+
+- **TypeScript**: Strict type checking enabled
+- **CI/CD**: Automated checks for TypeScript errors and linting
+- **Conventional Commits**: Use semantic commit messages
+- **Documentation**: Keep documentation updated with code changes
 
 ## License
 

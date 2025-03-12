@@ -26,6 +26,7 @@ export class AuthService extends BaseServiceUtils {
   
   /**
    * Get the singleton instance of AuthService
+   * @deprecated Use the exported 'authService' singleton instead
    */
   public static getInstance(): AuthService {
     if (!AuthService.instance) {
@@ -564,7 +565,10 @@ export class AuthService extends BaseServiceUtils {
   }
 }
 
-// Export the singleton instance
+/**
+ * Singleton instance of AuthService
+ * Use this instead of AuthService.getInstance() for more consistent code
+ */
 export const authService = AuthService.getInstance();
 
 // Static wrapper for backward compatibility

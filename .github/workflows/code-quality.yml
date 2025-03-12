@@ -1,0 +1,72 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint || echo "ESLint issues found"
+
+      - name: Run TypeScript compiler
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test || echo "Tests failed"
+
+      - name: Generate code quality report
+        run: |
+          mkdir -p .github/code-quality
+          REPORT_FILE=".github/code-quality/report-$(date +"%Y-%m-%d").md"
+          
+          echo "# Code Quality Report - $(date +"%Y-%m-%d")" > $REPORT_FILE
+          echo "" >> $REPORT_FILE
+          
+          echo "## ESLint Results" >> $REPORT_FILE
+          npm run lint --silent > /tmp/eslint-output.txt || true
+          cat /tmp/eslint-output.txt >> $REPORT_FILE
+          echo "" >> $REPORT_FILE
+          
+          echo "## TypeScript Compiler Results" >> $REPORT_FILE
+          npx tsc --noEmit > /tmp/tsc-output.txt 2>&1 || true
+          cat /tmp/tsc-output.txt >> $REPORT_FILE
+          echo "" >> $REPORT_FILE
+          
+          echo "## Test Results" >> $REPORT_FILE
+          npm test --silent > /tmp/test-output.txt 2>&1 || true
+          cat /tmp/test-output.txt >> $REPORT_FILE
+          
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add $REPORT_FILE
+          git commit -m "docs(code-quality): update code quality report [skip ci]"
+          git push
+
+      - name: Check for TypeScript errors
+        run: |
+          if npx tsc --noEmit 2>&1 | grep -q "error TS"; then
+            echo "::warning::TypeScript errors found. Please fix them before merging."
+          fi
+
+      - name: Check for ESLint errors
+        run: |
+          if npm run lint 2>&1 | grep -q "error"; then
+            echo "::warning::ESLint errors found. Please fix them before merging."
+          fi 

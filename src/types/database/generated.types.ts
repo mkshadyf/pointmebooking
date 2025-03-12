@@ -7,31 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          operationName?: string
-          query?: string
-          variables?: Json
-          extensions?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       account_lockouts: {
@@ -304,6 +279,41 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      onboarding_progress: {
+        Row: {
+          business_id: string
+          created_at: string
+          data: Json
+          id: string
+          step_number: number
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          data?: Json
+          id?: string
+          step_number: number
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          step_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_progress_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {

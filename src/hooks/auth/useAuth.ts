@@ -263,20 +263,31 @@ export function useAuth({
   
   // Method to handle login
   const login = useCallback(async (email: string, password: string) => {
+    console.log('useAuth.login called with email:', email);
     setIsLoading(true);
-    setError(null);
     try {
-      await authService.login({ email, password });
-    } catch (err) {
-      const customError = convertToAuthError(err);
-      // Use setState with a function to avoid type issues
-      setError(() => customError);
-      if (onError) onError(customError as any);
-      throw customError;
+      console.log('Calling authService.login...');
+      const { data, error } = await authService.login({ email, password });
+      console.log('authService.login result:', { data, error });
+      
+      if (error) {
+        console.error('Error from authService.login:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        console.error('No data returned from authService.login');
+        throw new Error('Login failed. No session data returned.');
+      }
+      
+      console.log('Login successful, session:', data);
+    } catch (error) {
+      console.error('Error in login method:', error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
-  }, [onError]);
+  }, []);
   
   // Method to handle registration
   const register = useCallback(async (email: string, password: string, role: string) => {
@@ -555,16 +566,24 @@ export function useAuth({
     validateSession,
     
     // Additional methods for compatibility with updated components
-    signInWithEmail: async (email: string, password: string) => {
+    signInWithEmail: async (email: string, password: string): Promise<{ error: AuthError | null }> => {
       setIsLoading(true);
       setError(null);
+
       try {
-        await login(email, password);
+        const result = await authService.login({ email, password });
+
+        if (result.error) {
+          setError(result.error);
+          if (onError) onError(result.error);
+          return { error: result.error };
+        }
+
         return { error: null };
       } catch (err) {
         const customError = convertToAuthError(err);
-        setError(() => customError);
-        if (onError) onError(customError as any);
+        setError(customError);
+        if (onError) onError(customError);
         return { error: customError };
       } finally {
         setIsLoading(false);

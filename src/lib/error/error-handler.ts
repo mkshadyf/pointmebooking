@@ -40,6 +40,22 @@
  * ```
  */
 
+// Error handler options interface
+export interface ErrorHandler {
+  // Whether to show a toast notification
+  showToast?: boolean;
+  // Context of where the error occurred (component, function, etc.)
+  context?: string;
+  // Action being performed when the error occurred
+  action?: string;
+  // User ID associated with the error
+  userId?: string;
+  // Function to set error message state in a component
+  setErrorMessage?: (message: string | null) => void;
+  // Any additional options
+  [key: string]: any;
+}
+
 // Error codes for better error identification
 export enum ErrorCode {
   // Auth errors

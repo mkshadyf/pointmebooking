@@ -1,8 +1,3 @@
----
-description: PointMe AI Agent Workflow
-globs: *.tsx, *.ts, *.md
-alwaysApply: true
----
 # PointMe AI Agent Workflow
 
 This document outlines the workflow for AI agents (Claude 3.7 Sonnet) working in the Cursor IDE on the PointMe project.
@@ -209,4 +204,4 @@ For each session, create or update a session document with:
    - Follow Conventional Commits format for all commit suggestions
    - Tag AI-assisted commits appropriately
    - Ensure all changes pass CI checks before completion
-   - Document CI/CD status in session records
+   - Document CI/CD status in session records 

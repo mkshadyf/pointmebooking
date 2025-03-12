@@ -82,15 +82,15 @@ export interface AuthContextType {
     error: AuthError | null;
     
     // Auth actions
-    login: (email: string, password: string) => Promise<void>;
-    register: (email: string, password: string, role: AuthRole) => Promise<void>;
-    signOut: () => Promise<void>;
-    updateProfile: (data: Partial<AuthProfile>) => Promise<void>;
-    verifyEmail: (code: string) => Promise<void>;
-    resendVerification: () => Promise<void>;
-    resetPassword: (email: string) => Promise<void>;
-    updatePassword: (newPassword: string) => Promise<void>;
-    refreshSession: () => Promise<void>;
+    login: (email: string, password: string) => Promise<AuthResponse<AuthResult>>;
+    register: (email: string, password: string, role: AuthRole) => Promise<AuthResponse<AuthResult>>;
+    signOut: () => Promise<AuthResponse<void>>;
+    updateProfile: (data: Partial<AuthProfile>) => Promise<AuthResponse<AuthProfile>>;
+    verifyEmail: (code: string) => Promise<AuthResponse<void>>;
+    resendVerification: () => Promise<AuthResponse<void>>;
+    resetPassword: (email: string) => Promise<AuthResponse<void>>;
+    updatePassword: (newPassword: string) => Promise<AuthResponse<void>>;
+    refreshSession: () => Promise<AuthResponse<AuthResult>>;
 }
 
 // Auth verification constants

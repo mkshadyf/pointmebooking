@@ -1,3 +1,4 @@
+import type { Database } from '@/types/database/generated.types';
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -9,8 +10,12 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ 
-      req: req as any, 
+  
+  // Create the Supabase middleware client
+  // Note: Using 'as any' here due to type incompatibilities between Next.js and Supabase
+  // This is a known issue with the Supabase auth helpers and Next.js types
+  const supabase = createMiddlewareClient<Database>({ 
+    req: req as any, 
     res: res as any 
   });
   
@@ -53,32 +58,34 @@ export async function middleware(req: NextRequest) {
   
   // If the user is authenticated, get the user profile
   if (session) {
-    const { data: profile } = await supabase
+    const { data: profile, error } = await supabase
       .from('profiles')
       .select('role, onboarding_completed')
       .eq('user_id', session.user.id)
       .single();
     
-    // If it's a business route, but the user is not a business
-    if (isBusinessRoute && profile && profile.role !== 'business') {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
-    }
-    
-    // If it's an admin route, but the user is not an admin
-    if (isAdminRoute && profile && profile.role !== 'admin') {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
-    }
-    
-    // If the user is a business but hasn't completed onboarding
-    // and tries to access a business route (except onboarding)
-    if (
-      profile && 
-      profile.role === 'business' && 
-      !profile.onboarding_completed &&
-      isBusinessRoute &&
-      !path.startsWith('/onboarding/business')
-    ) {
-      return NextResponse.redirect(new URL('/onboarding/business', req.url));
+    // Only proceed with profile checks if there's no error and profile exists
+    if (!error && profile) {
+      // If it's a business route, but the user is not a business
+      if (isBusinessRoute && profile.role !== 'business') {
+        return NextResponse.redirect(new URL('/dashboard', req.url));
+      }
+      
+      // If it's an admin route, but the user is not an admin
+      if (isAdminRoute && profile.role !== 'admin') {
+        return NextResponse.redirect(new URL('/dashboard', req.url));
+      }
+      
+      // If the user is a business but hasn't completed onboarding
+      // and tries to access a business route (except onboarding)
+      if (
+        profile.role === 'business' && 
+        !profile.onboarding_completed &&
+        isBusinessRoute &&
+        !path.startsWith('/onboarding/business')
+      ) {
+        return NextResponse.redirect(new URL('/onboarding/business', req.url));
+      }
     }
   }
   

@@ -3,16 +3,31 @@
  * 
  * This file provides backward compatibility with the old authFeedback module
  * to ease the transition to the new core services.
+ * 
+ * @deprecated This module will be removed on 2024-10-01. Use services from '@/lib/supabase/services/auth/auth.service.ts' directly instead.
+ * See AUTH_COMPAT_REMOVAL_PLAN.md for details on the removal timeline.
  */
 
-import { AuthService } from '../auth';
+import { authService } from '@/lib/supabase/services/auth/auth.service';
 import { ErrorService } from '../error';
 import { ToastService } from '../toast';
+
+// Log a warning when this module is imported
+const showDeprecationWarning = () => {
+  console.warn(
+    'The auth compatibility functions from @/lib/core/compat/auth-compat.ts are deprecated and will be removed on 2024-10-01. ' +
+    'Use authService methods directly instead. ' +
+    'See AUTH_COMPAT_REMOVAL_PLAN.md for details.'
+  );
+};
+
+// Show warning on import
+showDeprecationWarning();
 
 /**
  * Compatibility function for withAuthFeedback
  * 
- * @deprecated Use AuthService directly instead
+ * @deprecated This function will be removed on 2024-10-01. Use authService methods directly instead.
  */
 export const withAuthFeedback = async <T,>(
   operation: string,
@@ -20,6 +35,13 @@ export const withAuthFeedback = async <T,>(
   successMessage?: string,
   debugInfo?: Record<string, any>
 ): Promise<T> => {
+  // Show deprecation warning on usage
+  console.warn(
+    'withAuthFeedback is deprecated and will be removed on 2024-10-01. ' +
+    'Use authService methods directly instead. ' +
+    'See AUTH_COMPAT_REMOVAL_PLAN.md for details.'
+  );
+  
   try {
     // Execute the operation
     const result = await fn();
@@ -45,7 +67,7 @@ export const withAuthFeedback = async <T,>(
 /**
  * Compatibility function for handleAuthFeedback
  * 
- * @deprecated Use AuthService directly instead
+ * @deprecated This function will be removed on 2024-10-01. Use authService methods directly instead.
  */
 export const handleAuthFeedback = async (
   operation: string,
@@ -53,15 +75,22 @@ export const handleAuthFeedback = async (
   successMessage?: string,
   debugInfo?: Record<string, any>
 ) => {
+  // Show deprecation warning on usage
+  console.warn(
+    'handleAuthFeedback is deprecated and will be removed on 2024-10-01. ' +
+    'Use authService methods directly instead. ' +
+    'See AUTH_COMPAT_REMOVAL_PLAN.md for details.'
+  );
+  
   if (error) {
-    // Handle error
+    // Log the error with debug info
     ErrorService.handleError(error, {
       context: `Auth operation: ${operation}`,
       additionalData: debugInfo
     });
     
-    // Show error toast
-    ToastService.error(error.message || 'An error occurred');
+    // Show error message
+    ToastService.error(error.message || `Error during ${operation}`);
   } else if (successMessage) {
     // Show success message
     ToastService.success(successMessage);
@@ -81,12 +110,12 @@ export const AUTH_ERROR_MESSAGES: Record<string, string> = {
 
 /**
  * Legacy auth functions for backward compatibility
- * @deprecated Use AuthService directly instead
+ * @deprecated Use authService directly instead
  */
 export const auth = {
   /**
    * Sign in with email and password
-   * @deprecated Use AuthService.signInWithEmail directly instead
+   * @deprecated Use authService.login directly instead
    */
   signInWithEmail: async (email: string, password: string, options?: { 
     successMessage?: string;
@@ -97,15 +126,15 @@ export const auth = {
     const successMessage = options?.successMessage || 'Signed in successfully';
     
     try {
-      const result = await AuthService.signInWithEmail(email, password);
+      const { data, error } = await authService.login({ email, password });
       
-      if (result.success) {
+      if (!error) {
         if (showToast) {
           ToastService.success(successMessage);
         }
-        return { success: true, data: result.data };
+        return { success: true, data };
       } else {
-        return { success: false, error: result.error };
+        return { success: false, error };
       }
     } catch (error) {
       return { success: false, error };
@@ -114,7 +143,7 @@ export const auth = {
   
   /**
    * Sign up with email and password
-   * @deprecated Use AuthService.signUpWithEmail directly instead
+   * @deprecated Use authService.register directly instead
    */
   signUpWithEmail: async (email: string, password: string, options?: {
     successMessage?: string;
@@ -125,18 +154,22 @@ export const auth = {
     const successMessage = options?.successMessage || 'Account created successfully';
     
     try {
-      const result = await AuthService.signUpWithEmail(email, password);
+      const { data, error } = await authService.register({ 
+        email, 
+        password, 
+        role: 'customer' // Default role
+      });
       
-      if (result.success) {
+      if (!error) {
         if (showToast) {
           ToastService.success(successMessage);
         }
-        return { success: true, data: result.data };
+        return { success: true, data };
       } else {
-        if (showToast && result.error) {
-          ToastService.error(result.error.message || 'An error occurred');
+        if (showToast) {
+          ToastService.error(error.message || 'An error occurred');
         }
-        return { success: false, error: result.error };
+        return { success: false, error };
       }
     } catch (error: any) {
       if (showToast) {
@@ -148,7 +181,7 @@ export const auth = {
   
   /**
    * Sign out
-   * @deprecated Use AuthService.signOut directly instead
+   * @deprecated Use authService.logout directly instead
    */
   signOut: async (options?: {
     successMessage?: string;
@@ -159,15 +192,15 @@ export const auth = {
     const successMessage = options?.successMessage || 'Signed out successfully';
     
     try {
-      const result = await AuthService.signOut();
+      const { error } = await authService.logout();
       
-      if (result.success) {
+      if (!error) {
         if (showToast) {
           ToastService.success(successMessage);
         }
         return { success: true };
       } else {
-        return { success: false, error: result.error };
+        return { success: false, error };
       }
     } catch (error) {
       return { success: false, error };

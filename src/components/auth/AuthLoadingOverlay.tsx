@@ -1,78 +1,121 @@
 'use client';
 
-import { Spinner } from '@/components/ui/Spinner';
 import { useAuth } from '@/hooks/auth/useAuth';
-import { cn } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
-
-// Map of operation names to user-friendly loading messages
-const OPERATION_MESSAGES: Record<string, string> = {
-  login: 'Signing you in...',
-  register: 'Creating your account...',
-  signOut: 'Signing you out...',
-  googleSignIn: 'Signing in with Google...',
-  resetPassword: 'Sending password reset email...',
-  verifyEmail: 'Verifying your email...',
-  updateProfile: 'Updating your profile...',
-  deleteAccount: 'Deleting your account...',
-  // Add more operations as needed
-};
 
 /**
  * A loading overlay that displays during authentication operations
  */
 export interface AuthLoadingOverlayProps {
   className?: string;
+  forceShow?: boolean;
+  message?: string;
+  isSubmitting?: boolean;
 }
 
-export const AuthLoadingOverlay: React.FC<AuthLoadingOverlayProps> = ({ className }) => {
-  // Get the auth state from the auth hook
-  const auth = useAuth();
-  const [currentOperation, setCurrentOperation] = useState<string | null>(null);
+export function AuthLoadingOverlay({ 
+  className = '',
+  forceShow = false, 
+  message,
+  isSubmitting = false 
+}: AuthLoadingOverlayProps) {
+  const { isLoading } = useAuth();
+  const pathname = usePathname();
+  const [currentOperation, setCurrentOperation] = useState('authenticating');
+  const [visible, setVisible] = useState(false);
   
-  // Track loading state
+  // Debug logging for component state
   useEffect(() => {
-    if (auth.isLoading) {
-      // Try to determine the current operation based on context
-      // This is a simplified approach - in a real app, you might want to track this more precisely
-      if (window.location.pathname.includes('login')) {
-        setCurrentOperation('login');
-      } else if (window.location.pathname.includes('register')) {
-        setCurrentOperation('register');
-      } else if (window.location.pathname.includes('reset-password')) {
-        setCurrentOperation('resetPassword');
-      } else if (window.location.pathname.includes('verify-email')) {
-        setCurrentOperation('verifyEmail');
-      } else {
-        setCurrentOperation(null);
-      }
-    }
-  }, [auth.isLoading]);
+    console.log('AuthLoadingOverlay: Component mounted/updated');
+  }, []);
   
-  // If not loading, don't render anything
-  if (!auth.isLoading) {
+  // Determine the current operation based on the URL path
+  useEffect(() => {
+    if (pathname?.includes('login')) {
+      setCurrentOperation('signing in');
+    } else if (pathname?.includes('register')) {
+      setCurrentOperation('creating your account');
+    } else if (pathname?.includes('forgot-password')) {
+      setCurrentOperation('sending reset instructions');
+    } else if (pathname?.includes('reset-password')) {
+      setCurrentOperation('resetting your password');
+    } else {
+      setCurrentOperation('authenticating');
+    }
+  }, [pathname]);
+
+  // Enhanced debug logging for loading state
+  useEffect(() => {
+    console.log('AuthLoadingOverlay: State update', { 
+      isLoading, 
+      isSubmitting, 
+      forceShow, 
+      pathname,
+      visible,
+      currentOperation
+    });
+  }, [isLoading, isSubmitting, forceShow, pathname, visible, currentOperation]);
+
+  // Force immediate visibility when props change
+  useEffect(() => {
+    if (isLoading || isSubmitting || forceShow) {
+      console.log('AuthLoadingOverlay: Setting visible to true IMMEDIATELY', { 
+        isLoading, 
+        isSubmitting, 
+        forceShow 
+      });
+      // Force immediate visibility
+      setVisible(true);
+    }
+  }, [isLoading, isSubmitting, forceShow]);
+
+  // Handle hiding with delay to prevent flickering
+  useEffect(() => {
+    // Only proceed with hiding if we're not in a state that should show the overlay
+    if (!isLoading && !isSubmitting && !forceShow) {
+      console.log('AuthLoadingOverlay: Scheduling hide with delay');
+      const timer = setTimeout(() => {
+        console.log('AuthLoadingOverlay: Now hiding overlay after delay');
+        setVisible(false);
+      }, 500); // Increased delay for smoother transitions
+      
+      return () => {
+        console.log('AuthLoadingOverlay: Clearing hide timer');
+        clearTimeout(timer);
+      };
+    }
+  }, [isLoading, isSubmitting, forceShow]);
+
+  // Enhanced logging for visibility changes
+  useEffect(() => {
+    console.log('AuthLoadingOverlay: Visibility changed to', visible);
+  }, [visible]);
+
+  // If not visible, don't render anything
+  if (!visible) {
+    console.log('AuthLoadingOverlay: Not rendering (not visible)');
     return null;
   }
-  
-  // Get the appropriate message for the current operation
-  const message = currentOperation ? 
-    (OPERATION_MESSAGES[currentOperation] || 'Loading...') : 
-    'Processing...';
-  
+
+  // Custom message or default based on operation
+  const displayMessage = message || `We're ${currentOperation}...`;
+  console.log('AuthLoadingOverlay: Rendering with message:', displayMessage);
+
   return (
-    <div 
-      className={cn(
-        'fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm',
-        className
-      )}
-    >
-      <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center">
-        <Spinner size="lg" />
-        <p className="mt-4 text-gray-700 font-medium">{message}</p>
+    <div className={`fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex flex-col items-center justify-center transition-opacity duration-500 ${className}`}>
+      <div className="flex flex-col items-center space-y-6 p-10 rounded-lg bg-white shadow-2xl border border-gray-200 max-w-md w-full mx-4">
+        <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-blue-600"></div>
+        <div className="text-center">
+          <h3 className="text-2xl font-semibold text-gray-900">Please wait</h3>
+          <p className="mt-3 text-lg text-gray-700">
+            {displayMessage}
+          </p>
+        </div>
       </div>
     </div>
   );
-};
+}
 
 /**
  * Higher-order component that wraps a component with the AuthLoadingOverlay

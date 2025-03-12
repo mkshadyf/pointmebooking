@@ -18,16 +18,20 @@ const patterns = {
   withAuthFeedback: /withAuthFeedback/,
   logError: /logError\(/,
   showToast: /showToast\(/,
+  authServiceImport: /import.*\{\s*AuthService\s*\}.*from.*['"](\.\.\/|@\/)lib\/supabase\/services\/auth\/auth\.service['"]/,
+  authService: /authService\./,
 };
 
 // Replacement suggestions
 const replacements = {
-  authFeedback: "import { AuthService } from '@/lib/core/auth';",
-  errorLogger: "import { ErrorService } from '@/lib/core/error';",
+  authFeedback: "import { useAuth } from '@/lib/supabase/auth/context/AuthContext';",
+  errorLogger: "import { convertToAuthError } from '@/lib/error/auth-error-utils';",
   useToast: "import { ToastService } from '@/lib/core/toast';",
-  withAuthFeedback: "// Replace withAuthFeedback with AuthService methods",
-  logError: "ErrorService.handleError",
+  withAuthFeedback: "// Replace withAuthFeedback with useAuth() hook methods",
+  logError: "console.error",
   showToast: "ToastService.success/error/warning/info",
+  authServiceImport: "import { authService } from '@/lib/supabase/services/auth/auth.service';",
+  authService: "authService",
 };
 
 // For compatibility during transition
@@ -37,6 +41,8 @@ const compatReplacements = {
   withAuthFeedback: "compat.withAuthFeedback",
   logError: "compat.logError",
   showToast: "compat.showToast",
+  authServiceImport: "import { authService } from '@/lib/supabase/services/auth/auth.service';",
+  authService: "authService",
 };
 
 // Find files that need to be updated
@@ -52,6 +58,8 @@ function findFilesToUpdate(rootDir) {
     withAuthFeedback: [],
     logError: [],
     showToast: [],
+    authServiceImport: [],
+    authService: [],
   };
 
   files.forEach((file) => {
@@ -92,6 +100,6 @@ findFilesToUpdate(rootDir);
 console.log('Migration steps:');
 console.log('1. Update imports to use the new core services or compatibility layer');
 console.log('2. Replace function calls with the new service methods');
-console.log('3. Add ToastProvider to the root layout');
+console.log('3. Replace AuthService.getInstance() with authService singleton');
 console.log('4. Test thoroughly before removing old modules');
-console.log('\nSee the migration plan at src/lib/core/MIGRATION_PLAN.md for more details.'); 
+console.log('\nSee the authentication consolidation progress at AUTH_CONSOLIDATION_PROGRESS.md for more details.'); 

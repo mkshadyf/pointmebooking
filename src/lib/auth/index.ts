@@ -45,7 +45,7 @@ export {
 export {
     convertToAuthError,
     toAuthError
-} from '@/lib/error/auth-error-converter';
+} from '@/lib/error/auth-error-utils';
 
 // Re-export auth service
 export {
